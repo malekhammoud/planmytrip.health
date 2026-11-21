@@ -122,11 +122,12 @@ export function applyPlannerFrame(
       const agentId = raw.agentId;
       const status = asPhase(raw.status);
       if (!isPlannerAgentId(agentId) || status === null) return false;
+      const message = asText(raw.message);
       dispatch({
         type: "agent_status",
         agentId,
         status,
-        ...(typeof raw.message === "string" ? { message: raw.message } : {}),
+        ...(message === null ? {} : { message }),
         mock,
       });
       return false;

@@ -224,6 +224,14 @@ export async function runAgent(
 ): Promise<string | null> {
   const agent = byId.get(agentId);
   if (agent === undefined) return null;
+  emitStatus(
+    context,
+    agentId,
+    "queued",
+    agentId === "concierge"
+      ? "Opening the concierge session"
+      : "Opening a specialist session",
+  );
   const configuredModel = plannerModelConfig();
   let sessionID: string;
   try {

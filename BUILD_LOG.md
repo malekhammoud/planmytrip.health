@@ -350,6 +350,42 @@ thresholds and Sun Life stability window remain VERIFY.
 - Unverified: real cohort size, responder-bias correction, privacy review, database backups
   and retention, and any live use of a learned cap.
 
+### Step 13: one-page live workspace and agent warmup
+
+- Removed the Plan / Pacing / Verification / Team tabs. The result is one page: trip masthead,
+  live mission band, seven-agent deck, planning signal, route stage, safety envelope, live
+  TinyFish verification, and the consented outcome inside the finished plan. Both agent streams
+  stay mounted for the whole page.
+- Added the mission band (stage, elapsed timer, 0/7 progress, four-step rail), the animated
+  signal bar graph and ticker, and a designed route-forming skeleton with an animated dashed
+  route. Every agent now shows a phase and its newest message or activity line, so no surface
+  sits silent while a session opens.
+- Added immediate lifecycle copy: "Preparing the agent runtime", "Opening a specialist
+  session", "Waiting for specialist research", and phase messages carried on `agent_status`.
+  The internal `queued` phase renders as Starting for planner agents and Preparing for TinyFish
+  workers; the word "Queued" is gone from the interface.
+- Added `instrumentation.ts` and `lib/agent/agentWarmup.ts`. One fire-and-forget warmup runs at
+  Node server start, resolving the OpenCode service, the temporary workspace, and all seven
+  agent definitions; the first live request awaits the same memoized promise. A failure is not
+  cached, never blocks readiness, and logs only a bounded status line. The workspace path now
+  includes the OS user id so a root development run cannot leave a root-owned config that the
+  `planmytrip` service cannot rewrite.
+- Added Paper and Ink motion in `app/globals.css`: staggered section and deck reveals, activity
+  and ticker entrances, signal bars, progress and stage transitions, route flow, marker pops,
+  and map route flow. Every effect is decorative, every loop is slow, and reduced motion turns
+  all of it off. No gradients, blur, glow, shadows, images, raw colors, or pill styling.
+- Tests: 291 total. Added warmup memo/retry/skip, instrumentation runtime guards, planner phase
+  message storage and clearing, and frame forwarding; removed the three tab-order tests with
+  TabBar.
+- Gate: typecheck, 291 tests against `planmytrip_test`, lint, production build pass.
+- Production: the service logs `[planner] runtime ready` about seven seconds after boot. A live
+  4-day Lisbon run on 2026-11-21 showed the first phase at 1 second, the first real searches at
+  3 seconds, and plan ready at 6m12s with all seven specialists complete. The page had no tabs,
+  no "Queued" text, a rendered map, and the outcome panel. Live verification completed 2 of 3
+  TinyFish workers; medication/customs showed its Retry action. The outcome panel saved an
+  explicit false label against the capture. The two browser-test rows were then removed; the
+  production store keeps one consented, unlabeled trip and no training labels.
+
 ## Next action
 
 Run a consented pilot cohort against production PostgreSQL, confirm capture and outcome rows

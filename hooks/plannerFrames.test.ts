@@ -52,6 +52,13 @@ describe("applyPlannerFrame", () => {
       sessionId: "ses_1",
       ts: "2026-11-21T10:00:00.000Z",
     });
+    state = apply(state, "agent_status", {
+      agentId: "concierge",
+      status: "queued",
+      message: "Waiting for specialist research",
+      ts: "2026-11-21T10:00:00.000Z",
+    });
+    expect(state.agents.concierge.message).toBe("Waiting for specialist research");
     state = apply(state, "agent_activity", {
       agentId: "stay",
       kind: "search",

@@ -17,7 +17,12 @@ import type { PlannerErrorCode } from "./agentTypes";
 import { PLANNER_AGENTS } from "./agentTypes";
 import { AGENT_SYSTEM_PROMPTS } from "./agentProfiles";
 
-const WORKSPACE = path.join(tmpdir(), "planmytrip-health-agent-workspace");
+const workspaceUser =
+  typeof process.getuid === "function" ? String(process.getuid()) : "app";
+const WORKSPACE = path.join(
+  tmpdir(),
+  `planmytrip-health-agent-workspace-${workspaceUser}`,
+);
 
 /** Runtime failure that maps to a stable planner error code. */
 export class AgentRuntimeError extends Error {

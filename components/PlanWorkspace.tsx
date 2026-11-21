@@ -1,32 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import type { CSSProperties } from "react";
 import { AgentSwarmMonitor } from "@/components/AgentSwarmMonitor";
 import { AgentTeamPanel } from "@/components/AgentTeamPanel";
+import { MissionBand } from "@/components/MissionBand";
 import { CareCardButton, ItineraryBoard } from "@/components/ItineraryBoard";
 import { PlanPanel } from "@/components/PlanPanel";
-import {
-  Button,
-  Callout,
-  TabBar,
-  type CalloutTone,
-  type TabItem,
-} from "@/components/ui";
+import { Button, Callout, SectionHeader, type CalloutTone } from "@/components/ui";
 import { useAgentPlan } from "@/hooks/useAgentPlan";
-import type {
-  HealthTripPlan,
-  SunLifeSeverity,
-} from "@/lib/healthTripEngine";
+import type { HealthTripPlan, SunLifeSeverity } from "@/lib/healthTripEngine";
 import { describeTrip } from "@/lib/describeTrip";
 import {
   BUDGET_LABELS,
-  type PlannerAgentId,
   type TripConfig,
 } from "@/lib/agent/agentTypes";
-import type {
-  PlannerAgentState,
-  PlannerState,
-} from "@/lib/agent/plannerReducer";
 
 /** Props for {@link PlanWorkspace}. */
 export interface PlanWorkspaceProps {
@@ -43,31 +30,20 @@ export interface PlanWorkspaceProps {
   onReplan: () => void;
 }
 
-const ID_PREFIX = "workspace";
-
 const ALERT_TONES: Record<SunLifeSeverity, CalloutTone> = {
   ok: "info",
   caution: "caution",
   blocking: "risk",
 };
 
-function completedCount(
-  agents: Record<PlannerAgentId, PlannerAgentState>,
-): number {
-  return Object.values(agents).filter((agent) => agent.phase === "complete").length;
-}
-
-function statusLabel(state: PlannerState): string {
-  if (state.plan !== null) return "Plan ready";
-  if (state.status === "running") return "Planning";
-  if (state.status === "error") return "Needs attention";
-  return "Queued";
+function revealStyle(index: number): CSSProperties {
+  return { "--reveal-index": index } as CSSProperties;
 }
 
 /**
- * The trip workspace: one compact summary, four ruled tabs, and exactly one visible
- * panel at a time. Every panel stays mounted so the concierge and TinyFish streams keep
- * running while the user moves between Plan, Pacing, Verification, and Team.
+ * The one-page result screen: trip masthead, live mission band, seven-agent deck,
+ * planning signal, route stage, safety envelope, and live verification. Both agent
+ * streams stay mounted for the whole page, so nothing aborts as the reader scrolls.
  */
 export function PlanWorkspace({
   trip,
@@ -79,7 +55,6 @@ export function PlanWorkspace({
   onEditTrip,
   onReplan,
 }: PlanWorkspaceProps) {
-  const [active, setActive] = useState("plan");
   const { state, runInput, retry } = useAgentPlan({
     destination: trip.destination,
     days: trip.days,
@@ -93,17 +68,13 @@ export function PlanWorkspace({
     hasSunLifeTravelCoverage: trip.hasSunLifeTravelCoverage,
     runToken,
   });
-  const completed = completedCount(state.agents);
-  const tabs: readonly TabItem[] = [
-    { id: "plan", label: "Plan" },
-    { id: "pacing", label: "Pacing" },
-    { id: "verification", label: "Verification" },
-    { id: "team", label: "Team", badge: `${completed}/7` },
-  ];
 
   return (
     <main className="page-container pt-10 md:pt-16">
-      <div className="flex flex-wrap items-start justify-between gap-6 border-b border-hairline pb-6">
+      <header
+        className="reveal-section flex flex-wrap items-start justify-between gap-6 border-b border-hairline pb-6"
+        style={revealStyle(0)}
+      >
         <div className="min-w-0">
           <p className="t-label text-muted">Current trip</p>
           <h1 className="t-title mt-2 max-w-3xl">
@@ -118,7 +89,7 @@ export function PlanWorkspace({
             {trip.interests || "No extra preferences"} ·{" "}
             {trip.hasSunLifeTravelCoverage
               ? "Sun Life coverage recorded"
-              : "Sun Life coverage not confirmed"} · {statusLabel(state)}
+              : "Sun Life coverage not confirmed"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -129,56 +100,56 @@ export function PlanWorkspace({
             Plan again
           </Button>
         </div>
-      </div>
+      </header>
 
-      <div className="mt-6">
-        <TabBar
-          items={tabs}
-          active={active}
-          onChange={setActive}
-          label="Trip workspace"
-          idPrefix={ID_PREFIX}
-        />
-      </div>
+      <MissionBand state={state} />
 
-      <div
-        role="tabpanel"
-        id={`${ID_PREFIX}-panel-plan`}
-        aria-labelledby={`${ID_PREFIX}-tab-plan`}
-        hidden={active !== "plan"}
-        className="pt-8"
+      <section
+        aria-labelledby="team-heading"
+        className="reveal-section"
+        style={revealStyle(2)}
       >
+        <SectionHeader index="01" title="Planning team" id="team-heading" />
+        <AgentTeamPanel state={state} runInput={runInput} />
+      </section>
+
+      <section
+        aria-labelledby="route-heading"
+        className="reveal-section"
+        style={revealStyle(3)}
+      >
+        <SectionHeader index="02" title="Route and days" id="route-heading" />
         <PlanPanel
           state={state}
           runInput={runInput}
-          visible={visible && active === "plan"}
+          visible={visible}
           capture={{ runId, installId, consent: trip.captureConsent }}
           onRetry={retry}
         />
-      </div>
+      </section>
 
-      <div
-        role="tabpanel"
-        id={`${ID_PREFIX}-panel-pacing`}
-        aria-labelledby={`${ID_PREFIX}-tab-pacing`}
-        hidden={active !== "pacing"}
-        className="pt-8"
+      <section
+        aria-labelledby="safety-heading"
+        className="reveal-section"
+        style={revealStyle(4)}
       >
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h2 className="t-title">Safety envelope</h2>
-            <p className="t-small mt-2 max-w-2xl text-muted">
-              The engine derives daily step, walking, recovery, altitude, and heat
-              limits from your condition profile. These limits stay authoritative.
-            </p>
-          </div>
-          <CareCardButton
-            destination={trip.destination}
-            condition={trip.condition}
-            medication={trip.medication}
-            plan={plan}
-          />
-        </div>
+        <SectionHeader
+          index="03"
+          title="Safety envelope"
+          id="safety-heading"
+          action={
+            <CareCardButton
+              destination={trip.destination}
+              condition={trip.condition}
+              medication={trip.medication}
+              plan={plan}
+            />
+          }
+        />
+        <p className="t-small measure text-muted">
+          The engine derives daily step, walking, recovery, altitude, and heat limits
+          from your condition profile. These limits stay authoritative.
+        </p>
         <div className="mt-6">
           <Callout
             tone={ALERT_TONES[plan.sunLifeAlert.severity]}
@@ -199,19 +170,21 @@ export function PlanWorkspace({
             medication={trip.medication}
           />
         </div>
-      </div>
+      </section>
 
-      <div
-        role="tabpanel"
-        id={`${ID_PREFIX}-panel-verification`}
-        aria-labelledby={`${ID_PREFIX}-tab-verification`}
-        hidden={active !== "verification"}
-        className="pt-8"
+      <section
+        aria-labelledby="verification-heading"
+        className="reveal-section"
+        style={revealStyle(5)}
       >
-        <h2 className="t-title">Live verification</h2>
-        <p className="t-small mt-2 max-w-2xl text-muted">
+        <SectionHeader
+          index="04"
+          title="Live verification"
+          id="verification-heading"
+        />
+        <p className="t-small measure text-muted">
           Three browser agents check the advisory, medication and customs rules, and
-          emergency coverage. Their sessions stream while they work.
+          emergency coverage. Their sessions run while this page stays open.
         </p>
         <div className="mt-6">
           <AgentSwarmMonitor
@@ -224,21 +197,7 @@ export function PlanWorkspace({
             runToken={runToken}
           />
         </div>
-      </div>
-
-      <div
-        role="tabpanel"
-        id={`${ID_PREFIX}-panel-team`}
-        aria-labelledby={`${ID_PREFIX}-tab-team`}
-        hidden={active !== "team"}
-        className="pt-8"
-      >
-        <AgentTeamPanel
-          state={state}
-          runInput={runInput}
-          onRetry={retry}
-        />
-      </div>
+      </section>
     </main>
   );
 }

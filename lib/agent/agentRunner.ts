@@ -10,12 +10,8 @@
  */
 
 import { CONDITION_PROFILES } from "@/lib/conditionProfiles";
-import { getOpenCodeClient } from "./agentClient";
-import {
-  AgentRuntimeError,
-  ensureAgentWorkspace,
-  waitForPlannerAgents,
-} from "./agentConfig";
+import { AgentRuntimeError } from "./agentConfig";
+import { warmPlannerRuntime } from "./agentWarmup";
 import { buildFallbackPlan } from "./agentFallback";
 import { geocodePlan } from "./agentGeocode";
 import { runMockPlanner } from "./agentMock";
@@ -62,6 +58,12 @@ interface RunTracker {
   quota: boolean;
 }
 
+/** Calm copy shown before the OpenCode service is ready. */
+const RUNTIME_PREPARING = "Preparing the agent runtime";
+
+/** Calm copy shown on the concierge while the six specialists research. */
+const CONCIERGE_WAITING = "Waiting for specialist research";
+
 function errorMessage(code: PlannerErrorCode): string {
   switch (code) {
     case "agent_unavailable":
@@ -87,9 +89,7 @@ async function executeLive(
   context: PlannerRunContext,
   tracker: RunTracker,
 ): Promise<void> {
-  const client = await getOpenCodeClient();
-  const directory = await ensureAgentWorkspace();
-  await waitForPlannerAgents(client, directory);
+  const { client, directory } = await warmPlannerRuntime();
 
   const byId = new Map<PlannerAgentId, LiveAgent>(
     PLANNER_AGENT_IDS.map((id) => [id, createAgent(id)]),
@@ -121,6 +121,7 @@ async function executeLive(
 
   const research: Partial<Record<SpecialistAgentId, SpecialistResult>> = {};
   try {
+    emitStatus(context, "concierge", "queued", CONCIERGE_WAITING);
     await Promise.all(
       SPECIALIST_AGENT_IDS.map(async (agentId) => {
         const prompt = buildSpecialistPrompt(agentId, request);
@@ -254,6 +255,9 @@ export async function runPlanner(
     event: "planner_started",
     data: { agents: PLANNER_AGENTS, ts: nowIso() },
   });
+  for (const agentId of PLANNER_AGENT_IDS) {
+    emitStatus(context, agentId, "queued", RUNTIME_PREPARING);
+  }
   const tracker: RunTracker = { completed: [], failed: [], quota: false };
   try {
     await executeLive(request, caps, context, tracker);

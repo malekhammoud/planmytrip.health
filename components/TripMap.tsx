@@ -90,7 +90,7 @@ export function TripMap({
     for (const [index, place] of mapped.entries()) {
       const icon = L.divIcon({
         className: "trip-map-marker",
-        html: `<span class="trip-map-marker__hit"></span><span class="trip-map-marker__pin"><span class="trip-map-marker__dot trip-map-marker__dot--${place.category}"><span class="trip-map-marker__index">${index + 1}</span></span></span>`,
+        html: `<span class="trip-map-marker__hit"></span><span class="trip-map-marker__pin" style="--marker-index:${index}"><span class="trip-map-marker__dot trip-map-marker__dot--${place.category}"><span class="trip-map-marker__index">${index + 1}</span></span></span>`,
         iconSize: [0, 0],
         iconAnchor: [0, 0],
       });
@@ -116,6 +116,7 @@ export function TripMap({
           weight: 1.5,
           opacity: 0.65,
           dashArray: "4 4",
+          className: "trip-map-route",
         }).addTo(layer);
       }
     }

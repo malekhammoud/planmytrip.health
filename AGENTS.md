@@ -44,6 +44,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 10. Onboarding and tabbed workspace | [x] | `feat(ui): add onboarding flow and tabbed trip workspace` |
 | 11. Production specialist hardening | [x] | `fix(planner): harden production agent runs` |
 | 12. ML data loop and calibrated model | [x] | `feat(ml): add trip outcome data loop and calibrated flare model` |
+| 13. One-page live workspace and agent warmup | [x] | `feat(ui): add live one-page planning workspace` |
 
 ## 3. Commands
 
@@ -69,7 +70,9 @@ Never foreground the dev server during automation: use a background log, probe w
 to `origin`; never force-push. Live planning needs an authenticated OpenCode service; the app
 discovers or starts the local one. Use `AGENT_MOCK=1` when no service or model should be called.
 The synthetic and training CLIs read `DATABASE_URL` from the shell; load
-`.env.development.local` before running them when you want a Postgres seed.
+`.env.development.local` before running them when you want a Postgres seed. On the production
+host, build first, then `chown -R planmytrip:planmytrip .next` before restarting
+`planmytrip.service`; the service user owns the image cache.
 
 ## 4. Environment
 
@@ -108,34 +111,35 @@ Every tracked source file, annotated; `package-lock.json` and generated files
 app/  globals.css, layout.tsx, page.tsx, model/page.tsx, api/travel-swarm/route.ts, api/agent-plan/route.ts, api/trips/route.ts, api/trips/outcome/route.ts
 lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditionProfiles.ts, sunLifeRules.ts, healthScore.ts, itineraryBuilder.ts
       swarm: swarmTypes.ts (wire contracts), swarmState.ts, swarmReducer.ts, swarmRunner.ts, swarmGoals.ts, swarmMock.ts, sse.ts, tinyfish.ts, tinyfishEvents.ts
-      agent: agentTypes.ts (wire contracts), agentRequest.ts, agentProfiles.ts, agentPrompts.ts, agentConfig.ts, agentClient.ts, agentRunner.ts, agentSession.ts, agentParse.ts, agentPlanParse.ts, agentFallback.ts, agentGeocode.ts, agentEvents.ts, agentMock.ts, plannerReducer.ts
+      agent: agentTypes.ts (wire contracts), agentRequest.ts, agentProfiles.ts, agentPrompts.ts, agentConfig.ts, agentClient.ts, agentWarmup.ts, agentRunner.ts, agentSession.ts, agentParse.ts, agentPlanParse.ts, agentFallback.ts, agentGeocode.ts, agentEvents.ts, agentMock.ts, plannerReducer.ts
       data: types.ts (versioned contract), dose.ts, tripDossier.ts, capture.ts, validation.ts
       db: postgres.ts (pg pool + schema), trips.ts (async repository)
       model: types.ts, math.ts, features.ts, logistic.ts, calibration.ts, train.ts, predict.ts, artifact.ts, model.json
       output: describeTrip.ts, pacingStrip.ts, careCard.ts
 hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
-components/  Onboarding.tsx, PlanWorkspace.tsx, PlanPanel.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, TripMap.tsx, AgentSwarmMonitor.tsx, ItineraryBoard.tsx, PacingStrip.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx, WorkerLivePanel.tsx
-components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Field.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TabBar.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths), tabOrder.ts (nextTabIndex)
+components/  Onboarding.tsx, PlanWorkspace.tsx, MissionBand.tsx, PlanPanel.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, TripMap.tsx, AgentSwarmMonitor.tsx, ItineraryBoard.tsx, PacingStrip.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx, WorkerLivePanel.tsx
+components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Field.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
 scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts
 data/  synthetic-trips.jsonl
 docs/  ML.md, MODEL_CARD.md
-tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
-module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts, tabOrder.test.ts; hooks/: swarmFrames.test.ts, plannerFrames.test.ts
-root  package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
+tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
+module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; hooks/: swarmFrames.test.ts, plannerFrames.test.ts
+root  package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, instrumentation.ts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
 ```
 
 Data flow: `Onboarding` collects a `TripConfig`; the page normalizes it, increments
 `deployNonce`, and reveals `PlanWorkspace`. The page memoizes `buildHealthTripPlan` and passes
 the engine plan to the workspace. `PlanWorkspace` calls `useAgentPlan`, which POSTs
 `/api/agent-plan`; `AgentSwarmMonitor` POSTs `/api/travel-swarm` with the same token. Planner
-events flow through `plannerFrames`/`plannerReducer` into the roster, live log, map, and Plan
-tab; TinyFish events flow through `useSwarm`/`swarmReducer` into the Verification tab. The
-engine plan feeds Pacing and supplies every concierge day with its step and walking ceiling.
-The engine and the safety envelope render independently of both agent teams.
+events flow through `plannerFrames`/`plannerReducer` into the mission band, seven-agent deck,
+planning signal, route stage, and map; TinyFish events flow through
+`useSwarm`/`swarmReducer` into live verification. The engine plan feeds the safety envelope
+and supplies every concierge day with its step and walking ceiling. The engine and the safety
+envelope render independently of both agent teams.
 
 The page also owns a random install id and a per-run id; both agent POSTs carry them. On
 `plan_ready` the planner route rebuilds the engine plan server-side and writes a consented
-dossier; on `swarm_done` the swarm route writes bounded findings. The Plan tab posts one
+dossier; on `swarm_done` the swarm route writes bounded findings. The finished plan posts one
 explicit outcome. A missing outcome is excluded from training, never read as a negative.
 
 ### Agentic concierge
@@ -145,7 +149,16 @@ explicit outcome. A missing outcome is excluded from training, never read as a n
 research specialists in parallel: stay, table, trail, culture, transit, and care. Each is a
 separate OpenCode session with its own system prompt, source rules, and JSON shape. The lead
 concierge then receives the verified research plus the engine's day ceilings and returns one
-sequenced plan.
+sequenced plan. The workspace path includes the current OS user id
+(`planmytrip-health-agent-workspace-<uid>`), so a root development run and the `planmytrip`
+service never share a config file.
+
+`instrumentation.ts` starts `lib/agent/agentWarmup.ts` once on the Node server, before the
+first request. The warmup resolves the service connection, the temporary workspace, and all
+seven agent definitions; the live run awaits that same memoized promise. A failed warmup is
+not cached, so the next request retries. Startup never waits for it, never crashes the server,
+and logs no credentials. Phase messages are emitted immediately, so the interface shows
+"Preparing the agent runtime" and "Opening a specialist session" instead of silence.
 
 The specialists may use `websearch` and `webfetch` only. The generated `.opencode/opencode.json`
 denies `*` first and allows those two actions; shell, file writes, edits, and subagents stay
@@ -178,13 +191,14 @@ markers, a 44px hit area, one dashed route per day, a category legend, a collaps
 and the required attribution. The Leaflet flag prefix is disabled. Tiles and geocoding are
 production dependencies with licences to verify; see section 9.
 
-The workspace is tabbed, not one long report. `Plan` leads with the finished concierge plan;
-while the run is live it carries the roster and bounded activity log. `Pacing` holds the engine
-safety envelope and care card. `Verification` holds the three TinyFish columns. `Team` holds the
-full seven-agent roster and log. All four panels stay mounted so both streams continue while the
-user changes tabs; inactive panels use `hidden`. `AgentPlanView` labels every day with agent
-estimate, modeled ceiling, recovery minutes, and the engine checkpoint; a day above its ceiling
-shows a caution and the Pacing limit wins.
+The workspace is one page, not a tabbed report. It reads top to bottom: trip masthead, live
+mission band, seven-agent deck with the planning signal, route stage, safety envelope, and live
+verification. The mission band shows the current stage, elapsed time, completed count, and an
+animated stage rail. While the route is forming, `PlanPanel` holds the space with a designed
+route skeleton instead of an empty box. Every surface stays mounted for the whole page, so both
+streams continue while the reader scrolls. `AgentPlanView` labels every day with agent estimate,
+modeled ceiling, recovery minutes, and the engine checkpoint; a day above its ceiling shows a
+caution and the safety limit wins.
 
 ### Data loop and calibration model
 
@@ -192,8 +206,8 @@ Capture is opt-in on the onboarding health step. `app/page.tsx` owns a random in
 (localStorage, never a cookie) and a per-run `runId`; both agent POSTs carry them.
 `useAgentPlan`/`useSwarm` pass them through, and `parsePlannerRequest`/`isSwarmRequestBody`
 validate them. The planner route rebuilds the engine plan server-side on `plan_ready` and
-writes a `TripDossier`; the swarm route writes bounded findings on `swarm_done`. The Plan tab
-renders `TripOutcomePanel`, which posts one explicit outcome to `/api/trips/outcome`.
+writes a `TripDossier`; the swarm route writes bounded findings on `swarm_done`. The finished
+plan renders `TripOutcomePanel`, which posts one explicit outcome to `/api/trips/outcome`.
 `GET /api/trips?installId=` lists only that install's trips.
 
 `lib/data/dose.ts` is the single dose model. It maps concierge block kinds to exertion, raises
@@ -258,7 +272,7 @@ add a generic medication name and `CONDITION_CHECKPOINTS` entry; update this tab
 section 9; run both engine test files. Exhaustive `Record<Condition, ...>` types fail
 typecheck until complete.
 
-### Onboarding and tabbed workspace
+### Onboarding and live workspace
 
 `app/page.tsx` owns only three things: `view` (`onboarding` or `workspace`), `trip`
 (`TripConfig | null`), and `deployNonce`. It memoizes `buildHealthTripPlan` from the current
@@ -266,8 +280,8 @@ trip. `Onboarding` owns its draft, two steps, `medicationTouched`, and validatio
 renders both screens and hides the inactive one with `hidden`, so editing never discards a
 running workspace. `onComplete` normalizes the draft, sets the trip, increments `deployNonce`,
 and reveals the workspace; `onCancel` resets the draft and returns to the running workspace.
-The workspace is keyed by `deployNonce`, so a new build or replan remounts it on the Plan tab
-and aborts older streams.
+The workspace is keyed by `deployNonce`, so a new build or replan remounts it at the top and
+aborts older streams.
 
 `Onboarding` is one focused screen, not a rail. Step 01 collects destination (the only hard
 gate), duration, budget, and optional preferences. Step 02 collects condition, medication
@@ -276,20 +290,25 @@ review sentence. The left column explains the three jobs; the right column is a 
 desktop and stacks below at 1024. There is no deploy action before the form is complete. The
 draft helpers live in `lib/onboarding.ts` and are pure-tested.
 
-`PlanWorkspace` is the result screen: a trip summary, Edit trip and Plan again actions, and
-four ruled tabs — Plan, Pacing, Verification, Team. The TabBar primitive owns the roving focus
-and arrow, Home, and End keys; the active tab is a 2px accent underline, never a pill. All
-panels stay mounted with `hidden` so `useAgentPlan` and `useSwarm` keep streaming while the user
-moves between tabs. `TripMap` receives `visible` and calls `invalidateSize` when the Plan tab
-returns; a hidden page-level workspace also passes `visible=false`. Plan leads with the
-concierge plan or the live roster, followed by `TripOutcomePanel` when capture was consented;
-Pacing carries `CareCardButton` and `ItineraryBoard`; Verification carries `AgentSwarmMonitor`;
-Team carries the full roster and log.
+`PlanWorkspace` is the one-page result screen: trip summary with Edit trip and Plan again, the
+live `MissionBand`, the sectioned route, safety envelope, and verification. `MissionBand` shows
+the current stage, a counting elapsed timer, completed agents, a progress bar, and a four-step
+rail with calm failure copy. `AgentTeamPanel` holds the seven-agent deck and the planning signal
+graph; `AgentRoster` shows each agent's phase, role, and newest message or activity line, and
+`AgentActivityFeed` turns the bounded log into a bar graph plus a five-line ticker. `PlanPanel`
+shows the finished concierge plan, a designed route-forming skeleton with an animated dashed
+route, or a calm retry. The safety envelope carries `CareCardButton` and `ItineraryBoard`; live
+verification carries `AgentSwarmMonitor`. Everything is mounted for the whole page, so neither
+stream aborts while the reader scrolls. `TripMap` receives `visible` and calls `invalidateSize`
+when the page returns; a hidden page-level workspace also passes `visible=false`.
 
-The sister link is in the header from 640px and in the footer below. Gutters are 24/40px; the
-footer sits 64px/96px below. The onboarding split is `1fr / 420px` with 80px gap at 1024+; the
-workspace summary wraps its actions below the trip sentence on narrow screens. Tabs use
-`min-h-11`, fit 375px without horizontal scroll, and stay keyboard reachable.
+The page uses staggered section, deck, activity, signal, and marker motion. Every effect is
+decorative and every animation is disabled under reduced motion. No phase renders the word
+"Queued": the internal queued token reads as Starting for planner agents and Preparing for
+TinyFish workers. The sister link is in the header from 640px and in the footer below. Gutters
+are 24/40px; the footer sits 64px/96px below. The onboarding split is `1fr / 420px` with 80px
+gap at 1024+; the workspace summary wraps its actions below the trip sentence. The page fits
+375px without horizontal scroll, and controls stay at least 44px tall.
 
 ### Agent swarm monitor
 
@@ -388,10 +407,14 @@ control outside `components/ui` and carries a `design-guard-ignore` comment.
   `lg` (48px) exists for the onboarding primary action and the workspace build action.
 - **Two screens, one session:** onboarding and workspace are view states, not routes, so a
   running plan survives Edit trip and Back to plan. The workspace is keyed by `deployNonce` to
-  reset the active tab and streams on a new build.
-- **Tabs keep streams alive:** `TabBar` is a primitive with roving focus; every workspace panel
-  is mounted and toggled with `hidden`. Do not conditionally unmount Verification or the
-  workspace during editing, or the live TinyFish and concierge requests abort.
+  reset the page and streams on a new build.
+- **One page keeps streams alive:** every live surface is mounted for the whole workspace.
+  Do not bring back conditional tab panels or unmount verification while the plan forms.
+- **Warm at server start:** `instrumentation.ts` starts the memoized OpenCode runtime warmup so
+  the first trip does not pay service, workspace, and agent-registration latency. A failed
+  warmup is never cached and never blocks readiness.
+- **No queued copy:** the internal `queued` phase is rendered as Starting or Preparing. Every
+  agent always shows a phase and a newest activity line; silence is a bug.
 - **No CSS modules:** the Tailwind Turbopack loader returns empty class-name exports, so
   `.slider-range`, `.skeleton-pulse`, `.status-pulse`, and `.t-metric-day` live in
   `app/globals.css`. Do not add CSS modules.
@@ -462,8 +485,9 @@ Tailwind text sizes, raw hex in components.
 
 WCAG AA contrast. Every control is keyboard reachable and labelled; tap targets at least 44px.
 No text under 13px except 11px mono labels. Every async surface has designed empty, loading,
-error, and success states. Workspace tabs use `role="tablist"/"tab"/"tabpanel"`, roving focus,
-and arrow, Home, and End keys. Copy is calm, specific, sentence case, without exclamation marks
+error, and success states. The workspace is one page; headings, the mission progressbar, the
+elapsed timer, and polite live status text carry the live state. Controls stay keyboard
+reachable with 44px targets. Copy is calm, specific, sentence case, without exclamation marks
 or emoji; sentences stay under 20 words. Numbers carry units. `healthSafetyScore` and
 `riskReductionPct` are always labelled "Modeled estimate" with a tooltip listing inputs.
 
@@ -530,7 +554,7 @@ Regenerate with `grep -rn "VERIFY:" app lib components`; there are 14 entries.
 
 OpenCode service: the server uses `@opencode/client` v2.3.2, discovers or starts the local
 service with `Service.ensure()`, and writes seven `agents` entries into
-`$TMPDIR/planmytrip-health-agent-workspace/.opencode/opencode.json`. Each agent is `mode:
+`$TMPDIR/planmytrip-health-agent-workspace-<uid>/.opencode/opencode.json`. Each agent is `mode:
 primary`, has a static system prompt and `steps`, and may use only `websearch` and `webfetch`.
 `OPENCODE_MODEL` is passed both in the config and explicitly to `session.create`. The service
 owns provider credentials; the app never reads, logs, or stores them. OpenCode Go auth is
@@ -606,7 +630,7 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 287 tests.
+`npm test` runs Vitest once in a Node environment. The suite has 291 tests.
 
 - `tests/design-guard.test.ts` and `tests/contrast.test.ts` guard styles and 13 WCAG AA token
   pairs; `tests/smoke.test.ts` covers the five conditions.
@@ -619,14 +643,16 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 - `lib/swarmReducer*.test.ts`, `hooks/swarmFrames.test.ts`, `lib/pacingStrip.test.ts`,
   `lib/careCard.test.ts`, `lib/describeTrip.test.ts`, `lib/onboarding.test.ts`, and
   `components/ui/*.test.ts` cover transitions, the idle gate, allowlists, geometry, exact
-  care-card text, the onboarding gate and normalization, tab keyboard order, and headline.
+  care-card text, the onboarding gate and normalization, and headline copy.
 - `lib/agent/*.test.ts` covers request bounds, assistant-text and JSON parsing, specialist
   normalisation, coordinate validation, concierge plan building and wire normalisation, the
-  fallback route, prompt safety and limits, tool-activity humanisation, geocoding, and planner
-  reducer transitions. `hooks/plannerFrames.test.ts` covers the SSE frame guard.
+  fallback route, prompt safety and limits, tool-activity humanisation, geocoding, planner
+  reducer transitions and phase messages, and the warmup memo and retry.
+  `hooks/plannerFrames.test.ts` covers the SSE frame guard. `tests/instrumentation.test.ts`
+  proves the warmup starts only on the Node runtime and never during a production build.
 - `tests/agent-route.test.ts` runs the whole mock planner route through real SSE: roster, seven
-  agent starts, activity, plan_ready, mock flags, map coordinates, planner_done last, and 400s
-  for bad bodies. No OpenCode service or model call is made.
+  agent starts, immediate phase messages, activity, plan_ready, mock flags, map coordinates,
+  planner_done last, and 400s for bad bodies. No OpenCode service or model call is made.
 - `lib/data/*.test.ts`, `lib/db/trips.test.ts`, and `lib/model/*.test.ts` cover computed dose,
   empty and over-cap days, hike exertion, dossier and outcome parsing, isotonic monotonicity,
   coefficient recovery, grouped folds, tiers, PostgreSQL upserts, outcome scoping, and
@@ -652,6 +678,8 @@ exempting lines.
   timed out at four minutes. The follow-up production full three-worker run completed all three
   workers with no failures; advisory and coverage were rich, while pharmacy returned empty
   findings in that concurrent run after a standalone retry returned Salbutamol and local brands.
+  A 2026-11-21 one-page run completed advisory and coverage while medication/customs exposed a
+  Retry; the page keeps the failed column visible with its source and retry action.
   Iframe rendering and clipboard permissions remain unverified.
 - The route tolerates unknown events, stringified `result` values, and partial payloads.
 - The preview allowlist covers `mock.invalid`, `*.unikraft.app` (docs), and `*.tinyfish.io`
@@ -664,6 +692,14 @@ exempting lines.
   scanning, trailing-comma repair, and single-element array unwrapping, and geocoding gained a
   simpler fallback query; these fixes are tested but not yet re-run live. Run a full 7-of-7
   pass and a full three-worker TinyFish pass separately.
+- The runtime warmup runs at server start, so a normal first trip no longer pays service and
+  agent-registration latency. A production 4-day run on 2026-11-21 showed the first phase at
+  1 second, the first real searches at 3 seconds, and plan ready at 6m12s with all seven
+  specialists complete. If the OpenCode service itself is still starting, the first request
+  still waits; the mission band names that wait but cannot shorten it.
+- The workspace is intentionally one long page. On a phone, live verification sits below the
+  full safety envelope; both streams keep running while the reader scrolls. Do not reintroduce
+  tabs to shorten it.
 - The default free model hit a provider quota during development; production must set
   `OPENCODE_MODEL`. A quota failure maps to `agent_unavailable`.
 - The embedded `@opencode/sdk` host requires Node 26 for `await using`; this app is on Node 22

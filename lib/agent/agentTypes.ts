@@ -280,10 +280,11 @@ export interface AgentStartedPayload {
   mock?: true;
 }
 
-/** Payload for agent_status: phase movement. */
+/** Payload for agent_status: phase movement with optional calm phase copy. */
 export interface AgentStatusPayload {
   agentId: PlannerAgentId;
   status: PlannerAgentPhase;
+  /** Short lifecycle copy, such as "Preparing the agent runtime". Never a secret. */
   message?: string;
   ts: string;
   mock?: true;

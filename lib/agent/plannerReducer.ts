@@ -31,6 +31,8 @@ export interface PlannerAgentState {
   sessionId: string | null;
   activity: readonly string[];
   resultSummary: string | null;
+  /** Latest calm phase message from agent_status, cleared when a phase has no copy. */
+  message: string | null;
   error: string | null;
 }
 
@@ -110,6 +112,7 @@ function createAgentState(phase: PlannerAgentPhase): PlannerAgentState {
     sessionId: null,
     activity: [],
     resultSummary: null,
+    message: null,
     error: null,
   };
 }
@@ -189,10 +192,13 @@ export function plannerReducer(
 
     case "agent_status": {
       const agent = state.agents[action.agentId];
+      const message = action.message?.trim() ?? "";
       return withMock(
         replaceAgent(state, action.agentId, {
           ...agent,
           phase: action.status,
+          message:
+            action.status !== "error" && message.length > 0 ? message : null,
           error:
             action.status === "error"
               ? action.message ?? "This check could not finish."
@@ -233,6 +239,7 @@ export function plannerReducer(
           ...agent,
           phase: action.ok ? "complete" : "error",
           resultSummary: action.summary,
+          message: null,
           error: action.ok ? null : action.summary,
         }),
         action.mock,

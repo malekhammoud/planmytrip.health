@@ -77,6 +77,56 @@ describe("plannerReducer", () => {
     expect(state.agents.stay.resultSummary).toBe("4 verified places");
   });
 
+  it("stores phase messages and clears them as the lifecycle advances", () => {
+    let state = apply(createPlannerState(1), { type: "run_started", runToken: 1 });
+    state = apply(state, {
+      type: "agent_status",
+      agentId: "stay",
+      status: "queued",
+      message: "Preparing the agent runtime",
+    });
+    expect(state.agents.stay.message).toBe("Preparing the agent runtime");
+
+    state = apply(state, {
+      type: "agent_status",
+      agentId: "stay",
+      status: "researching",
+    });
+    expect(state.agents.stay.message).toBeNull();
+
+    state = apply(state, {
+      type: "agent_status",
+      agentId: "stay",
+      status: "error",
+      message: "Timed out while researching.",
+    });
+    expect(state.agents.stay.message).toBeNull();
+    expect(state.agents.stay.error).toBe("Timed out while researching.");
+
+    state = apply(state, {
+      type: "agent_status",
+      agentId: "stay",
+      status: "queued",
+      message: "   ",
+    });
+    expect(state.agents.stay.message).toBeNull();
+
+    state = apply(state, {
+      type: "agent_status",
+      agentId: "stay",
+      status: "queued",
+      message: "Opening a specialist session",
+    });
+    state = apply(state, {
+      type: "agent_result",
+      agentId: "stay",
+      ok: true,
+      summary: "4 verified places",
+    });
+    expect(state.agents.stay.message).toBeNull();
+    expect(state.agents.stay.phase).toBe("complete");
+  });
+
   it("keeps the ready plan through planner_done", () => {
     let state = apply(createPlannerState(1), { type: "run_started", runToken: 1 });
     state = apply(state, {

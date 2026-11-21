@@ -196,12 +196,12 @@ asset, because it is one.
 ## 9. Current status
 
 - The model is trained on **synthetic** trips. It is a pipeline demonstration.
-- The full app gate passes: typecheck, 287 tests with the test database, lint, and production
+- The full app gate passes: typecheck, 291 tests with the test database, lint, and production
   build.
 - The capture routes are tested end to end with mock planner and swarm runs.
-- One consented production browser trip and its outcome are stored in PostgreSQL, far below
-  the 50-label pooled tier. `data:export` returns that labeled row; the committed artifact
-  remains synthetic.
+- One consented production browser trip is currently stored without an outcome, so it is
+  excluded from training. The browser-test rows used to verify capture, dose, and the explicit
+  outcome were removed after verification; the committed artifact remains synthetic.
 - There is no authentication or rate limiting; the store is a single PostgreSQL database
   with no retention job or deletion endpoint yet.
 

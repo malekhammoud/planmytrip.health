@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, type CSSProperties } from "react";
 import { WorkerFindings } from "@/components/WorkerFindings";
 import { WorkerLivePanel } from "@/components/WorkerLivePanel";
 import { Button, Callout, StatusGlyph, type StatusGlyphState } from "@/components/ui";
@@ -55,11 +55,11 @@ const WORKER_META: Record<WorkerId, WorkerMeta> = {
 };
 
 const PHASE_LABEL: Record<WorkerPhase, string> = {
-  idle: "Not run yet",
-  queued: "Queued",
+  idle: "Ready",
+  queued: "Preparing",
   running: "Running",
   complete: "Complete",
-  error: "Could not finish",
+  error: "Needs retry",
 };
 
 const PHASE_GLYPH: Record<WorkerPhase, StatusGlyphState> = {
@@ -70,32 +70,61 @@ const PHASE_GLYPH: Record<WorkerPhase, StatusGlyphState> = {
   error: "error",
 };
 
+const PHASE_ACTIVITY: Record<WorkerPhase, string> = {
+  idle: "Ready when the next plan runs.",
+  queued: "Preparing the browser.",
+  running: "Running the live check.",
+  complete: "Check complete.",
+  error: "This check needs a retry.",
+};
+
 function WorkerColumn({
   worker,
   state,
+  index,
   onRetry,
 }: {
   worker: WorkerId;
   state: WorkerState;
+  index: number;
   onRetry: (worker: WorkerId) => void;
 }) {
   const meta = WORKER_META[worker];
   const active = state.phase === "queued" || state.phase === "running";
+  const latest = state.progress[state.progress.length - 1] ?? PHASE_ACTIVITY[state.phase];
+  const previous = state.progress.slice(0, -1);
+  const style = { "--swarm-index": index } as CSSProperties;
   return (
-    <div className="min-w-0 border-t border-hairline py-6 lg:border-t-0 lg:px-4 lg:py-0 lg:first:pl-0 lg:last:pr-0">
-      <StatusGlyph state={PHASE_GLYPH[state.phase]} label={PHASE_LABEL[state.phase]} />
+    <div
+      className="swarm-column min-w-0 border-t border-hairline py-6 lg:border-t-0 lg:px-4 lg:py-0 lg:first:pl-0 lg:last:pr-0"
+      style={style}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <StatusGlyph state={PHASE_GLYPH[state.phase]} label={PHASE_LABEL[state.phase]} />
+        {state.progress.length > 0 ? (
+          <p className="t-data-sm text-muted">
+            {state.progress.length} {state.progress.length === 1 ? "signal" : "signals"}
+          </p>
+        ) : null}
+      </div>
       <h3 className="t-heading mt-2 text-ink">{meta.name}</h3>
       <p className="t-data mt-1 text-muted">{meta.host}</p>
 
       {active ? (
         <>
           <WorkerLivePanel workerName={meta.name} url={state.streamingUrl} />
-          {state.progress.length > 0 ? (
-            <ul className="mt-3 flex flex-col gap-1">
-              {state.progress.slice(-3).map((message, index) => (
+          <p
+            key={latest}
+            className="agent-activity t-small mt-3 text-ink [overflow-wrap:anywhere]"
+          >
+            {latest}
+          </p>
+          {previous.length > 0 ? (
+            <ul className="mt-1 flex flex-col gap-1">
+              {previous.map((message, messageIndex) => (
                 <li
-                  key={`${index}-${message}`}
-                  className="t-data text-muted [overflow-wrap:anywhere]"
+                  key={`${messageIndex}-${message}`}
+                  className="t-data-sm text-muted [overflow-wrap:anywhere]"
                 >
                   {message}
                 </li>
@@ -129,12 +158,17 @@ function WorkerColumn({
 function EmptyState() {
   return (
     <div>
-      {WORKER_IDS.map((worker) => {
+      {WORKER_IDS.map((worker, index) => {
         const meta = WORKER_META[worker];
+        const style = { "--swarm-index": index } as CSSProperties;
         return (
-          <div key={worker} className="border-t border-hairline py-4">
+          <div
+            key={worker}
+            className="swarm-column border-t border-hairline py-4"
+            style={style}
+          >
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <StatusGlyph state="queued" label="Not run yet" />
+              <StatusGlyph state="queued" label="Ready" />
               <p className="t-heading text-ink">{meta.name}</p>
             </div>
             <p className="t-small mt-1 text-muted">{meta.checks}</p>
@@ -173,6 +207,12 @@ export function AgentSwarmMonitor({
   const notStarted = WORKER_IDS.every(
     (worker) => state.workers[worker].phase === "idle",
   );
+  const completed = WORKER_IDS.filter(
+    (worker) => state.workers[worker].phase === "complete",
+  ).length;
+  const needsRetry = WORKER_IDS.filter(
+    (worker) => state.workers[worker].phase === "error",
+  ).length;
   const inputsChanged =
     runInput !== null &&
     (destination.trim() !== runInput.destination ||
@@ -195,18 +235,30 @@ export function AgentSwarmMonitor({
       ) : (
         <>
           {runInput !== null && !notStarted ? (
-            <div className="mb-6 flex flex-col gap-1">
-              <p className="t-small text-muted">
-                Last run: {runInput.destination} ·{" "}
-                {CONDITION_LABELS[runInput.condition]} ·{" "}
-                {runInput.medication || "No medication recorded"}
-              </p>
-              {inputsChanged ? (
-                <p className="t-small text-caution">
-                  Inputs changed since this run. Plan again to verify.
+            <div className="mb-6 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+              <div className="flex flex-col gap-1">
+                <p className="t-small text-muted">
+                  Last run: {runInput.destination} ·{" "}
+                  {CONDITION_LABELS[runInput.condition]} ·{" "}
+                  {runInput.medication || "No medication recorded"}
                 </p>
-              ) : null}
+                {inputsChanged ? (
+                  <p className="t-small text-caution">
+                    Inputs changed since this run. Plan again to verify.
+                  </p>
+                ) : null}
+              </div>
+              <p className="t-data text-muted">
+                {completed} of 3 complete
+                {needsRetry > 0 ? ` · ${needsRetry} needs retry` : ""}
+              </p>
             </div>
+          ) : null}
+          {!notStarted ? (
+            <p className="sr-only" role="status" aria-live="polite">
+              {completed} of 3 checks complete.
+              {needsRetry > 0 ? ` ${needsRetry} needs retry.` : ""}
+            </p>
           ) : null}
 
           {notStarted ? (
@@ -221,6 +273,7 @@ export function AgentSwarmMonitor({
                   <WorkerColumn
                     worker={worker}
                     state={state.workers[worker]}
+                    index={index}
                     onRetry={retry}
                   />
                 </Fragment>

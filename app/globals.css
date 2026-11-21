@@ -509,3 +509,218 @@
 .trip-map-legend-dot--care {
   background: var(--risk);
 }
+
+/* ---------------------------------------------------------------------------
+ * Live mission control motion.
+ *
+ * Every effect below is decorative: the same information is present in text.
+ * Durations stay short, loops stay slow, and the reduced-motion block at the
+ * end switches each one off alongside the global rule in @layer base.
+ * ------------------------------------------------------------------------- */
+
+@keyframes section-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal-section {
+  animation: section-reveal 320ms ease-out both;
+  animation-delay: calc(var(--reveal-index, 0) * 60ms);
+}
+
+@keyframes deck-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.agent-deck__item {
+  animation: deck-rise 300ms ease-out both;
+  animation-delay: calc(var(--agent-index, 0) * 45ms);
+}
+
+.swarm-column {
+  animation: deck-rise 300ms ease-out both;
+  animation-delay: calc(var(--swarm-index, 0) * 55ms);
+}
+
+@keyframes activity-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.agent-activity {
+  animation: activity-in 240ms ease-out both;
+}
+
+@keyframes signal-rise {
+  from {
+    opacity: 0.35;
+    transform: scaleY(0.15);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+.signal-bar {
+  transform-origin: bottom;
+  animation: signal-rise 360ms ease-out both;
+  animation-delay: calc(var(--signal-index, 0) * 18ms);
+}
+
+@keyframes signal-live {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.signal-bar--live {
+  animation-name: signal-rise, signal-live;
+  animation-duration: 360ms, 2.4s;
+  animation-timing-function: ease-out, ease-in-out;
+  animation-iteration-count: 1, infinite;
+  animation-fill-mode: both, none;
+}
+
+@keyframes ticker-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.ticker-line {
+  animation: ticker-in 240ms ease-out both;
+}
+
+.mission-progress__fill {
+  transition: width 600ms ease-out;
+}
+
+.route-forming__base {
+  fill: none;
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+@keyframes route-flow {
+  to {
+    stroke-dashoffset: -48;
+  }
+}
+
+.route-forming__route {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 10;
+  stroke-linecap: round;
+  animation: route-flow 3.6s linear infinite;
+}
+
+@keyframes node-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.route-forming__node {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  margin-top: -5px;
+  border: 2px solid var(--accent);
+  background: var(--paper);
+  transform-origin: center;
+  animation: node-pulse 2.6s ease-in-out infinite;
+  animation-delay: calc(var(--node-index, 0) * 260ms);
+}
+
+@keyframes marker-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.trip-map-marker__pin {
+  transform-origin: center;
+  animation: marker-pop 280ms ease-out both;
+  animation-delay: calc(var(--marker-index, 0) * 45ms);
+}
+
+@keyframes map-route-flow {
+  to {
+    stroke-dashoffset: -96;
+  }
+}
+
+.trip-map-route {
+  animation: map-route-flow 18s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-section,
+  .agent-deck__item,
+  .swarm-column,
+  .agent-activity,
+  .signal-bar,
+  .signal-bar--live,
+  .ticker-line,
+  .route-forming__route,
+  .route-forming__node,
+  .trip-map-marker__pin,
+  .trip-map-route {
+    animation: none;
+  }
+
+  .mission-progress__fill {
+    transition: none;
+  }
+}

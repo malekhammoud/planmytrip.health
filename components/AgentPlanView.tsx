@@ -147,7 +147,9 @@ export function AgentPlanView({
           </ul>
         </section>
       ) : null}
-      {capture !== undefined ? <TripOutcomePanel capture={capture} /> : null}
+      {capture !== undefined && capture.consent ? (
+        <TripOutcomePanel capture={capture} />
+      ) : null}
     </div>
   );
 }

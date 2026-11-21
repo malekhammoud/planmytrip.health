@@ -40,9 +40,5 @@ export { sliderFillPercent } from "./sliderFill";
 export { StatusGlyph } from "./StatusGlyph";
 export type { StatusGlyphProps, StatusGlyphState } from "./StatusGlyph";
 
-export { TabBar } from "./TabBar";
-export type { TabBarProps, TabItem } from "./TabBar";
-export { nextTabIndex } from "./tabOrder";
-
 export { TextInput } from "./TextInput";
 export type { TextInputProps } from "./TextInput";
