@@ -354,3 +354,158 @@
     animation-delay: calc(var(--day-index, 0) * 40ms);
   }
 }
+
+/* Function-first Leaflet chrome, kept inside the Paper and Ink palette. */
+.trip-map.leaflet-container {
+  background: var(--paper);
+  font-family: var(--font-sans);
+}
+
+.trip-map .leaflet-tile-pane {
+  filter: grayscale(1) contrast(0.92) brightness(1.04);
+}
+
+.trip-map .leaflet-bar {
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-frame);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.trip-map .leaflet-control-zoom a {
+  border-bottom-color: var(--hairline);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.trip-map .leaflet-control-zoom a:hover {
+  background: var(--sunken);
+  color: var(--ink);
+}
+
+.trip-map .leaflet-control-attribution {
+  background: var(--paper);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.trip-map .leaflet-control-attribution a {
+  color: var(--accent);
+}
+
+.trip-map .leaflet-tooltip {
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-frame);
+  background: var(--surface);
+  box-shadow: none;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.trip-map .leaflet-tooltip-top::before {
+  border-top-color: var(--hairline-strong);
+}
+
+.trip-map-marker {
+  border: 0;
+  background: transparent;
+}
+
+.trip-map-marker__hit {
+  position: absolute;
+  left: -22px;
+  top: -22px;
+  width: 44px;
+  height: 44px;
+}
+
+.trip-map-marker__pin {
+  position: absolute;
+  left: -12px;
+  top: -12px;
+}
+
+.trip-map-marker__dot {
+  display: flex;
+  box-sizing: content-box;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--surface);
+  background: var(--ink);
+}
+
+.trip-map-marker__index {
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.trip-map-marker__dot--stay {
+  border-radius: 0;
+}
+
+.trip-map-marker__dot--eat {
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.trip-map-marker__dot--hike {
+  transform: rotate(45deg);
+  background: var(--ink);
+}
+
+.trip-map-marker__dot--hike .trip-map-marker__index {
+  transform: rotate(-45deg);
+}
+
+.trip-map-marker__dot--visit {
+  border-radius: 50%;
+  background: var(--paper);
+  border-color: var(--accent);
+}
+
+.trip-map-marker__dot--visit .trip-map-marker__index {
+  color: var(--accent);
+}
+
+.trip-map-marker__dot--care {
+  background: var(--risk);
+}
+
+.trip-map-legend-dot {
+  display: inline-block;
+  box-sizing: content-box;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--surface);
+  background: var(--ink);
+}
+
+.trip-map-legend-dot--stay {
+  border-radius: 0;
+}
+
+.trip-map-legend-dot--eat {
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.trip-map-legend-dot--hike {
+  transform: rotate(45deg);
+}
+
+.trip-map-legend-dot--visit {
+  border-radius: 50%;
+  background: var(--paper);
+  border-color: var(--accent);
+}
+
+.trip-map-legend-dot--care {
+  background: var(--risk);
+}

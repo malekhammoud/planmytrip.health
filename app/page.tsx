@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AgentPlanner } from "@/components/AgentPlanner";
 import { AgentSwarmMonitor } from "@/components/AgentSwarmMonitor";
 import { ConstraintSidebar } from "@/components/ConstraintSidebar";
 import { CareCardButton, ItineraryBoard } from "@/components/ItineraryBoard";
 import { SectionHeader } from "@/components/ui";
+import type { BudgetLevel } from "@/lib/agent/agentTypes";
 import { describeTrip } from "@/lib/describeTrip";
 import {
   buildHealthTripPlan,
@@ -82,6 +84,8 @@ export default function Home() {
     DEFAULT_MEDICATION_BY_CONDITION.asthma_respiratory,
   );
   const [medicationTouched, setMedicationTouched] = useState(false);
+  const [interests, setInterests] = useState("");
+  const [budget, setBudget] = useState<BudgetLevel>("balanced");
   const [hasSunLifeTravelCoverage, setHasSunLifeTravelCoverage] = useState(false);
   const [deployNonce, setDeployNonce] = useState(0);
   const [railOpen, setRailOpen] = useState(true);
@@ -159,12 +163,16 @@ export default function Home() {
                     days={days}
                     condition={condition}
                     medication={medication}
+                    interests={interests}
+                    budget={budget}
                     hasSunLifeTravelCoverage={hasSunLifeTravelCoverage}
                     sunLifeAlert={sunLifeAlert}
                     onDestinationChange={setDestination}
                     onDaysChange={setDays}
                     onConditionChange={handleConditionChange}
                     onMedicationChange={handleMedicationChange}
+                    onInterestsChange={setInterests}
+                    onBudgetChange={setBudget}
                     onCoverageChange={setHasSunLifeTravelCoverage}
                     onDeploy={handleDeploy}
                   />
@@ -180,10 +188,32 @@ export default function Home() {
                 Conservative planning limits. Not medical advice.
               </p>
 
+              <section aria-labelledby="concierge-heading">
+                <SectionHeader
+                  id="concierge-heading"
+                  index="01"
+                  title="Concierge"
+                />
+                <p className="t-body measure mb-6 text-muted">
+                  A specialist team researches the trip. The lead concierge sequences
+                  verified stays, tables, trails, transit, and care into a paced route.
+                </p>
+                <AgentPlanner
+                  destination={destination}
+                  days={days}
+                  condition={condition}
+                  medication={medication}
+                  interests={interests}
+                  budget={budget}
+                  runToken={deployNonce}
+                  onReplan={handleDeploy}
+                />
+              </section>
+
               <section aria-labelledby="pacing-heading">
                 <SectionHeader
                   id="pacing-heading"
-                  index="01"
+                  index="02"
                   title="Pacing"
                   action={
                     plan === null ? undefined : (
@@ -213,7 +243,7 @@ export default function Home() {
               <section aria-labelledby="verification-heading">
                 <SectionHeader
                   id="verification-heading"
-                  index="02"
+                  index="03"
                   title="Verification"
                 />
                 <div id="agent-swarm-mount">

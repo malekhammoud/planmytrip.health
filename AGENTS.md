@@ -6,13 +6,14 @@ the current step and decisions. Update this file in the same commit as any chang
 ## 1. What this is
 
 PlanMyTrip.health is a health-first travel planner for patients and caregivers, often
-anxious, on a phone or laptop. It does two jobs: generate a biologically paced itinerary
-from condition-specific limits, and verify travel risk with three parallel browser agents
-whose live sessions the user can watch.
+anxious, on a phone or laptop. It does three jobs: a team of OpenCode specialists plans the
+trip, the biological engine turns condition limits into a paced safety envelope, and three
+parallel TinyFish browser agents verify live travel risk while the user watches.
 
 It is a planning aid, never medical advice: a well-typeset clinical chart crossed with a Swiss
-timetable, typographic and ruled with hairlines. The pacing strip is the signature element.
-See section 7.
+timetable, typographic and ruled with hairlines. The pacing strip and the numbered route map
+are the signature elements. The concierge plans venues and sequence; the engine owns the
+physiological ceiling. See section 7.
 
 Sister product [IsMyTripSafe.com](https://ismytripsafe.com) is photo-led (hero photography,
 destination grid, flag emoji, score cards, stoplight metaphor, search-first landing). This
@@ -34,6 +35,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 6. Live agent swarm monitor | [x] | `feat(ui): add live TinyFish agent iframes and findings cards` |
 | 7. KPI strip and paced itinerary | [x] | `feat(ui): add safety KPIs, paced itinerary cards, and care card export` |
 | 8. Documentation and identity audit | [x] | `docs(agents): finalize AGENTS.md for future coding agents` |
+| 9. Agentic concierge and trip map | [x] | `feat(planner): add OpenCode concierge team and trip map` |
 
 ## 3. Commands
 
@@ -50,7 +52,9 @@ npm run typecheck && npm test && npm run lint && npm run build   # full gate
 ```
 
 Never foreground the dev server during automation: use a background log, probe with
-`curl --max-time`, then stop it. Use `vitest run`. Do not push.
+`curl --max-time`, then stop it. Use `vitest run`. After a feature is complete, commit and push
+to `origin`; never force-push. Live planning needs an authenticated OpenCode service; the app
+discovers or starts the local one. Use `AGENT_MOCK=1` when no service or model should be called.
 
 ## 4. Environment
 
@@ -58,10 +62,21 @@ Never foreground the dev server during automation: use a background log, probe w
 | --- | --- | --- |
 | `TINYFISH_API_KEY` | Server only, `app/api/travel-swarm/route.ts` | Each worker emits `worker_error` code `missing_api_key`; the stream still returns 200. Never log, echo, or commit it. |
 | `SWARM_MOCK` | Server only, swarm route | Only when `1` and `NODE_ENV !== "production"`; mock events carry `mock: true`. Ignored in production. |
-| `NODE_ENV` | Next.js, swarm mock guard | Next sets it; production disables mock mode. |
+| `AGENT_MOCK` | Server only, planner route | Only when `1` and `NODE_ENV !== "production"`; every planner payload carries `mock: true`. Ignored in production. |
+| `OPENCODE_SERVER_URL` | Server only, `lib/agent/agentClient.ts` | When empty, the app discovers or starts the local OpenCode service. |
+| `OPENCODE_SERVER_USERNAME` / `OPENCODE_SERVER_PASSWORD` | Server only, explicit OpenCode server | Optional Basic auth for an explicit server. Never log or commit them. |
+| `OPENCODE_MODEL` | Server only, planner sessions | Optional `provider/model`; when empty the service default is used. The default free model can hit a quota, so production should set a paid model. |
+| `OPENCODE_MODEL_VARIANT` | Server only, planner sessions | Optional model variant passed with `OPENCODE_MODEL`. |
+| `NOMINATIM_URL` | Server only, geocoder | Defaults to the public Nominatim endpoint; production should use a licensed endpoint. |
+| `NOMINATIM_USER_AGENT` | Server only, geocoder | Defaults to `PlanMyTrip.health/0.1 (travel planning; contact@planmytrip.health)`. |
+| `NEXT_PUBLIC_MAP_TILE_URL` | Browser, `components/TripMap.tsx` | Defaults to public OpenStreetMap tiles; production should use a licensed tile endpoint. |
+| `NEXT_PUBLIC_MAP_ATTRIBUTION` | Browser, `components/TripMap.tsx` | Defaults to the OpenStreetMap attribution. |
+| `NODE_ENV` | Next.js, mock guards | Next sets it; production disables both mock modes. |
 
 `.env.example` is committed; `.env*` is ignored except it. Never read, print, or commit a real
-`.env*` file. Local use: `cp .env.example .env.local`, set `TINYFISH_API_KEY`, run `npm run dev`.
+`.env*` file. Local use: `cp .env.example .env.local`, set `TINYFISH_API_KEY`, optionally set
+`OPENCODE_MODEL`, run `npm run dev`. The OpenCode service must be installed and authenticated
+for live planning; `AGENT_MOCK=1` needs neither a key nor a service.
 
 ## 5. Architecture
 
@@ -69,22 +84,70 @@ Every tracked source file, annotated; `package-lock.json` and generated files
 (`next-env.d.ts`, `.next`, `tsconfig.tsbuildinfo`) are omitted by category.
 
 ```text
-app/  globals.css, layout.tsx, page.tsx, api/travel-swarm/route.ts
+app/  globals.css, layout.tsx, page.tsx, api/travel-swarm/route.ts, api/agent-plan/route.ts
 lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditionProfiles.ts, sunLifeRules.ts, healthScore.ts, itineraryBuilder.ts
       swarm: swarmTypes.ts (wire contracts), swarmState.ts, swarmReducer.ts, swarmRunner.ts, swarmGoals.ts, swarmMock.ts, sse.ts, tinyfish.ts, tinyfishEvents.ts
+      agent: agentTypes.ts (wire contracts), agentRequest.ts, agentProfiles.ts, agentPrompts.ts, agentConfig.ts, agentClient.ts, agentRunner.ts, agentSession.ts, agentParse.ts, agentPlanParse.ts, agentFallback.ts, agentGeocode.ts, agentEvents.ts, agentMock.ts, plannerReducer.ts
       output: describeTrip.ts, pacingStrip.ts, careCard.ts
-hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts
-components/  AgentSwarmMonitor.tsx, ConstraintSidebar.tsx, ItineraryBoard.tsx, PacingStrip.tsx, WorkerFindings.tsx, WorkerLivePanel.tsx
+hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
+components/  AgentPlanner.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, TripMap.tsx, AgentSwarmMonitor.tsx, ConstraintSidebar.tsx, ItineraryBoard.tsx, PacingStrip.tsx, WorkerFindings.tsx, WorkerLivePanel.tsx
 components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Field.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
-tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
-module tests  lib/: careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; hooks/: swarmFrames.test.ts
+tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, agent-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
+module tests  lib/: careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; hooks/: swarmFrames.test.ts, plannerFrames.test.ts
 root  package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
 ```
 
 Data flow: page state -> `buildHealthTripPlan` (pure, memoized) -> plan and Sun Life alert;
-Deploy increments `deployNonce`, so `AgentSwarmMonitor` POSTs `/api/travel-swarm`; worker SSE
-flows through `useSwarm`/`swarmReducer` to columns, iframes, and findings; the plan feeds
-`ItineraryBoard`. The itinerary renders from the engine alone, independent of agent results.
+Deploy increments `deployNonce`, so `AgentPlanner` POSTs `/api/agent-plan` and
+`AgentSwarmMonitor` POSTs `/api/travel-swarm` with the same token. Planner events flow through
+`useAgentPlan`/`plannerFrames`/`plannerReducer` into the roster, live log, map, and plan;
+TinyFish events flow through `useSwarm`/`swarmReducer` into columns, iframes, and findings.
+The engine plan feeds `ItineraryBoard` and supplies every concierge day with its step and
+walking ceiling. The engine and the safety envelope render independently of both agent teams.
+
+### Agentic concierge
+
+`lib/agent/agentRunner.ts` owns the live run. It discovers or starts an OpenCode service via
+`@opencode/client`, writes seven agent definitions into a temporary workspace, and runs six
+research specialists in parallel: stay, table, trail, culture, transit, and care. Each is a
+separate OpenCode session with its own system prompt, source rules, and JSON shape. The lead
+concierge then receives the verified research plus the engine's day ceilings and returns one
+sequenced plan.
+
+The specialists may use `websearch` and `webfetch` only. The generated `.opencode/opencode.json`
+denies `*` first and allows those two actions; shell, file writes, edits, and subagents stay
+closed. The API key and provider credentials never enter this repo; the OpenCode service owns
+them. The workspace lives under the system temp directory, not the app repo.
+
+Events are the planner SSE contract: `planner_started` (seven-agent roster), `agent_started`,
+`agent_status` (queued/researching/writing/complete/error), `agent_activity` (one bounded,
+human-readable search/read/note/error line), `agent_result`, `plan_ready`, `planner_error`, and
+`planner_done` always last. The runner streams activity only from tool calls and prose deltas;
+reasoning is not exposed. It collects the last assistant text, parses one JSON object, bounds
+every list, and validates coordinates. A failed specialist is isolated; the concierge still
+runs if any research survives. If synthesis fails, `buildFallbackPlan` assembles a degraded
+route from the verified picks and the engine caps.
+
+Timeouts are 360s per specialist and 300s for the concierge; `/api/agent-plan` declares
+`maxDuration = 900`. `OPENCODE_MODEL` selects a `provider/model` and is passed explicitly to
+every session so a slow config reload cannot silently fall back to the free model. A provider
+quota failure becomes `agent_unavailable`, not an invented plan. `AGENT_MOCK=1` scripts the same
+events and a full sample plan with no service or network.
+
+`geocodePlan` fills missing coordinates for up to ten selected places through Nominatim at one
+request per second, with an identifying User-Agent; it never guesses a location and marks each
+resolved place `geocoded: true`. The fallback map lists only verified or geocoded coordinates.
+
+`TripMap` is a client-only Leaflet view with grayscale OSM tiles, category-shaped numbered
+markers, a 44px hit area, one dashed route per day, a category legend, a numbered key, and the
+required attribution. The Leaflet flag prefix is disabled. Tiles and geocoding are production
+dependencies with licences to verify; see section 9.
+
+The planned UI puts the finished plan first, with the roster collapsed under "Research team".
+While the run is live, the roster and bounded activity log lead; the safety-envelope Pacing
+section stays below. `AgentPlanView` labels every day with agent estimate, modeled ceiling,
+recovery minutes, and the engine checkpoint; a day above its ceiling shows a caution and the
+Pacing limit wins.
 
 ### Biological pacing engine
 
@@ -116,14 +179,20 @@ typecheck until complete.
 ### Home page and constraint rail
 
 `app/page.tsx` owns every planner input: destination, days (4; slider 2-7), condition,
-medication, `medicationTouched`, `hasSunLifeTravelCoverage`, `deployNonce` (0), `railOpen` (true; mobile
-panel). The plan is memoized only while the destination is non-empty; otherwise the alert
-comes from `checkSunLifeCoverage`. A condition change rewrites the default medication only
-while `medicationTouched` is false. `ConstraintSidebar` is stateless: values, alert,
-callbacks, and `onDeploy` in; Deploy increments `deployNonce`, which the monitor receives as
-`runToken`. `describeTrip` builds the headline; Pacing puts `CareCardButton` in the
-SectionHeader action and `ItineraryBoard` below; Verification renders `AgentSwarmMonitor`.
-An empty destination keeps a designed empty message and never deploys.
+medication, `medicationTouched`, interests, `budget` (balanced), `hasSunLifeTravelCoverage`,
+`deployNonce` (0), `railOpen` (true; mobile panel). The plan is memoized only while the
+destination is non-empty; otherwise the alert comes from `checkSunLifeCoverage`. A condition
+change rewrites the default medication only while `medicationTouched` is false.
+`ConstraintSidebar` is stateless: values, alert, callbacks, and `onDeploy` in; Deploy increments
+`deployNonce`, which both `AgentPlanner` and `AgentSwarmMonitor` receive as `runToken`.
+`describeTrip` builds the headline. Section 01 Concierge renders `AgentPlanner`; section 02
+Pacing puts `CareCardButton` in the SectionHeader action and `ItineraryBoard` below; section 03
+Verification renders `AgentSwarmMonitor`. An empty destination keeps a designed empty message
+and never deploys. The rail's primary action reads "Plan my trip"; inputs and the budget feed
+the concierge prompts, not the deterministic engine.
+
+Deploying runs the concierge and the three live risk checks concurrently. The engine safety
+envelope is already visible before either team finishes.
 
 Below 1024 the rail is a controlled `<details open>` above the main column, summary = trip
 sentence. At 1024+ it is `320px / 1px / fluid` with 64px gaps; the rail is sticky at
@@ -199,7 +268,18 @@ control outside `components/ui` and carries a `design-guard-ignore` comment.
   invent a number. One `SUN_LIFE_RULES` serves engine and workers.
 - **Engine split:** profiles, score, itinerary, types, and rules are separate files under 250
   lines; the public entry re-exports.
-- **No live key:** tests and `SWARM_MOCK=1` only; never call TinyFish from automated checks.
+- **No live key:** tests, `SWARM_MOCK=1`, and `AGENT_MOCK=1` only; never call TinyFish or the
+  planner model from automated checks.
+- **OpenCode client, not embedded host:** `@opencode/sdk` needs Node 26 for `await using`; this
+  runtime is Node 22. `@opencode/client` against the OpenCode service is the same API contract
+  and streams the same events. The service owns credentials; the app never sees them.
+- **Read-only agents:** the consenting research agents get web search and page fetch only. No
+  shell, file write, edit, or subagent permission. The temporary workspace is outside the repo.
+- **Model is explicit:** `OPENCODE_MODEL` is passed to `session.create`, not only written into
+  the config, so an async config reload cannot silently select a free model with a quota.
+- **Map without photography:** Leaflet renders grayscale OSM tiles and numbered, token-coloured
+  markers. There are no stock images, flags, or decorative illustrations. Tile and geocode
+  providers are licence dependencies, not app assets.
 - **Primitive-only UI:** compose `components/ui`; raw form controls live only there. Button
   `lg` (48px) exists only for Deploy.
 - **No CSS modules:** the Tailwind Turbopack loader returns empty class-name exports, so
@@ -212,18 +292,27 @@ control outside `components/ui` and carries a `design-guard-ignore` comment.
 
 ### Commits
 
-One step per commit, exact message from section 2; only the orchestrator commits. Never push,
-force, or change git config. Stage no `.env*` except `.env.example`, no `node_modules`, no
-build output; never `--no-verify`.
+One step per commit, exact message from section 2; only the orchestrator commits. After a
+feature is complete and the full gate is green, push the commit to `origin`. Never force-push
+or change git config. Stage no `.env*` except `.env.example`, no `node_modules`, no build
+output; never `--no-verify`.
 
 ### TypeScript and code
 
 - Strict TypeScript. No `any`. No unexplained non-null assertions.
-- Named exports in `lib/`; files under about 250 lines; small components.
+- Named exports in `lib/`; files generally under about 250 lines; split orchestration,
+  parsing, and rendering when a module grows. Small components.
 - Every `lib/` module opens with a header comment (purpose, inputs/outputs, invariants) and
   TSDoc on every exported function and type. Comment why, not what.
 - Every `// VERIFY:` states what to check and where; add it to section 9. Compose
   `components/ui`; never restyle a raw control.
+- Agent prompts and output shapes live in `lib/agent/agentPrompts.ts` and
+  `agentProfiles.ts`; parsing, plan building, and rendering stay separate. Never put a raw
+  provider error, API key, session token, or full tool input into a frame. Bound every agent
+  string and list before it reaches the UI.
+- The Leaflet map is client-only and imports its stylesheet in `app/layout.tsx`; its Paper and
+  Ink overrides live in `app/globals.css` because CSS modules are banned. Markers are numbered
+  DOM icons, not image assets.
 
 ### Paper and Ink design system
 
@@ -292,13 +381,19 @@ fixtures prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.5:1 or b
   `lib/sunLifeRules.ts`, marked `// VERIFY against current group policy`. The window is
   `null` and unconfirmed. The alert says "Verify with your plan administrator".
 - Never suggest doses or medication changes. Medication information is limited to generic
-  and brand names, customs, and carry rules.
+  and brand names, customs, and carry rules. The concierge prompts forbid telling the traveler
+  to take or use a medication; copy refers to the clinician's plan.
+- The concierge is a planning aid. Every day carries the engine's step and walking ceiling,
+  recovery minutes, and checkpoint. Agent estimates are labelled as estimates; a day above a
+  ceiling shows a caution and the Pacing limit always wins.
 - Agent findings show the source URL and retrieved time. Missing fields show "Not found",
   never a guess. Malformed JSON shows the raw text plus a parse error.
+- Geocoded coordinates are labelled approximate. A place without a verified or geocoded
+  coordinate is not plotted; the itinerary list remains the source of truth.
 
 ## 9. VERIFY register
 
-Regenerate with `grep -rn "VERIFY:" app lib components`; there are 8 entries.
+Regenerate with `grep -rn "VERIFY:" app lib components`; there are 10 entries.
 
 | File | What to verify |
 | --- | --- |
@@ -310,8 +405,40 @@ Regenerate with `grep -rn "VERIFY:" app lib components`; there are 8 entries.
 | `lib/sunLifeRules.ts` (stability placeholder) | The window is `null`; confirm the real value with the plan administrator. Never invent a number. |
 | `lib/sunLifeRules.ts` (rules) | 60-day cap, Allianz 24/7 pre-authorization, and stability window against current group policy; record source and checked date. |
 | `lib/swarmState.ts` (preview allowlist) | Docs list `*.unikraft.app`; a live production run on 2026-11-21 returned `*.tetra-data.production.tinyfish.io`, so both provider domains are allowlisted. Recheck if TinyFish introduces another host family. |
+| `lib/agent/agentGeocode.ts` (Nominatim) | Public Nominatim allows one request per second and requires an identifying User-Agent. Confirm the production geocoder's licence, quota, and attribution. |
+| `components/TripMap.tsx` (tiles) | Confirm the production tile licence, attribution text, and request volume. Public OSM tiles are not a high-volume production endpoint. |
 
 ## 10. External integrations
+
+OpenCode service: the server uses `@opencode/client` v2.3.2, discovers or starts the local
+service with `Service.ensure()`, and writes seven `agents` entries into
+`$TMPDIR/planmytrip-health-agent-workspace/.opencode/opencode.json`. Each agent is `mode:
+primary`, has a static system prompt and `steps`, and may use only `websearch` and `webfetch`.
+`OPENCODE_MODEL` is passed both in the config and explicitly to `session.create`. The service
+owns provider credentials; the app never reads, logs, or stores them.
+
+Planner events are the second SSE contract. Every frame carries `ts` and optional `mock`;
+`planner_done` is always last.
+
+| Event | Fields | When |
+| --- | --- | --- |
+| `planner_started` | `agents` | Once before live sessions start. |
+| `agent_started` | `agentId`, `sessionId` | A specialist or concierge session opens. |
+| `agent_status` | `status`, `message?` | Researching, writing, complete, or error. |
+| `agent_activity` | `kind`, `text` | One bounded search, read, note, tool, or error line. |
+| `agent_result` | `ok`, `summary` | One specialist or concierge result. |
+| `plan_ready` | `plan`, `completed`, `failed` | The final map and day plan. |
+| `planner_error` | `code`, `message` | Unavailable, timeout, invalid plan, or upstream failure. |
+| `planner_done` | `completed`, `failed` | Once after every run, including errors. |
+
+Planner headers are the same `text/event-stream`, no-cache, and `X-Accel-Buffering: no` set;
+keep-alive comments go out about every 15s. Disconnect aborts the event subscription and
+interrupts sessions. `/api/agent-plan` declares `maxDuration = 900`.
+
+Geocoding: `geocodePlan` calls `${NOMINATIM_URL}?format=jsonv2&limit=1&q=...` with a custom
+User-Agent, at most ten places per plan, sequentially, one second apart, and 7s per request.
+A failed lookup leaves `lat` and `lng` null. Map tiles come from `NEXT_PUBLIC_MAP_TILE_URL`
+with `NEXT_PUBLIC_MAP_ATTRIBUTION`; the Leaflet attribution prefix is disabled.
 
 TinyFish Web Agent API: `POST https://agent.tinyfish.ai/v1/automation/run-sse` with
 `X-API-Key` and JSON `{url, goal, output_schema?}`. The key is read only in the route; never
@@ -324,8 +451,9 @@ ignored; `COMPLETE.result` is authoritative. The route forwards absolute http(s)
 values; the browser keeps only https `mock.invalid`, `*.unikraft.app`, or `*.tinyfish.io`
 previews.
 
-Our SSE frames all carry `worker`, an ISO `ts`, and optional `mock`; `swarm_done` uses
-`worker: "swarm"` and is always last on a connected stream.
+TinyFish swarm frames all carry `worker`, an ISO `ts`, and optional `mock`; `swarm_done` uses
+`worker: "swarm"` and is always last on a connected stream. Planner frames use `agentId` and
+their own `planner_done` terminal frame instead.
 
 | Event | Fields | When |
 | --- | --- | --- |
@@ -358,7 +486,7 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 179 tests.
+`npm test` runs Vitest once in a Node environment. The suite has 238 tests.
 
 - `tests/design-guard.test.ts` and `tests/contrast.test.ts` guard styles and 13 WCAG AA token
   pairs; `tests/smoke.test.ts` covers the five conditions.
@@ -371,10 +499,18 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 - `lib/swarmReducer*.test.ts`, `hooks/swarmFrames.test.ts`, `lib/pacingStrip.test.ts`,
   `lib/careCard.test.ts`, `lib/describeTrip.test.ts`, and `components/ui/*.test.ts` cover
   transitions, the idle gate, allowlists, geometry, exact care-card text, and headline.
+- `lib/agent/*.test.ts` covers request bounds, assistant-text and JSON parsing, specialist
+  normalisation, coordinate validation, concierge plan building and wire normalisation, the
+  fallback route, prompt safety and limits, tool-activity humanisation, geocoding, and planner
+  reducer transitions. `hooks/plannerFrames.test.ts` covers the SSE frame guard.
+- `tests/agent-route.test.ts` runs the whole mock planner route through real SSE: roster, seven
+  agent starts, activity, plan_ready, mock flags, map coordinates, planner_done last, and 400s
+  for bad bodies. No OpenCode service or model call is made.
 
 Add pure-function tests beside the module or under `tests/`, named `*.test.ts`; Vitest includes
-`**/*.test.ts`. No component-test libraries. Mock fetch in route and SSE tests. Keep the design
-guard green rather than exempting lines.
+`**/*.test.ts`. No component-test libraries. Mock fetch in route and SSE tests; never call the
+live planner or TinyFish from an automated check. Keep the design guard green rather than
+exempting lines.
 
 ## 12. Known limitations and open questions
 
@@ -387,9 +523,32 @@ guard green rather than exempting lines.
 - The route tolerates unknown events, stringified `result` values, and partial payloads.
 - The preview allowlist covers `mock.invalid`, `*.unikraft.app` (docs), and `*.tinyfish.io`
   (verified live 2026-11-21).
+- Live concierge run 1 on 2026-11-21 (`OPENCODE_MODEL=opencode-go/deepseek-v4.1-flash`) completed
+  six of seven agents in about 10m45s; care timed out. Run 2 finished in about 12 minutes with
+  four of seven agents: table, trail, culture, and concierge. Stay, transit, and care returned
+  JSON the parser rejected, not timeouts. The plan still produced two capped days, six verified
+  places, and honest missing-stay/care copy. After run 2 the parser gained balanced-object
+  scanning, trailing-comma repair, and single-element array unwrapping, and geocoding gained a
+  simpler fallback query; these fixes are tested but not yet re-run live. Run a full 7-of-7
+  pass and a full three-worker TinyFish pass separately.
+- The default free model hit a provider quota during development; production must set
+  `OPENCODE_MODEL`. A quota failure maps to `agent_unavailable`.
+- The embedded `@opencode/sdk` host requires Node 26 for `await using`; this app is on Node 22
+  and uses `@opencode/client` against a running OpenCode service. A production deployment must
+  provide and supervise that service.
+- Geocoding is covered by mocked fetch tests; the live Nominatim pass has not been exercised
+  against a real agent plan. Public OSM tiles and Nominatim are not production-scale endpoints.
+- The concierge plan is rendered from the current SSE run only; it is not persisted across a
+  reload, and there is no account, payment, booking, or rate limiting yet. Those are product
+  work beyond this step.
+- Consent and privacy: the destination, condition, medication name, and preferences are sent
+  to the configured OpenCode model provider; place queries go to Nominatim. Add explicit
+  consent, retention, and privacy copy before charging users.
+- Agent copy is model-generated and varies. The engine caps, over-cap caution, source links,
+  "approximate location" label, and fallback route are the guardrails; do not remove them.
 - The user-owned `README.md` is untouched; this guide is the working file. Light theme only;
   tokens allow a dark theme later.
-- Destination strings are labels only; the engine invents no venues or geography.
+- The engine invents no venues or geography. The concierge only selects from verified research.
 - The mobile `<details>` summary repeats the trip sentence; this is the Step 5 contract.
 - The KPI strip stacks at 1024-1279px because the 320px rail leaves too little width for
   three 72px metrics; it is three-up at 768-1023px and 1280px+.
@@ -401,5 +560,15 @@ guard green rather than exempting lines.
 3. Find the first unchecked step in section 2 and continue there.
 4. Work in dependency order; no scope creep into pages, auth, databases, analytics, or libraries.
 5. Run the full gate; update this file in the same commit as any change it describes.
-6. Commit the exact message; append to `BUILD_LOG.md` and set its "Next action".
+6. Commit the exact message, push to `origin`, append to `BUILD_LOG.md`, and set its "Next action".
 7. Stuck: three attempts, then change approach once, then log the error under Blockers. Never loop.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

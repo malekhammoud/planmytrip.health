@@ -12,6 +12,11 @@ import {
 } from "@/components/ui";
 import type { SunLifeAlert, SunLifeSeverity } from "@/lib/healthTripEngine";
 import {
+  BUDGET_LABELS,
+  BUDGET_LEVELS,
+  type BudgetLevel,
+} from "@/lib/agent/agentTypes";
+import {
   CONDITION_LABELS,
   CONDITIONS,
   isCondition,
@@ -35,6 +40,10 @@ export interface ConstraintSidebarProps {
   condition: Condition;
   /** Medication name only; doses are never requested. */
   medication: string;
+  /** Optional free-text preferences for the concierge team. */
+  interests: string;
+  /** Comfort level used by hotel and restaurant research. */
+  budget: BudgetLevel;
   /** Whether the user has confirmed Sun Life group travel coverage. */
   hasSunLifeTravelCoverage: boolean;
   /** Current Sun Life alert, derived by the page from the engine or the rules. */
@@ -47,6 +56,10 @@ export interface ConstraintSidebarProps {
   onConditionChange: (condition: Condition) => void;
   /** Called with the next medication label. */
   onMedicationChange: (medication: string) => void;
+  /** Called with the next free-text preference. */
+  onInterestsChange: (interests: string) => void;
+  /** Called with the next budget level. */
+  onBudgetChange: (budget: BudgetLevel) => void;
   /** Called with the next coverage checkbox state. */
   onCoverageChange: (hasCoverage: boolean) => void;
   /** Called when Deploy is activated; the page increments its deploy token. */
@@ -63,12 +76,16 @@ export function ConstraintSidebar({
   days,
   condition,
   medication,
+  interests,
+  budget,
   hasSunLifeTravelCoverage,
   sunLifeAlert,
   onDestinationChange,
   onDaysChange,
   onConditionChange,
   onMedicationChange,
+  onInterestsChange,
+  onBudgetChange,
   onCoverageChange,
   onDeploy,
 }: ConstraintSidebarProps) {
@@ -89,6 +106,7 @@ export function ConstraintSidebar({
             onChange={(event) => onDestinationChange(event.currentTarget.value)}
             autoComplete="off"
             enterKeyHint="done"
+            maxLength={120}
           />
         )}
       </Field>
@@ -135,7 +153,45 @@ export function ConstraintSidebar({
             value={medication}
             onChange={(event) => onMedicationChange(event.currentTarget.value)}
             autoComplete="off"
+            maxLength={120}
           />
+        )}
+      </Field>
+
+      <Field
+        id="trip-interests"
+        label="What matters"
+        hint="Optional. Food, pace, access."
+      >
+        {(control) => (
+          <TextInput
+            {...control}
+            value={interests}
+            onChange={(event) => onInterestsChange(event.currentTarget.value)}
+            autoComplete="off"
+            maxLength={240}
+          />
+        )}
+      </Field>
+
+      <Field id="trip-budget" label="Budget">
+        {(control) => (
+          <Select
+            {...control}
+            value={budget}
+            onChange={(event) => {
+              const next = event.currentTarget.value;
+              if (next === "value" || next === "balanced" || next === "premium") {
+                onBudgetChange(next);
+              }
+            }}
+          >
+            {BUDGET_LEVELS.map((value) => (
+              <option key={value} value={value}>
+                {BUDGET_LABELS[value]}
+              </option>
+            ))}
+          </Select>
         )}
       </Field>
 
@@ -163,10 +219,10 @@ export function ConstraintSidebar({
           aria-describedby={deployDescription}
           onClick={onDeploy}
         >
-          Deploy 3-Agent Health Verification
+          Plan my trip
         </Button>
         <p id="deploy-note" className="t-small text-muted">
-          Runs 3 browser agents in parallel. Takes up to 2 minutes.
+          Runs a specialist planning team and 3 live risk checks. Takes up to 12 minutes.
         </p>
         {destinationMissing ? (
           <p id="deploy-reason" className="t-small text-risk">

@@ -18,8 +18,20 @@
   to keep default App Router caching behavior. The Turbopack Tailwind rule stays.
 - **Sun Life stability window:** not supplied; `SUN_LIFE_RULES` keeps it as `null` with a
   `// VERIFY:` marker in `lib/sunLifeRules.ts`. No placeholder number is shown.
-- **TinyFish:** no key exists locally and the live API is never called. Tests and
-  `SWARM_MOCK=1` are the verification paths.
+- **TinyFish:** no key exists locally and the live API is never called in automated checks.
+  Tests and `SWARM_MOCK=1` are the verification paths.
+- **OpenCode:** the user asked for an agentic concierge using the OpenCode SDK. The embedded
+  `@opencode/sdk` host requires Node 26 for `await using`; this workspace runs Node 22, so the
+  app uses `@opencode/client` against a running OpenCode service. The API contract, session
+  events, and event stream are the same. `OPENCODE_MODEL` is explicit so a free-model quota
+  cannot silently replace the configured planner.
+- **Agent permissions:** six specialists and one concierge run as read-only researchers with
+  `websearch` and `webfetch` only. No shell, write, edit, or subagent access. The OpenCode
+  service owns provider credentials; the app never sees them.
+- **Geocoding and map:** missing coordinates are filled by Nominatim at one request per second,
+  capped at ten places, and labelled approximate. Leaflet renders grayscale OSM tiles with
+  numbered, category-shaped markers and a text key. Both providers are licence dependencies
+  recorded in the VERIFY register.
 
 ## Blockers
 
@@ -169,7 +181,49 @@ None.
   remain unverified.
 - Gate: typecheck, 179 tests, lint, and production build pass.
 
+### Step 9: agentic concierge and trip map
+
+- Added the OpenCode planner route, six parallel research specialists (stay, table, trail,
+  culture, transit, care), and a lead concierge. Each specialist has its own system prompt,
+  exact JSON shape, source rules, timeout, and read-only web permissions. The concierge
+  receives the verified research plus the engine's day ceilings.
+- Added the typed planner SSE contract, pure frame validator, reducer, snapshot hook, roster,
+  bounded live activity log, plan-above-roster completion view, and per-day estimate/ceiling
+  comparison. A degraded fallback route is built from verified picks if synthesis fails.
+- Added Nominatim geocoding for up to ten missing coordinates, one request per second, with an
+  identifying User-Agent and an approximate label. Added a client-only Leaflet map with
+  grayscale OSM tiles, numbered category markers with 44px hit areas, per-day dashed routes,
+  a legend, a numbered key, and the required attribution. Disabled Leaflet's flag prefix.
+- Added `OPENCODE_MODEL` explicit session selection after a free-model quota caused an early
+  all-agent failure; quota failures now map to `agent_unavailable`.
+- Live OpenCode run 1 on 2026-11-21 completed six of seven specialists in about 10m45s against
+  Lisbon; care timed out on the older two-to-four-hospital scope. Care now asks for a tighter
+  scope and 10 steps.
+- Live OpenCode run 2 on 2026-11-21 (2 days, final timeouts) finished in about 12 minutes with
+  four of seven agents: table, trail, culture, and the concierge. Stay, transit, and care
+  returned JSON the parser rejected, not timeouts. The plan still had six verified places,
+  two capped days, eight safety notes, and honest missing-stay/care copy. Five of six places
+  had coordinates; the sixth did not geocode.
+- After run 2, JSON extraction was hardened with balanced-object scanning, trailing-comma
+  repair, and single-element array unwrapping. Geocoding now retries with a simpler
+  name-and-destination query. Those fixes are covered by tests but have not been re-run against
+  a live concierge pass.
+- Added 59 planner tests (238 total) covering request bounds, parsing, specialist normalization,
+  coordinate validation, concierge plan building, wire normalization, fallback, prompts,
+  activity humanization, geocoding including fallback, reducer transitions, frame guards, and
+  the full mock SSE route. All network is mocked.
+- Gate: typecheck, 233 tests, lint, production build pass. Browser checks: 375/1280 layout,
+  mock concierge run, 13 numbered map markers, 44px marker hit areas, five legend dots, map
+  key, bottom-left attribution, plan-above-roster view, no console errors. A stale Turbopack
+  stylesheet cache hid the new legend until `.next` was cleared. The dev server re-added the
+  Next.js agent-rules block to AGENTS.md.
+- Unverified: live re-run of the hardened JSON parser and geocode fallback, a 7-of-7 live
+  agent pass, full live map rendering, production tile/Nominatim licences, and a real OpenCode
+  service supervised in production.
+
 ## Next action
 
-Monitor the first production three-worker runs; confirm the live iframe preview and
-clipboard behavior. The clinical thresholds and Sun Life stability window remain VERIFY.
+Run a full 7-of-7 live concierge pass with the hardened JSON parser and geocode fallback;
+confirm stay, transit, and care parse, a geocoded marker appears, and the map renders. Then run
+the full three-worker TinyFish pass and confirm the live iframe preview and clipboard behavior.
+The clinical thresholds and Sun Life stability window remain VERIFY.
