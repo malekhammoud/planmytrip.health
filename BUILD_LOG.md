@@ -196,6 +196,9 @@ None.
   a legend, a numbered key, and the required attribution. Disabled Leaflet's flag prefix.
 - Added `OPENCODE_MODEL` explicit session selection after a free-model quota caused an early
   all-agent failure; quota failures now map to `agent_unavailable`.
+- Installed the supplied OpenCode Go API key in the OpenCode service credential store, not the
+  repository, and verified it with a live `opencode-go/deepseek-v4.1-flash` session. The old
+  credential remains inactive for rollback.
 - Live OpenCode run 1 on 2026-11-21 completed six of seven specialists in about 10m45s against
   Lisbon; care timed out on the older two-to-four-hospital scope. Care now asks for a tighter
   scope and 10 steps.

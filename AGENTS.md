@@ -415,7 +415,9 @@ service with `Service.ensure()`, and writes seven `agents` entries into
 `$TMPDIR/planmytrip-health-agent-workspace/.opencode/opencode.json`. Each agent is `mode:
 primary`, has a static system prompt and `steps`, and may use only `websearch` and `webfetch`.
 `OPENCODE_MODEL` is passed both in the config and explicitly to `session.create`. The service
-owns provider credentials; the app never reads, logs, or stores them.
+owns provider credentials; the app never reads, logs, or stores them. OpenCode Go auth is
+installed in the service credential store or supplied to the service process as
+`OPENCODE_API_KEY`; never put that key in the app's `.env*` files or the repository.
 
 Planner events are the second SSE contract. Every frame carries `ts` and optional `mock`;
 `planner_done` is always last.
