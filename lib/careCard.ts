@@ -10,6 +10,7 @@
 
 import type { HealthTripPlan } from "./healthTripEngine";
 import { CONDITION_LABELS, type Condition } from "./types";
+import type { VerificationAdjustment } from "./verificationOverlay";
 
 const FALLBACK_DESTINATION = "Not set";
 const NO_MEDICATION = "None recorded";
@@ -26,6 +27,31 @@ function formatCount(value: number): string {
     .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
+function formatRetrieved(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "time not recorded";
+  return `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`;
+}
+
+function cleanReason(reason: string): string {
+  return reason.trim().replace(/[.!?]+$/, "");
+}
+
+function adjustmentLine(adjustment: VerificationAdjustment): string {
+  const source =
+    adjustment.sourceUrl === ""
+      ? "source not recorded"
+      : `${adjustment.sourceUrl} (retrieved ${formatRetrieved(adjustment.retrievedAt)})`;
+  const reason = cleanReason(adjustment.reason);
+  if (adjustment.kind === "recovery") {
+    return `- Day ${(adjustment.dayIndex ?? 0) + 1} afternoon recovery: ${adjustment.fromValue ?? 0} to ${adjustment.toValue ?? 0} min. Reason: ${reason}. Source: ${source}`;
+  }
+  if (adjustment.kind === "checklist") {
+    return `- ${adjustment.title}: ${reason}. Source: ${source}`;
+  }
+  return `- Day checkpoints: ${adjustment.title} — ${reason}. Source: ${source}`;
+}
+
 /**
  * Build the care card plain text. The exact section order is part of the contract:
  * title, trip facts, a blank line, the Sun Life block, a blank line, the daily
@@ -37,6 +63,7 @@ export function buildCareCard(
   condition: Condition,
   medication: string,
   plan: HealthTripPlan,
+  adjustments: readonly VerificationAdjustment[] = [],
 ): string {
   const destinationLabel = normalizeLabel(destination) || FALLBACK_DESTINATION;
   const medicationLabel = normalizeLabel(medication) || NO_MEDICATION;
@@ -64,6 +91,12 @@ export function buildCareCard(
         `Day ${day.day} (step cap ${formatCount(day.stepCap)} steps): ${day.healthCheckpoint}`,
       );
     }
+  }
+
+  const applied = adjustments.filter((adjustment) => adjustment.applied);
+  if (applied.length > 0) {
+    lines.push("", "Applied verification adjustments");
+    for (const adjustment of applied) lines.push(adjustmentLine(adjustment));
   }
 
   lines.push("", PLANNING_NOTICE);

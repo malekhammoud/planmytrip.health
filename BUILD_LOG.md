@@ -471,6 +471,24 @@ thresholds and Sun Life stability window remain VERIFY.
   destination-wide, not date-specific. Recovery extensions are per-day adjustments so each
   row can be toggled and explained.
 
+### Step 18: animated plan changes and live adjustments
+
+- Wired the overlay into `PlanWorkspace`. `useSwarm` findings feed `applyVerification`; a
+  master "Apply live adjustments" Checkbox and one Checkbox per adjustment live under the
+  safety SectionHeader. Turning the master off restores the engine plan exactly.
+- Applied recovery adjustments mark the day row with `.anim-arrive`, "Adjusted by
+  verification", the minutes diff, source link, and retrieved time. The checkpoint carries the
+  verified notes. Pacing bars now animate with `transform` (scaleY for exertion, scaleX for
+  recovery) over `--dur-base`, with transitions disabled under reduced motion.
+- The KPI strip gains `Live verification: n of 3 sources checked`, tweened KPI numbers with
+  `easeOutCubic`, and four-second diff blocks such as "Step ceiling 6,000 to 5,000 steps".
+  `lib/planMotion.ts` is pure; `hooks/usePlanMotion.ts` owns the frame loop and diff lifetime.
+- `buildCareCard` accepts applied adjustments and appends their reason, source URL, and
+  retrieved time. The existing no-adjustment output is byte-for-byte unchanged.
+- Tests: 340 total. Added easing and diff detection, care-card provenance, and overlay-toggle
+  property coverage. Verified in mock mode that the master toggle restores 30-minute recovery,
+  a per-adjustment toggle restores one day, and the source links remain present.
+
 ## Next action
 
 Run a consented pilot cohort against production PostgreSQL, confirm capture and outcome rows

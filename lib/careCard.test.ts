@@ -112,4 +112,58 @@ describe("buildCareCard", () => {
     expect(card).toContain("Trip length: 0 days");
     expect(card).toContain("Daily checkpoints\nNo itinerary days are available.");
   });
+
+  it("includes only applied verification adjustments with provenance", () => {
+    const card = buildCareCard(
+      "Tokyo, Japan",
+      "asthma_respiratory",
+      "albuterol inhaler",
+      PLAN,
+      [
+        {
+          id: "recovery:1",
+          kind: "recovery",
+          dayIndex: 0,
+          title: "Recovery extension",
+          reason: "heat notice: Extreme heat.",
+          sourceUrl: "https://travel.gc.ca/travelling/advisories",
+          sourceWorker: "advisory",
+          retrievedAt: "2026-11-21T12:00:00.000Z",
+          applied: true,
+          fromValue: 30,
+          toValue: 60,
+        },
+        {
+          id: "checkpoint:outbreak",
+          kind: "checkpoint",
+          title: "Health-outbreak notice",
+          reason: "Measles outbreak reported.",
+          sourceUrl: "https://travel.gc.ca/travelling/advisories",
+          sourceWorker: "advisory",
+          retrievedAt: "2026-11-21T12:00:00.000Z",
+          applied: false,
+        },
+        {
+          id: "coverage:preauthorization",
+          kind: "checklist",
+          title: "Pre-departure checklist",
+          reason: "Call the assistance line before non-emergency care.",
+          sourceUrl: "https://www.sunlife.ca/en/health/emergency-travel-medical-insurance/",
+          sourceWorker: "coverage",
+          retrievedAt: "2026-11-21T12:05:00.000Z",
+          applied: true,
+        },
+      ],
+    );
+    expect(card).toContain(
+      [
+        "Applied verification adjustments",
+        "- Day 1 afternoon recovery: 30 to 60 min. Reason: heat notice: Extreme heat. Source: https://travel.gc.ca/travelling/advisories (retrieved 2026-11-21 12:00 UTC)",
+        "- Pre-departure checklist: Call the assistance line before non-emergency care. Source: https://www.sunlife.ca/en/health/emergency-travel-medical-insurance/ (retrieved 2026-11-21 12:05 UTC)",
+        "",
+        "Planning aid only.",
+      ].join("\n"),
+    );
+    expect(card).not.toContain("Measles outbreak");
+  });
 });

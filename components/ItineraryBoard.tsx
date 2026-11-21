@@ -4,12 +4,15 @@ import { Check, Copy } from "lucide-react";
 import { useEffect, useId, useState, type CSSProperties } from "react";
 import { Button, DataRow, Metric } from "@/components/ui";
 import { buildCareCard } from "@/lib/careCard";
+import { usePlanDiffs, useTweenedNumber } from "@/hooks/usePlanMotion";
 import {
   CONDITION_PROFILES,
   type HealthTripDay,
   type HealthTripPlan,
   type ItineraryBlock,
 } from "@/lib/healthTripEngine";
+import type { VerificationAdjustment } from "@/lib/verificationOverlay";
+import { hostOf } from "@/components/mission/missionMeta";
 import { CONDITION_LABELS, type Condition } from "@/lib/types";
 import { PacingStrip } from "./PacingStrip";
 /** Props for {@link ItineraryBoard}. */
@@ -18,6 +21,10 @@ export interface ItineraryBoardProps {
   destination: string;
   condition: Condition;
   medication: string;
+  /** Verification adjustments with their current applied flags. */
+  adjustments?: readonly VerificationAdjustment[];
+  /** Live count of workers that returned findings. */
+  verification?: { checked: number; total: number };
 }
 
 /** Props for {@link CareCardButton}. */
@@ -26,6 +33,8 @@ export interface CareCardButtonProps {
   condition: Condition;
   medication: string;
   plan: HealthTripPlan;
+  /** Applied adjustments are appended to the care card with provenance. */
+  adjustments?: readonly VerificationAdjustment[];
 }
 
 type CopyState = "idle" | "copied" | "failed";
@@ -43,42 +52,74 @@ function formatDuration(minutes: number): string {
   return remainder === 0 ? `${hours} hr` : `${hours} hr ${remainder} min`;
 }
 
-function KpiStrip({ plan, condition }: { plan: HealthTripPlan; condition: Condition }) {
+function KpiStrip({
+  plan,
+  condition,
+  verification,
+}: {
+  plan: HealthTripPlan;
+  condition: Condition;
+  verification?: { checked: number; total: number };
+}) {
   const profileLabel = CONDITION_LABELS[condition];
   const profileFloor = CONDITION_PROFILES[condition].residualRiskFloor;
+  const score = useTweenedNumber(plan.healthSafetyScore);
+  const stepCeiling = useTweenedNumber(plan.dailyStepCeiling);
+  const risk = useTweenedNumber(plan.riskReductionPct);
+  const diffs = usePlanDiffs(plan);
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3">
-      <div className="pb-6 md:pb-0 md:pr-4">
-        <Metric
-          label="Health Safety Score"
-          value={plan.healthSafetyScore}
-          unit="/100"
-          sub="Modeled estimate"
-          compare={{
-            thisPlan: plan.healthSafetyScore,
-            baseline: plan.baselineScore,
-            baselineLabel: "Standard baseline",
-          }}
-          info={`Inputs for ${profileLabel}: profile floor ${profileFloor}/100, step and walking ceilings, planned daily load, exertion, recovery minutes, and trip length. Standard baseline: 10,000 steps, 8 km, exertion 2.2, no recovery.`}
-        />
+    <div>
+      {diffs.length > 0 ? (
+        <div className="mb-4 flex flex-wrap gap-2" aria-live="polite">
+          {diffs.map((diff) => (
+            <p
+              key={diff.key}
+              className="anim-rise border border-solid border-hairline-strong bg-surface px-3 py-2 t-data-sm text-ink"
+            >
+              {diff.text}
+            </p>
+          ))}
+        </div>
+      ) : null}
+      <div className="grid grid-cols-1 md:grid-cols-3">
+        <div className="pb-6 md:pb-0 md:pr-4">
+          <Metric
+            label="Health Safety Score"
+            value={Math.round(score)}
+            unit="/100"
+            sub="Modeled estimate"
+            compare={{
+              thisPlan: plan.healthSafetyScore,
+              baseline: plan.baselineScore,
+              baselineLabel: "Standard baseline",
+            }}
+            info={`Inputs for ${profileLabel}: profile floor ${profileFloor}/100, step and walking ceilings, planned daily load, exertion, recovery minutes, and trip length. Standard baseline: 10,000 steps, 8 km, exertion 2.2, no recovery.`}
+          />
+        </div>
+        <div className="border-t border-hairline py-6 md:border-l md:border-t-0 md:px-4 md:py-0">
+          <Metric
+            label="Daily Step Ceiling"
+            value={formatCount(stepCeiling)}
+            unit="steps"
+            sub="Hard limit per day for this profile"
+          />
+        </div>
+        <div className="border-t border-hairline pt-6 md:border-l md:border-t-0 md:pl-4 md:pt-0">
+          <Metric
+            label="Flare / ER Risk Reduction"
+            value={Math.round(risk)}
+            unit="%"
+            sub="Modeled estimate"
+            info={`Inputs for ${profileLabel}: profile floor ${profileFloor}/100, planned daily load, condition ceilings, exertion, recovery minutes, trip length, and the standard sightseeing baseline (10,000 steps, 8 km, exertion 2.2, no recovery).`}
+          />
+        </div>
       </div>
-      <div className="border-t border-hairline py-6 md:border-l md:border-t-0 md:px-4 md:py-0">
-        <Metric
-          label="Daily Step Ceiling"
-          value={formatCount(plan.dailyStepCeiling)}
-          unit="steps"
-          sub="Hard limit per day for this profile"
-        />
-      </div>
-      <div className="border-t border-hairline pt-6 md:border-l md:border-t-0 md:pl-4 md:pt-0">
-        <Metric
-          label="Flare / ER Risk Reduction"
-          value={plan.riskReductionPct}
-          unit="%"
-          sub="Modeled estimate"
-          info={`Inputs for ${profileLabel}: profile floor ${profileFloor}/100, planned daily load, condition ceilings, exertion, recovery minutes, trip length, and the standard sightseeing baseline (10,000 steps, 8 km, exertion 2.2, no recovery).`}
-        />
-      </div>
+      {verification === undefined ? null : (
+        <p className="mt-4 border-t border-solid border-hairline pt-3 t-data-sm text-muted">
+          Live verification: {verification.checked} of {verification.total} sources checked
+        </p>
+      )}
     </div>
   );
 }
@@ -118,11 +159,30 @@ function BlockList({ blocks }: { blocks: readonly ItineraryBlock[] }) {
   );
 }
 
-function ItineraryDayRow({ day, index }: { day: HealthTripDay; index: number }) {
+function ItineraryDayRow({
+  day,
+  index,
+  adjustments,
+}: {
+  day: HealthTripDay;
+  index: number;
+  adjustments?: readonly VerificationAdjustment[];
+}) {
   const style = { "--day-index": index } as CSSProperties;
+  const recovery = adjustments?.find(
+    (adjustment) =>
+      adjustment.applied &&
+      adjustment.kind === "recovery" &&
+      adjustment.dayIndex === index,
+  );
   return (
     <li
-      className="day-row border-t border-hairline py-8 md:grid md:grid-cols-[64px_minmax(0,1fr)_160px] md:gap-8"
+      className={[
+        "day-row border-t border-hairline py-8 md:grid md:grid-cols-[64px_minmax(0,1fr)_160px] md:gap-8",
+        recovery === undefined ? "" : "anim-arrive",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       style={style}
     >
       <p aria-hidden="true" className="t-metric-day text-ink">
@@ -137,6 +197,33 @@ function ItineraryDayRow({ day, index }: { day: HealthTripDay; index: number }) 
         <p className="t-body mt-4 text-muted">{day.pacingRule}</p>
         <PacingStrip blocks={day.blocks} day={day.day} />
         <BlockList blocks={day.blocks} />
+        {recovery === undefined ? null : (
+          <div className="mt-4 border-t border-solid border-hairline pt-3">
+            <p className="t-label text-accent">Adjusted by verification</p>
+            <p className="t-small mt-1 text-ink">
+              Afternoon recovery {recovery.fromValue ?? 0} to {recovery.toValue ?? 0}{" "}
+              min. Reason: {recovery.reason.trim().replace(/[.!?]+$/, "")}. Source:{" "}
+              {recovery.sourceUrl === "" ? (
+                "not recorded"
+              ) : (
+                <a
+                  href={recovery.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  {hostOf(recovery.sourceUrl)}
+                </a>
+              )}
+            </p>
+            <p className="t-data-sm mt-1 text-muted">
+              Retrieved{" "}
+              {recovery.retrievedAt === ""
+                ? "time not recorded"
+                : recovery.retrievedAt.slice(0, 16).replace("T", " ") + " UTC"}
+            </p>
+          </div>
+        )}
         <div className="mt-6 rounded-frame bg-accent-soft p-3">
           <p className="t-label text-muted">Checkpoint</p>
           <p className="t-small mt-1 text-ink">{day.healthCheckpoint}</p>
@@ -158,11 +245,13 @@ export function ItineraryBoard({
   plan,
   destination,
   condition,
+  adjustments,
+  verification,
 }: ItineraryBoardProps) {
   const listLabel = `Paced itinerary for ${destination.trim() || "this trip"}`;
   return (
     <div>
-      <KpiStrip plan={plan} condition={condition} />
+      <KpiStrip plan={plan} condition={condition} verification={verification} />
       {plan.itinerary.length === 0 ? (
         <p className="t-small mt-6 text-muted">
           No itinerary days were generated for this plan.
@@ -170,7 +259,12 @@ export function ItineraryBoard({
       ) : (
         <ol aria-label={listLabel} className="mt-10 list-none p-0">
           {plan.itinerary.map((day, index) => (
-            <ItineraryDayRow key={day.day} day={day} index={index} />
+            <ItineraryDayRow
+              key={day.day}
+              day={day}
+              index={index}
+              adjustments={adjustments}
+            />
           ))}
         </ol>
       )}
@@ -189,10 +283,17 @@ export function CareCardButton({
   condition,
   medication,
   plan,
+  adjustments,
 }: CareCardButtonProps) {
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const fallbackId = useId();
-  const careCardText = buildCareCard(destination, condition, medication, plan);
+  const careCardText = buildCareCard(
+    destination,
+    condition,
+    medication,
+    plan,
+    adjustments,
+  );
 
   useEffect(() => {
     if (copyState !== "copied") return;

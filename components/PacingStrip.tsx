@@ -84,23 +84,28 @@ export function PacingStrip({ blocks, day }: PacingStripProps) {
             return (
               <rect
                 key={rect.index}
-                x={rect.x + inset}
+                className="pacing-recovery"
+                x={0}
                 y={PLOT_HEIGHT - RECOVERY_HEIGHT}
-                width={width}
+                width={VIEWBOX_WIDTH}
                 height={RECOVERY_HEIGHT}
                 fill={`url(#${hatchId})`}
+                style={{
+                  transform: `translateX(${rect.x + inset}px) scaleX(${width / VIEWBOX_WIDTH})`,
+                }}
               />
             );
           }
-          const height = (rect.exertion / 3) * PLOT_HEIGHT;
           return (
             <rect
               key={rect.index}
+              className="pacing-bar"
               x={rect.x + inset}
-              y={PLOT_HEIGHT - height}
+              y={0}
               width={width}
-              height={height}
+              height={PLOT_HEIGHT}
               fill="var(--ink)"
+              style={{ transform: `scaleY(${rect.exertion / 3})` }}
             />
           );
         })}

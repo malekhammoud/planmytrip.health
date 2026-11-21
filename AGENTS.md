@@ -49,7 +49,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 15. Live swarm telemetry model | [x] | `feat(state): add live swarm telemetry model` |
 | 16. Mission control | [x] | `feat(ui): add live mission control for agent swarm` |
 | 17. Verification overlay | [x] | `feat(engine): add tighten-only live verification overlay` |
-| 18. Animated plan changes | [ ] | `feat(ui): animate plan changes and live adjustments` |
+| 18. Animated plan changes | [x] | `feat(ui): animate plan changes and live adjustments` |
 | 19. Mission control docs | [ ] | `docs(agents): document live mission control and telemetry` |
 
 ## 3. Commands
@@ -123,17 +123,17 @@ lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditi
       data: types.ts (versioned contract), dose.ts, tripDossier.ts, capture.ts, validation.ts
       db: postgres.ts (pg pool + schema), trips.ts (async repository)
       model: types.ts, math.ts, features.ts, logistic.ts, calibration.ts, train.ts, predict.ts, artifact.ts, model.json
-      output: describeTrip.ts, pacingStrip.ts, careCard.ts
+      output: describeTrip.ts, pacingStrip.ts, careCard.ts, planMotion.ts
       verification: verificationOverlay.ts
-hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, swarmBatch.ts, useNow.ts, useReducedMotion.ts, usePhaseAnnouncement.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
-components/  Onboarding.tsx, PlanWorkspace.tsx, MissionBand.tsx, PlanPanel.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
+hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, swarmBatch.ts, useNow.ts, useReducedMotion.ts, usePhaseAnnouncement.ts, usePlanMotion.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
+components/  Onboarding.tsx, PlanWorkspace.tsx, MissionBand.tsx, PlanPanel.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, VerificationAdjustments.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
 components/mission/  MissionControl.tsx, StatusBar.tsx, FocusView.tsx, WorkerTile.tsx, ActivityFeed.tsx, TempoStrip.tsx, SourcesList.tsx, FindingsReveal.tsx, PreRun.tsx, ConnectionStatus.tsx, Elapsed.tsx, missionMeta.ts
 components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Field.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
 scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts
 data/  synthetic-trips.jsonl
 docs/  ML.md, MODEL_CARD.md
 tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
-module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts
+module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, planMotion.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts
 root  package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, instrumentation.ts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
 ```
 
@@ -408,25 +408,41 @@ reapplying the result is a no-op.
 
 ### KPI strip and paced itinerary
 
-`ItineraryBoard` derives everything from `plan`; agent results never feed it. The KPI strip
-shows Health Safety Score (`/100`, baseline compare bars), Daily Step Ceiling (`steps`), and
-Flare / ER Risk Reduction (`%`), both modeled figures with a "Modeled estimate" sub-line and
-an input tooltip. It is three-up from 768px and stacks below that width.
+`ItineraryBoard` derives everything from `plan`; agent results never feed it directly, except
+through the typed verification overlay. The KPI strip shows Health Safety Score (`/100`,
+baseline compare bars), Daily Step Ceiling (`steps`), and Flare / ER Risk Reduction (`%`), both
+modeled figures with a "Modeled estimate" sub-line and an input tooltip. It is three-up from
+768px and stacks below that width. A border-topped line reads
+`Live verification: n of 3 sources checked` and updates as workers return findings. KPI numbers
+tween over 300ms with `lib/planMotion.ts`; a changed value shows a hairline diff block such as
+`Step ceiling 6,000 to 5,000 steps` for four seconds. `hooks/usePlanMotion.ts` owns the tween
+and the four-second diff lifetime; reduced motion returns the final value immediately.
 
 Each day is a hairline row, not a card: a 64px day number using `.t-metric-day`, title, pacing
 rule, strip, block list, and accent-soft checkpoint. A 160px column carries step and walk caps
 as stacked DataRows (one-decimal km); mobile shows two columns. `.day-row` applies the global
-240ms rise and 40ms stagger; reduced motion disables both. The inline SVG strip in
-`components/PacingStrip.tsx` has a 64px plot, an HTML 16px axis, ink bars at `exertion / 3`, a hatched
-12px recovery bar, and two-hour labels from 08:00. The block list is its text equivalent.
+240ms rise and 40ms stagger; reduced motion disables both. A day with an applied recovery
+adjustment gets `.anim-arrive`, an "Adjusted by verification" t-label, the
+`Afternoon recovery 30 to 60 min` diff line, and the source link and retrieved time. The inline
+SVG strip in `components/PacingStrip.tsx` has a 64px plot, an HTML 16px axis, ink bars at
+`exertion / 3`, a hatched 12px recovery bar, and two-hour labels from 08:00. Exertion bars use
+`transform: scaleY` from the bottom; recovery bars use `scaleX`; both transition over
+`--dur-base` and stop under reduced motion. The block list is its text equivalent.
 
 `CareCardButton` is the SectionHeader action. `buildCareCard` is pure and deterministic:
 title, trip facts, blank line, Sun Life alert, blank line, `Daily checkpoints`, one
-`Day <n> (step cap <n> steps): <checkpoint>` line per day, blank line, planning notice (exact
-text in `lib/careCard.ts`). With no days it prints `No itinerary days are available.` Copy
-uses `navigator.clipboard.writeText` with a two-second "Copied" label and a live status
-announcement; on failure a read-only textarea shows the text. That fallback is the only raw
-control outside `components/ui` and carries a `design-guard-ignore` comment.
+`Day <n> (step cap <n> steps): <checkpoint>` line per day, an optional
+`Applied verification adjustments` section with each applied adjustment's source URL and
+retrieved time, blank line, planning notice (exact text in `lib/careCard.ts`). With no days it
+prints `No itinerary days are available.` Copy uses `navigator.clipboard.writeText` with a
+two-second "Copied" label and a live status announcement; on failure a read-only textarea shows
+the text. That fallback is the only raw control outside `components/ui` and carries a
+`design-guard-ignore` comment.
+
+`VerificationAdjustments` sits under the safety SectionHeader when findings exist. It carries
+the master "Apply live adjustments" Checkbox and one Checkbox per checkpoint, recovery-day, or
+checklist adjustment, with reason, worker, source link, and retrieved time. Turning the master
+off restores the engine plan exactly.
 
 ## 6. Key decisions
 
@@ -727,7 +743,7 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 335 tests.
+`npm test` runs Vitest once in a Node environment. The suite has 340 tests.
 
 - `tests/design-guard.test.ts` and `tests/contrast.test.ts` guard styles and 13 WCAG AA token
   pairs; `tests/smoke.test.ts` covers the five conditions.

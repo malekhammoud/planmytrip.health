@@ -1,14 +1,22 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { useMemo, useState } from "react";
 import { AgentTeamPanel } from "@/components/AgentTeamPanel";
 import { MissionBand } from "@/components/MissionBand";
 import { CareCardButton, ItineraryBoard } from "@/components/ItineraryBoard";
 import { MissionControl } from "@/components/mission/MissionControl";
 import { PlanPanel } from "@/components/PlanPanel";
+import { AdjustmentsPanel } from "@/components/VerificationAdjustments";
 import { Button, Callout, SectionHeader, type CalloutTone } from "@/components/ui";
 import { useAgentPlan } from "@/hooks/useAgentPlan";
 import { useSwarm } from "@/hooks/useSwarm";
+import { swarmSummary } from "@/lib/swarmTelemetry";
+import {
+  applyVerification,
+  type VerificationFindingInput,
+} from "@/lib/verificationOverlay";
+import { WORKER_IDS } from "@/lib/swarmTypes";
 import type { HealthTripPlan, SunLifeSeverity } from "@/lib/healthTripEngine";
 import { describeTrip } from "@/lib/describeTrip";
 import {
@@ -79,6 +87,44 @@ export function PlanWorkspace({
     captureConsent: trip.captureConsent,
     runToken,
   });
+
+  const [adjustmentMaster, setAdjustmentMaster] = useState(true);
+  const [disabledAdjustments, setDisabledAdjustments] = useState<readonly string[]>([]);
+  const verificationFindings = useMemo<VerificationFindingInput[]>(
+    () =>
+      WORKER_IDS.flatMap((worker) => {
+        const value = swarm.state.workers[worker];
+        if (value.findings === null) return [];
+        return [
+          {
+            worker,
+            findings: value.findings,
+            sourceUrl: value.sourceUrl ?? "",
+            retrievedAt: value.retrievedAt ?? "",
+          },
+        ];
+      }),
+    [swarm.state.workers],
+  );
+  const overlay = useMemo(
+    () =>
+      applyVerification(
+        plan,
+        { condition: trip.condition },
+        verificationFindings,
+        { master: adjustmentMaster, disabledIds: disabledAdjustments },
+      ),
+    [plan, trip.condition, verificationFindings, adjustmentMaster, disabledAdjustments],
+  );
+  const verification = swarmSummary(swarm.state);
+
+  const toggleAdjustment = (id: string, enabled: boolean): void => {
+    setDisabledAdjustments((current) =>
+      enabled
+        ? current.filter((entry) => entry !== id)
+        : [...new Set([...current, id])],
+    );
+  };
 
   return (
     <main className="page-container pt-10 md:pt-16">
@@ -153,7 +199,8 @@ export function PlanWorkspace({
               destination={trip.destination}
               condition={trip.condition}
               medication={trip.medication}
-              plan={plan}
+              plan={overlay.plan}
+              adjustments={overlay.adjustments}
             />
           }
         />
@@ -161,6 +208,14 @@ export function PlanWorkspace({
           The engine derives daily step, walking, recovery, altitude, and heat limits
           from your condition profile. These limits stay authoritative.
         </p>
+        {verificationFindings.length > 0 ? (
+          <AdjustmentsPanel
+            adjustments={overlay.adjustments}
+            master={adjustmentMaster}
+            onMaster={setAdjustmentMaster}
+            onToggle={toggleAdjustment}
+          />
+        ) : null}
         <div className="mt-6">
           <Callout
             tone={ALERT_TONES[plan.sunLifeAlert.severity]}
@@ -175,10 +230,12 @@ export function PlanWorkspace({
         </div>
         <div className="mt-8">
           <ItineraryBoard
-            plan={plan}
+            plan={overlay.plan}
             destination={trip.destination}
             condition={trip.condition}
             medication={trip.medication}
+            adjustments={overlay.adjustments}
+            verification={{ checked: verification.findings, total: 3 }}
           />
         </div>
       </section>

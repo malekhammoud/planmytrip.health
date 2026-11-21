@@ -239,8 +239,10 @@ function mockResult(worker: WorkerId, input: SwarmGoalInput): SwarmFindings {
       return {
         destinationRiskLevel: "Exercise a high degree of caution",
         riskSummary: `Mock advisory summary for ${destination}.`,
-        healthNotices: [`Mock health notice for ${destination}.`],
-        environmentalHazards: [`Mock environmental hazard for ${input.condition}.`],
+        healthNotices: [`Mock measles outbreak notice for ${destination}.`],
+        environmentalHazards: [
+          `Mock heat and poor air quality advisory for ${input.condition}.`,
+        ],
       };
     case "pharmacy":
       return {
