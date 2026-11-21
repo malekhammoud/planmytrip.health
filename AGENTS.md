@@ -37,15 +37,16 @@ means the code, tests, and this file agree at that commit.
 | 1. Project baseline | [x] | `chore: initialize PlanMyTrip.health baseline` |
 | 2. Design system primitives | [x] | `feat(ui): add design system primitives` |
 | 3. Biological pacing engine | [x] | `feat(engine): add biological pacing and itinerary engine` |
-| 4. TinyFish 3-worker SSE route | [ ] Not built yet | `feat(api): add parallel 3-worker TinyFish SSE swarm` |
+| 4. TinyFish 3-worker SSE route | [x] | `feat(api): add parallel 3-worker TinyFish SSE swarm` |
 | 5. Header, constraint rail, page layout | [ ] Not built yet | `feat(ui): add header and biological constraint sidebar` |
 | 6. Live agent swarm monitor | [ ] Not built yet | `feat(ui): add live TinyFish agent iframes and findings cards` |
 | 7. KPI strip and paced itinerary | [ ] Not built yet | `feat(ui): add safety KPIs, paced itinerary cards, and care card export` |
 | 8. Documentation and identity audit | [ ] Not built yet | `docs(agents): finalize AGENTS.md for future coding agents` |
 
 Current state: the placeholder home page, the Paper and Ink tokens and type classes, the
-shared condition vocabulary, the `components/ui` primitives, and the pure pacing engine.
-The swarm route, rail, and full interface are not built yet.
+shared condition vocabulary, the `components/ui` primitives, the pure pacing engine, and
+the 3-worker TinyFish SSE route with mock mode. The rail, page composition, agent monitor,
+and itinerary are not built yet.
 
 ## 3. Commands
 
@@ -77,8 +78,8 @@ Use `vitest run`, never watch mode. Do not push.
 
 | Variable | Where used | Behavior when missing |
 | --- | --- | --- |
-| `TINYFISH_API_KEY` | Server only, the Step 4 swarm route (not built yet) | Each worker reports `worker_error` with code `missing_api_key`; the stream still returns 200. Never log, echo, or commit it. |
-| `SWARM_MOCK` | Server only, Step 4 route (not built yet) | When `1` and `NODE_ENV !== "production"`, the route emits mock events carrying `mock: true`. Ignored in production. |
+| `TINYFISH_API_KEY` | Server only, `app/api/travel-swarm/route.ts` | Each worker reports `worker_error` with code `missing_api_key`; the stream still returns 200. Never log, echo, or commit it. |
+| `SWARM_MOCK` | Server only, swarm route | When `1` and `NODE_ENV !== "production"`, the route emits mock events carrying `mock: true`. Ignored in production. |
 | `NODE_ENV` | Next.js, swarm mock guard | Next sets it. Production disables mock mode. |
 
 `.env.example` is committed and contains empty placeholders. `.env*` is ignored except
@@ -99,7 +100,18 @@ app/
   globals.css        Paper and Ink tokens, theme mapping, type classes, base styles
   layout.tsx         Fontsource imports, metadata, html lang, body tokens
   page.tsx           Minimal placeholder home page; replaced in Step 5
+  api/travel-swarm/route.ts  Body validation, guarded SSE stream, runSwarm call
 lib/
+  sse.ts                      Pure buffering SSE parser (createSseParser)
+  tinyfish.ts                 TinyFish fetch client; re-exports the parser
+  tinyfishEvents.ts           Upstream TinyFish event to SwarmEvent mapping
+  swarmTypes.ts               Worker ids, body guard, findings, events, frame encoder
+  swarmGoals.ts               Sources, goals, output schemas, normalisers
+  swarmRunner.ts              Live/mock worker execution, timeouts, errors, swarm_done
+  swarmMock.ts                Dev-only mock findings and lifecycle
+  tinyfish.test.ts            Parser and client tests
+  tinyfishEvents.test.ts      Mapper fixtures, provenance, URL schemes
+  swarmGoals.test.ts          Schema, goal, placeholder, shared-rule tests
   types.ts                    CONDITIONS, Condition, CONDITION_LABELS, isCondition
   healthTripEngine.ts         Public entry: validation, buildHealthTripPlan, re-exports
   healthTripTypes.ts          Inputs, typed error, profiles, blocks, days, plan, alerts
@@ -129,17 +141,16 @@ tests/
 vitest.config.mts    Node test environment and the @/ alias
 ```
 
-Not built yet: the TinyFish client, event mapper, shared swarm types, worker goals, and
-`app/api/travel-swarm/route.ts` (Step 4), the rail and page composition (Step 5), the
-swarm monitor (Step 6), and the KPI strip and itinerary board (Step 7).
+Not built yet: the rail and page composition (Step 5), the swarm monitor (Step 6), and
+the KPI strip and itinerary board (Step 7).
 
-Planned data flow, to be confirmed as steps land:
+Data flow:
 
 ```text
 page.tsx state (destination, days, condition, medication, coverage)
   -> healthTripEngine (pure, useMemo) -> KPI strip + pacing itinerary
-  -> Deploy -> POST /api/travel-swarm -> TinyFish SSE per worker
-  -> useSwarm reducer -> AgentSwarmMonitor (status, live iframe, findings)
+  -> Deploy -> POST /api/travel-swarm -> three TinyFish SSE runs
+  -> worker events -> useSwarm reducer -> AgentSwarmMonitor
 ```
 
 The itinerary renders from the engine alone, independent of agent results.
@@ -344,32 +355,53 @@ At this commit: 7 entries.
 
 ## 10. External integrations
 
-TinyFish Web Agent API (Step 4; not built yet):
+TinyFish Web Agent API: `POST https://agent.tinyfish.ai/v1/automation/run-sse`, header
+`X-API-Key`, JSON body `{url, goal, output_schema?}`. The key is read only in the route
+and passed to the client; it is never logged or echoed. `output_schema` must be a
+top-level object with `nullable: true` rather than type arrays; no `oneOf`, `const`, or
+`additionalProperties`.
 
-- `POST https://agent.tinyfish.ai/v1/automation/run-sse`
-- Header `X-API-Key: process.env.TINYFISH_API_KEY`
-- JSON body `{ "url": string, "goal": string }`, plus the optional `output_schema`
-  object (top-level object; `nullable: true`; no `oneOf`, `const`, or
-  `additionalProperties`).
-- The stream is `data: <json>` frames. Documented events: `STARTED`
-  (`run_id`, `timestamp`), `STREAMING_URL` (`streaming_url`), `PROGRESS` (`purpose`),
-  `HEARTBEAT` (`timestamp` only), `COMPLETE` (`status` of `COMPLETED`, `FAILED`, or
-  `CANCELLED`; optional `result`, `error`, `help_url`, `help_message`, `profile_hint`),
-  and the optional `TF_API_RESULT`. Ignore unknown event types and fields.
-- A streaming URL is emitted for iframe embedding and may expire after the run.
-- Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
-  <https://docs.tinyfish.ai/api-reference/automation/run-browser-automation-with-sse-streaming.md>,
-  <https://docs.tinyfish.ai/live-preview.md>,
-  <https://docs.tinyfish.ai/tinyagent/api/agent/structured-output.md>.
+Upstream events are `data: <json>` frames: `STARTED` (run_id), `STREAMING_URL`,
+`PROGRESS` (purpose), `HEARTBEAT`, `COMPLETE` (status/result/error), and optional
+`TF_API_RESULT`. Unknown types are ignored; `COMPLETE.result` is authoritative. Only
+absolute http(s) streaming URLs reach the UI.
 
-The route will expose our own SSE events: `worker_status`, `streaming_url`,
-`worker_progress`, `worker_complete`, `worker_error`, `swarm_done`. Cost warning:
-each run drives three real browser agents; do not call the live API in tests or during
-routine development. Use `SWARM_MOCK=1` locally.
+Our route emits these SSE frames. Every payload has `worker`, an ISO `ts`, and optional
+`mock`. `swarm_done` uses `worker: "swarm"` and is always last on a connected stream.
+
+| Event | Fields | When |
+| --- | --- | --- |
+| `worker_status` | `status` (queued/running) | Before a run and when TinyFish reports STARTED. |
+| `streaming_url` | `streamingUrl` | A safe STREAMING_URL arrives; it may expire. |
+| `worker_progress` | `purpose` | TinyFish PROGRESS. |
+| `worker_complete` | `findings`, `sourceUrl`, `retrievedAt`, `rawResult?`, `parseError?` | COMPLETED. Malformed JSON keeps raw text and parse error. |
+| `worker_error` | `code`, `message` | Missing key, timeout, upstream error, unexpected rejection. |
+| `swarm_done` | `completed`, `failed` | Once after all requested workers settle. |
+
+Headers are `text/event-stream; charset=utf-8`, `Cache-Control: no-cache, no-transform`,
+and `X-Accel-Buffering: no`; a keep-alive comment is sent about every 15s. Client
+disconnect aborts upstream requests. Error codes: `missing_api_key`, `timeout`,
+`upstream_error`. Invalid bodies return 400 JSON.
+
+Mock mode needs no key or network; every payload carries `mock: true` and preview URLs
+use `mock.invalid`:
+
+```bash
+SWARM_MOCK=1 npm run dev
+curl -N -X POST http://localhost:3000/api/travel-swarm \
+  -H 'Content-Type: application/json' \
+  -d '{"destination":"Lisbon, Portugal","condition":"asthma_respiratory","medication":"albuterol inhaler"}'
+```
+
+Each live run drives three real browser agents; never call it in tests or routine
+development. Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
+<https://docs.tinyfish.ai/api-reference/automation/run-browser-automation-with-sse-streaming.md>,
+<https://docs.tinyfish.ai/live-preview.md>,
+<https://docs.tinyfish.ai/tinyagent/api/agent/structured-output.md>.
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The current suite has 106 tests:
+`npm test` runs Vitest once in a Node environment. The current suite has 145 tests:
 
 - `tests/design-guard.test.ts`: token, type, control, emoji, and copy guard.
 - `tests/contrast.test.ts`: WCAG AA contrast for the token pairs.
@@ -379,6 +411,10 @@ routine development. Use `SWARM_MOCK=1` locally.
   2-7 days, caps and invariants, recovery, scores, determinism, Sun Life paths,
   validation, docs, and module re-exports. Shared input lives in
   `tests/healthTripFixtures.ts`.
+- `lib/tinyfish.test.ts`, `tinyfishEvents.test.ts`, `swarmGoals.test.ts`, and
+  `tests/swarm-route*.test.ts`: SSE parsing, event mapping, schemas, placeholder
+  normalisation, missing key, isolation, retry subsets, mock mode, timeout, and
+  swarm_done. All network is mocked.
 
 Add pure-function tests next to the module or under `tests/`, named `*.test.ts`. The
 Vitest include pattern is `**/*.test.ts`. No component-test libraries. Route and SSE
@@ -387,15 +423,13 @@ rather than exempting lines.
 
 ## 12. Known limitations and open questions
 
-- Only the baseline, `components/ui` primitives, and the pacing engine exist: no swarm
-  route, agent monitor, itinerary, care card, or full page.
+- Only the baseline, `components/ui` primitives, pacing engine, and swarm route exist:
+  no rail, agent monitor, itinerary, care card, or full page.
 - The Sun Life stability window is unknown and stored as `null`; no placeholder number
   is shown. Confirm it with the plan administrator.
-- TinyFish event names and payloads are documented, but no live run has been made. The
-  route must still tolerate unknown events, stringified `result` values, and partial
-  payloads.
-- No live TinyFish key has been exercised. Missing-key and mock paths are the only
-  planned verification.
+- No live TinyFish run or real key has been exercised. Event handling is verified
+  against docs-shaped fixtures and mocked fetch; streaming URLs may expire after a run.
+- The route tolerates unknown events, stringified `result` values, and partial payloads.
 - The current home page is a placeholder and will be replaced in Step 5.
 - The user-owned `README.md` is intentionally untouched; this file is the working guide.
 - Light theme only. Tokens are structured so a dark theme could be added later.

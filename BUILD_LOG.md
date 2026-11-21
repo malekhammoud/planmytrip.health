@@ -70,7 +70,23 @@ None.
 - Unverified: clinical thresholds, residual floors, stride, and insurance rules need
   clinician and plan-administrator confirmation. No UI labels yet.
 
+### Step 4: TinyFish 3-worker SSE route
+
+- Added the nodejs POST route with hand-validated bodies, 15s keep-alive, guarded
+  enqueue, 110s per-worker timeout, client-abort propagation, and always-last
+  swarm_done. Three concurrent isolated workers with exact JSON schemas.
+- Split into pure SSE parser, TinyFish client, event mapper, worker goals/normalisers,
+  runner, mock module, and a thin route. Shared Sun Life rules imported, not duplicated.
+- Mock mode is dev-only and tags every payload; missing key streams missing_api_key
+  errors as a normal 200. No key is logged or echoed.
+- 39 Step 4 tests (145 total at this commit); parser, mapper, validation, isolation,
+  retry subset, timeout, sync throw, sibling abort, URL schemes, mock, and production.
+- Review cycle 1 fixed nullable sourceUrl, a coverage goal/schema mismatch, rejection
+  handling, placeholder variants, unsafe streaming URLs, and the missing docs.
+- Gate: typecheck, 145 tests, lint, and production build pass.
+- Unverified: no live TinyFish run or real key; streaming URL expiry and proxy behavior.
+
 ## Next action
 
-Review and commit Step 3 (`feat(engine): add biological pacing and itinerary engine`),
-then review and commit Step 4. Step 5 follows.
+Review and commit Step 4 (`feat(api): add parallel 3-worker TinyFish SSE swarm`). Then
+build Step 5 (header, rail, page layout) alone, review it, wire Steps 6 and 7 next.
