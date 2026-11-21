@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Callout, Checkbox, Field, Select } from "@/components/ui";
+import { Button, Callout, Field, Select } from "@/components/ui";
 import type {
   AdherenceLevel,
   CareLevel,
@@ -10,6 +10,7 @@ import type {
 } from "@/lib/data/types";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
+type FlareAnswer = "" | "yes" | "no";
 
 const SEVERITIES: readonly FlareSeverity[] = ["mild", "moderate", "severe"];
 const CARE: readonly CareLevel[] = ["none", "clinic", "er", "hospital"];
@@ -40,7 +41,7 @@ const ADHERENCE_LABEL: Record<AdherenceLevel, string> = {
  * deliberate "no", never silence.
  */
 export function TripOutcomePanel({ capture }: { capture: TripCaptureContext }) {
-  const [flare, setFlare] = useState(false);
+  const [flare, setFlare] = useState<FlareAnswer>("");
   const [severity, setSeverity] = useState<FlareSeverity>("mild");
   const [care, setCare] = useState<CareLevel>("none");
   const [adherence, setAdherence] = useState<AdherenceLevel>("same");
@@ -55,6 +56,7 @@ export function TripOutcomePanel({ capture }: { capture: TripCaptureContext }) {
   }
 
   async function handleSubmit(): Promise<void> {
+    if (flare === "") return;
     setState("saving");
     try {
       const response = await fetch("/api/trips/outcome", {
@@ -64,10 +66,10 @@ export function TripOutcomePanel({ capture }: { capture: TripCaptureContext }) {
           runId: capture.runId,
           installId: capture.installId,
           outcome: {
-            flare,
+            flare: flare === "yes",
             flareDay: null,
-            severity: flare ? severity : null,
-            care: flare ? care : null,
+            severity: flare === "yes" ? severity : null,
+            care: flare === "yes" ? care : null,
             adherence,
             notes: null,
           },
@@ -94,14 +96,30 @@ export function TripOutcomePanel({ capture }: { capture: TripCaptureContext }) {
       </p>
 
       <div className="mt-6 flex flex-col gap-6">
-        <Checkbox
+        <Field
           id="outcome-flare"
-          label="I had a flare during the trip or within 7 days after"
-          checked={flare}
-          onChange={setFlare}
-        />
+          label="Did you have a flare during the trip or within 7 days after?"
+          hint="An explicit answer is required. It is the label that calibrates future estimates."
+        >
+          {(control) => (
+            <Select
+              {...control}
+              value={flare}
+              placeholder="Select an answer"
+              onChange={(event) => {
+                const next = event.currentTarget.value;
+                if (next === "yes" || next === "no") {
+                  setFlare(next);
+                }
+              }}
+            >
+              <option value="yes">Yes, I had a flare</option>
+              <option value="no">No flare</option>
+            </Select>
+          )}
+        </Field>
 
-        {flare ? (
+        {flare === "yes" ? (
           <div className="grid gap-6 sm:grid-cols-2">
             <Field id="outcome-severity" label="Severity">
               {(control) => (
@@ -182,10 +200,12 @@ export function TripOutcomePanel({ capture }: { capture: TripCaptureContext }) {
             variant="secondary"
             onClick={handleSubmit}
             loading={state === "saving"}
+            disabled={flare === ""}
           >
             Save outcome
           </Button>
           <p aria-live="polite" className="t-small text-muted">
+            {flare === "" ? "Answer whether you had a flare to save." : null}
             {state === "saving" ? "Saving." : null}
             {state === "saved" ? "Outcome saved. You can update it later." : null}
           </p>

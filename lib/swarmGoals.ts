@@ -98,13 +98,25 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 const MISSING_VALUES = new Set(["not found", "n/a", "na", "null", "unknown", "not specified", "not available"]);
 
+/** Upstream is an LLM reading a web page, so every string and list is bounded. */
+const TEXT_MAX = 1_200;
+const LIST_MAX = 12;
+const CHECKLIST_MAX = 20;
+const URL_MAX = 500;
+
+/** Truncates at a code-unit boundary and marks the cut, so the UI never shows a wall. */
+function boundedText(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).trimEnd()}…`;
+}
+
 /** Treats placeholders as missing, so the UI can print Not found. */
-function asText(value: unknown): string | null {
+function asText(value: unknown, max = TEXT_MAX): string | null {
   if (typeof value !== "string") return null;
   const text = value.trim();
   const comparable = text.replace(/[.,;:!?]+$/, "").trim().toLowerCase().replace(/\s+/g, " ");
   if (comparable === "" || MISSING_VALUES.has(comparable)) return null;
-  return text;
+  return boundedText(text, max);
 }
 
 function asTextList(value: unknown): string[] {
@@ -114,12 +126,14 @@ function asTextList(value: unknown): string[] {
     const text = asText(entry);
     if (text !== null) seen.add(text);
   }
-  return [...seen];
+  return [...seen].slice(0, LIST_MAX);
 }
 
 function asSourceUrl(value: unknown, fallback: string): string {
-  const candidate = asText(value);
-  if (candidate === null) return fallback;
+  // Never truncate a URL: a shortened URL is a different destination. Reject it.
+  if (typeof value !== "string") return fallback;
+  const candidate = value.trim();
+  if (candidate.length === 0 || candidate.length > URL_MAX) return fallback;
   try {
     const url = new URL(candidate);
     return url.protocol === "http:" || url.protocol === "https:" ? candidate : fallback;
@@ -165,13 +179,15 @@ export function normalizeCoverageResult(
 ): CoverageResult {
   const record = isRecord(value) ? value : {};
   const checklist = Array.isArray(record.checklist)
-    ? record.checklist.flatMap((entry) => {
-        if (!isRecord(entry)) return [];
-        const item = asText(entry.item);
-        if (item === null) return [];
-        const source: CoverageSource = entry.source === "page" ? "page" : "inferred";
-        return [{ item, source }];
-      })
+    ? record.checklist
+        .flatMap((entry) => {
+          if (!isRecord(entry)) return [];
+          const item = asText(entry.item);
+          if (item === null) return [];
+          const source: CoverageSource = entry.source === "page" ? "page" : "inferred";
+          return [{ item, source }];
+        })
+        .slice(0, CHECKLIST_MAX)
     : [];
   return {
     emergencyMedicalLimit: asText(record.emergencyMedicalLimit),

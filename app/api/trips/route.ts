@@ -17,10 +17,12 @@ function json(status: number, body: Record<string, unknown>): Response {
   });
 }
 
-/** Returns the install-scoped trip log. */
+/** Returns the install-scoped trip log. A header is preferred so proxy logs stay clean. */
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
-  const installId = parseInstallId(url.searchParams.get("installId"));
+  const installId = parseInstallId(
+    request.headers.get("x-install-id") ?? url.searchParams.get("installId"),
+  );
   if (installId === null) {
     return json(400, { error: "Send a valid install id." });
   }

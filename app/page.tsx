@@ -7,6 +7,7 @@ import { PlanWorkspace } from "@/components/PlanWorkspace";
 import { buildHealthTripPlan, type HealthTripPlan } from "@/lib/healthTripEngine";
 import type { TripConfig } from "@/lib/agent/agentTypes";
 import { DEFAULT_TRIP } from "@/lib/onboarding";
+import { parseInstallId } from "@/lib/data/validation";
 
 const SISTER_PRODUCT_URL = "https://ismytripsafe.com";
 
@@ -77,12 +78,17 @@ function SiteFooter() {
 function readInstallId(): string {
   if (typeof window === "undefined") return "";
   const key = "planmytrip.installId";
-  let existing = window.localStorage.getItem(key);
-  if (existing === null || existing.length < 8) {
-    existing = crypto.randomUUID();
-    window.localStorage.setItem(key, existing);
+  try {
+    const existing = parseInstallId(window.localStorage.getItem(key));
+    if (existing !== null) return existing;
+    const created = crypto.randomUUID();
+    window.localStorage.setItem(key, created);
+    return created;
+  } catch {
+    // Private browsing or a blocked storage partition: still return an id for this
+    // session, but do not claim it will survive a reload.
+    return crypto.randomUUID();
   }
-  return existing;
 }
 
 /**

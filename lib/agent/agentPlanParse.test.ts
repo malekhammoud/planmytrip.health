@@ -257,6 +257,45 @@ describe("buildConciergePlan", () => {
     );
     expect(plan.budget.level).toBe("balanced");
   });
+
+  it("catches an over-cap block even when the agent estimate is zero", () => {
+    const understated = {
+      ...raw,
+      days: [
+        raw.days[0],
+        {
+          ...raw.days[1],
+          stepEstimate: 0,
+          walkingKm: 0,
+          blocks: [
+            {
+              time: "09:00",
+              kind: "hike",
+              title: "Long ridge",
+              detail: "",
+              durationMin: 300,
+              placeName: "Garden loop",
+            },
+          ],
+        },
+        raw.days[2],
+        raw.days[3],
+      ],
+    };
+    const plan = buildConciergePlan(
+      understated,
+      request,
+      research(),
+      caps,
+      "2026-11-21T10:00:00.000Z",
+    );
+    // 300 min at exertion 2 -> 7,800 modeled steps, above the 5,600 cap.
+    expect(plan.days[1]?.stepEstimate).toBe(0);
+    expect(plan.days[1]?.withinCaps).toBe(false);
+    expect(plan.safetyNotes).toContain(
+      "At least one day exceeds its modeled safety ceiling. Follow the Pacing limits.",
+    );
+  });
 });
 
 describe("normalizeWirePlan", () => {
@@ -267,6 +306,35 @@ describe("normalizeWirePlan", () => {
     expect(wire?.days).toHaveLength(4);
     expect(wire?.places).toHaveLength(5);
     expect(wire?.places[0]?.sourceUrl).toBe("https://example.com/hotel-a");
+  });
+
+  it("keeps block place ids across the wire so the map and day links survive", () => {
+    const plan = buildConciergePlan(raw, request, research(), caps, "2026-11-21T10:00:00.000Z");
+    const wire = normalizeWirePlan(JSON.parse(JSON.stringify(plan)));
+    expect(wire?.days[0]?.blocks[0]?.placeId).toBe("place-1");
+    expect(wire?.days[1]?.blocks[0]?.placeId).toBe("place-3");
+  });
+
+  it("recomputes the cap flag from the wire blocks", () => {
+    const plan = buildConciergePlan(raw, request, research(), caps, "2026-11-21T10:00:00.000Z");
+    const payload = JSON.parse(JSON.stringify(plan)) as Record<string, unknown> & {
+      days: Array<Record<string, unknown>>;
+    };
+    const second = payload.days[1];
+    second.stepEstimate = 0;
+    second.walkingKm = 0;
+    second.blocks = [
+      {
+        time: "09:00",
+        kind: "hike",
+        title: "Long ridge",
+        detail: "",
+        durationMin: 300,
+        placeId: "place-3",
+      },
+    ];
+    const wire = normalizeWirePlan(payload);
+    expect(wire?.days[1]?.withinCaps).toBe(false);
   });
 
   it("rejects a payload without a summary or days", () => {

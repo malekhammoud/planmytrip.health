@@ -34,6 +34,7 @@ import {
   type DraftPlace,
   type SpecialistResult,
 } from "./agentParse";
+import { reconcileDayCaps } from "@/lib/data/dose";
 
 const DAY_BLOCK_KINDS: readonly PlanBlockKind[] = [
   "transit",
@@ -131,10 +132,19 @@ function asPlanPlace(value: unknown, index: number): PlannerPlace | null {
   };
 }
 
-function asPlanBlock(value: unknown, places: ReadonlyMap<string, PlannerPlace>): PlannerDayBlock {
+/** Both lookup directions: raw concierge JSON names places, the wire carries ids. */
+interface PlaceLookup {
+  byName: ReadonlyMap<string, PlannerPlace>;
+  byId: ReadonlyMap<string, PlannerPlace>;
+}
+
+function asPlanBlock(value: unknown, lookup: PlaceLookup): PlannerDayBlock {
   const record = isRecord(value) ? value : {};
   const placeName = asText(record.placeName, 160);
-  const place = placeName === null ? null : places.get(placeKey(placeName)) ?? null;
+  const placeId = asText(record.placeId, 80);
+  const place =
+    (placeName === null ? null : lookup.byName.get(placeKey(placeName)) ?? null) ??
+    (placeId === null ? null : lookup.byId.get(placeId) ?? null);
   return {
     time: asText(record.time, 40) ?? "",
     kind: asBlockKind(record.kind),
@@ -154,13 +164,13 @@ function asPlanDay(
   value: unknown,
   index: number,
   caps: readonly PlannerCapInput[],
-  places: ReadonlyMap<string, PlannerPlace>,
+  lookup: PlaceLookup,
 ): PlannerDay {
   const record = isRecord(value) ? value : {};
   const day = dayNumberOf(record, index + 1);
   const cap = caps.find((entry) => entry.day === day) ?? caps[index] ?? caps[0];
   const blocks = Array.isArray(record.blocks)
-    ? record.blocks.map((block) => asPlanBlock(block, places)).slice(0, 16)
+    ? record.blocks.map((block) => asPlanBlock(block, lookup)).slice(0, 16)
     : [];
   const stepEstimate = Math.max(0, Math.round(asNumber(record.stepEstimate) ?? 0));
   const walkingKm = Math.max(0, asNumber(record.walkingKm) ?? 0);
@@ -270,16 +280,23 @@ export function buildConciergePlan(
   const drafts = selectDrafts(record, research);
   const places = drafts.map((draft, index) => finalizePlace(draft, index, null));
   const placeByKey = new Map(places.map((place) => [placeKey(place.name), place]));
+  const lookup: PlaceLookup = {
+    byName: placeByKey,
+    byId: new Map(places.map((place) => [place.id, place])),
+  };
   const rawDays = Array.isArray(record.days)
     ? [...record.days].sort(
         (left, right) => dayNumberOf(left, 0) - dayNumberOf(right, 0),
       )
     : [];
-  const days: PlannerDay[] = [];
+  const built: PlannerDay[] = [];
   for (let index = 0; index < request.days; index += 1) {
     const raw = rawDays[index];
-    days.push(asPlanDay(raw, index, caps, placeByKey));
+    built.push(asPlanDay(raw, index, caps, lookup));
   }
+  // The agent estimate is display copy. The computed dose is the safety check: a long
+  // block can exceed the engine ceiling even when the estimate looks low.
+  const days = reconcileDayCaps(built, places);
   attachDays(places, days);
   const outside = days.filter((day) => !day.withinCaps);
   return {
@@ -313,6 +330,10 @@ export function normalizeWirePlan(value: unknown): AgentTripPlan | null {
         .slice(0, 32)
     : [];
   const byId = new Map(places.map((place) => [place.id, place]));
+  const lookup: PlaceLookup = {
+    byName: new Map(places.map((place) => [placeKey(place.name), place])),
+    byId,
+  };
   const caps: PlannerCapInput[] = Array.isArray(value.days)
     ? value.days.map((day, index) => {
         const record = isRecord(day) ? day : {};
@@ -325,9 +346,12 @@ export function normalizeWirePlan(value: unknown): AgentTripPlan | null {
       })
     : [];
   const days = Array.isArray(value.days)
-    ? value.days
-        .map((day, index) => asPlanDay(day, index, caps, byId))
-        .slice(0, 7)
+    ? reconcileDayCaps(
+        value.days
+          .map((day, index) => asPlanDay(day, index, caps, lookup))
+          .slice(0, 7),
+        places,
+      )
     : [];
   const summary = asText(value.summary, 1200);
   if (summary === null || days.length === 0) return null;

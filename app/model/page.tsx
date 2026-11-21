@@ -202,6 +202,10 @@ export default function ModelPage() {
                 {artifact.trainedAt.slice(0, 10)}
               </p>
             </div>
+            <div className="border-t border-hairline pt-3">
+              <p className="t-label text-muted">Pipeline</p>
+              <p className="t-data mt-1 text-ink">v{artifact.pipelineVersion}</p>
+            </div>
           </div>
         </section>
 
@@ -211,7 +215,11 @@ export default function ModelPage() {
           </h2>
           <div className="mt-5">
             <Table
-              caption="Holdout folds are grouped by synthetic traveler."
+              caption={
+                synthetic
+                  ? "Nested out-of-fold holdouts are grouped by synthetic traveler."
+                  : "Nested out-of-fold holdouts are grouped by install, so one install never appears on both sides."
+              }
               headers={["Metric", "Model", "Engine only"]}
               rows={[
                 ["Brier score", number(metrics.brier, 4), number(metrics.baselineBrier, 4)],

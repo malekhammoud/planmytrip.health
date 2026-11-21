@@ -100,15 +100,10 @@ function oneOf<T extends string>(
     : null;
 }
 
-function boundedNotes(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const text = value.trim().slice(0, 500);
-  return text.length > 0 ? text : null;
-}
-
 /**
  * Normalizes an outcome body. `flare` is required and must be a boolean: silence is not
- * a negative. A false flare clears the flare-only fields.
+ * a negative. A false flare clears the flare-only fields. Free text is not accepted on
+ * the public contract; `notes` is reserved for a future consented feature and stays null.
  */
 export function parseOutcome(
   value: unknown,
@@ -137,7 +132,7 @@ export function parseOutcome(
     severity: flare ? severity : null,
     care: flare ? care : null,
     adherence,
-    notes: boundedNotes(body.notes),
+    notes: null,
     reportedAt,
   };
 }

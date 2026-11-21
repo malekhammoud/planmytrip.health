@@ -79,6 +79,13 @@ p_calibrated = isotonic(p)
 - `lib/model/predict.ts` returns `pFlare`, a 90% interval from the covariance, the sample
   size, and an evidence tier.
 
+Training is pipeline version 2. Each fold's standardization and coefficients are fitted on
+that fold's training rows only, and an inner grouped cross-validation fits the isotonic map
+before it scores the outer fold. The artifact records `pipelineVersion`; the loader refuses
+any other version, a zero-row artifact, or an artifact trained for another engine version,
+so a stale or truncated file falls back to the deterministic engine rather than a learned
+probability.
+
 ### Tiers
 
 | Tier | Condition |
@@ -110,16 +117,22 @@ condition effects, noisy self-reported steps, and an 18-22% flare rate. It write
 
 - `data/synthetic-trips.jsonl` — one `TrainingRow` per trip.
 - When `DATABASE_URL` is set, the same full dossiers and outcomes are inserted into
-  PostgreSQL for inspection. Without `DATABASE_URL` it writes the JSONL only.
+  PostgreSQL for inspection. They are mock-flagged, so `npm run data:export` intentionally
+  returns zero rows from the demo seed. Without `DATABASE_URL` it writes the JSONL only.
 
 `scripts/export-training.ts` reads only explicitly labeled PostgreSQL rows and writes
-`data/training-rows.jsonl` (gitignored because it may contain real outcomes). Train it with
-`--source outcomes`; the artifact version becomes `outcomes-<hash>` and the tier gate decides
-whether it is `engine`, `pooled`, or `condition`.
+`data/training-rows.jsonl` (gitignored because it may contain real outcomes). Mock plans,
+rows under another data schema, and rows written by another engine version are excluded;
+their offsets or provenance mean something different. Train it with `--source outcomes`;
+the artifact version becomes `outcomes-<hash>` and the tier gate decides whether it is
+`engine`, `pooled`, or `condition`.
 
-`scripts/train-model.ts` reads the JSONL, trains, evaluates out-of-fold predictions, writes
-the artifact and model card, and records a `model_runs` row when `DATABASE_URL` is set.
-Folds are grouped by `userId`, so one traveler never leaks across train and validation.
+`scripts/train-model.ts` reads the JSONL, trains, evaluates nested out-of-fold predictions,
+writes the artifact and model card, and records a `model_runs` row when `DATABASE_URL` is
+set. Folds are grouped by `userId`, so one install never leaks across train and validation.
+The synthetic cohort marks every row with `synthetic: true`; both the CLI and `trainModel`
+refuse to label that cohort `--source outcomes`, so a demo file cannot become observed
+evidence by a mistyped flag.
 
 The artifact is a JSON file, not a service:
 
@@ -133,8 +146,10 @@ product plus a lookup.
 
 ## 6. Evaluation and ship gate
 
-The reported numbers are out-of-fold. The script refuses a cohort with fewer than 20 rows,
-fewer than two flares, or fewer than two non-flares.
+The reported numbers are genuinely nested out-of-fold: feature scaling, logistic
+coefficients, and the isotonic map for each outer fold are all fitted without that fold's
+labels. The script refuses a cohort with fewer than 20 rows, fewer than two flares, or
+fewer than two non-flares.
 
 A real artifact ships only when:
 
@@ -143,15 +158,16 @@ A real artifact ships only when:
 3. The calibration slope stays near 1.
 4. Each condition has enough labels for the tier it claims.
 
-The synthetic artifact currently reports a modest Brier improvement and AUROC around
-0.66. That is expected: the engine offset already carries most of the signal. The point is
-calibration and the pipeline, not a headline AUC.
+The synthetic artifact currently reports a modest Brier improvement (0.1612 against the
+engine's 0.1674), ECE 0.0238, and AUROC 0.6620. That is expected: the engine offset already
+carries most of the signal. The point is calibration and the pipeline, not a headline AUC.
 
 ## 7. Storage
 
 `lib/db/postgres.ts` uses a parameterized `pg` pool. The schema is idempotent and is applied
 by `npm run db:init` or lazily before the first query. `DATABASE_URL` is the only connection
-setting; `DATABASE_SSL=true` enables TLS for a managed provider.
+setting; `DATABASE_SSL=true` enables TLS with certificate validation. Use
+`NODE_EXTRA_CA_CERTS` for a private CA rather than disabling verification.
 
 ```
 trip_captures
@@ -171,7 +187,10 @@ model_runs
 - The swarm route writes a stub or updates findings when `swarm_done` fires.
 - The outcome route requires the same `runId` and `installId`; another browser cannot
   overwrite the label.
-- `exportTrainingRows()` returns only rows with an explicit label.
+- `exportTrainingRows()` returns only rows with an explicit label, excludes mock plans,
+  and accepts only the current data schema and engine version.
+- A repeated run id cannot move to another install: the conflict update is scoped to the
+  original install id.
 
 Production uses its own `DATABASE_URL` in `/etc/planmytrip.env`. Local development uses
 `planmytrip_dev`; tests use `planmytrip_test` and skip database files when `DATABASE_URL` is
@@ -186,8 +205,10 @@ Capture is opt-in on the health step of onboarding. The copy says:
 > estimates.
 
 The only identity is a random install id in `localStorage`. There is no account, cookie,
-email, IP log, or free-text transcript. The outcome is an explicit yes or no; an
-unanswered follow-up is not a negative and is excluded from training.
+email, IP log, or free-text transcript. The public outcome route ignores `notes`, so a
+client cannot store free text through it. The outcome is an explicit yes or no; the
+interface requires an answer rather than treating an untouched checkbox as a negative, and
+an unanswered follow-up is not a negative and is excluded from training.
 
 Before charging users, this needs a privacy review, retention policy, and a clear
 statement of the model provider and geocoder data flows. Treat the database as a clinical
@@ -196,9 +217,14 @@ asset, because it is one.
 ## 9. Current status
 
 - The model is trained on **synthetic** trips. It is a pipeline demonstration.
-- The full app gate passes: typecheck, 291 tests with the test database, lint, and production
-  build.
-- The capture routes are tested end to end with mock planner and swarm runs.
+- The committed artifact is `synthetic-5a38cf18` on pipeline 2: Brier 0.1612 against the
+  engine's 0.1674, ECE 0.0238, AUROC 0.6620, calibration slope 0.9549. The committed
+  cohort, artifact, and model card are reproducible and guarded by tests.
+- The full app gate passes: typecheck, the test database suite, lint, and production build.
+  Database suites skip cleanly when `DATABASE_URL` is absent.
+- The capture routes are tested end to end with mock planner and swarm runs, and the
+  consented loop (capture, explicit outcome, export, train, predict) has an integration
+  test against PostgreSQL.
 - One consented production browser trip is currently stored without an outcome, so it is
   excluded from training. The browser-test rows used to verify capture, dose, and the explicit
   outcome were removed after verification; the committed artifact remains synthetic.
@@ -231,8 +257,13 @@ rung.
   recalibrate.
 - **Distribution shift.** Destinations and seasons change. Monitor calibration by
   condition and by month.
-- **Leakage.** Never split by row; split by traveler.
-- **A synthetic artifact in production.** The tier gate prevents it. Do not remove it.
+- **Leakage.** Never split by row; split by traveler. The scaler, coefficients, and
+  isotonic map each need a training-only fit.
+- **Calibrator leakage.** An isotonic map fitted on the same out-of-fold scores it later
+  scores reports an optimistic ECE. Pipeline 2 uses an inner grouped cross-validation for
+  every outer fold; do not simplify that away.
+- **A synthetic artifact in production.** The tier gate, the engine-version check, the
+  `synthetic` cohort marker, and the export filters all refuse it. Do not remove them.
 
 ## 12. Repo map
 

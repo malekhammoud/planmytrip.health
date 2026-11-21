@@ -51,6 +51,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 17. Verification overlay | [x] | `feat(engine): add tighten-only live verification overlay` |
 | 18. Animated plan changes | [x] | `feat(ui): animate plan changes and live adjustments` |
 | 19. Mission control docs | [x] | `docs(agents): document live mission control and telemetry` |
+| 20. Production readiness and nested calibration | [x] | `fix(ml): harden calibration and capture integrity` |
 
 ## 3. Commands
 
@@ -98,7 +99,7 @@ host, build first, then `chown -R planmytrip:planmytrip .next` before restarting
 | `NEXT_PUBLIC_MAP_TILE_URL` | Browser, `components/TripMap.tsx` | Defaults to public OpenStreetMap tiles; production should use a licensed tile endpoint. |
 | `NEXT_PUBLIC_MAP_ATTRIBUTION` | Browser, `components/TripMap.tsx` | Defaults to the OpenStreetMap attribution. |
 | `DATABASE_URL` | Server only, `lib/db/postgres.ts` | Required for capture. The app returns 500 JSON for trip routes and capture stays best-effort until a database is configured. |
-| `DATABASE_SSL` | Server only, Postgres pool | Set `true` only for a managed provider that requires TLS. |
+| `DATABASE_SSL` | Server only, Postgres pool | Set `true` only for a managed provider that requires TLS. Certificates are validated; use `NODE_EXTRA_CA_CERTS` for a private CA rather than disabling verification. |
 | `PLANMYTRIP_CAPTURE_MOCK` | Server only, capture paths | Only when `1`; allows mock planner and swarm runs to be stored for tests. Never enable in production. |
 | `NODE_ENV` | Next.js, mock guards | Next sets it; production disables both mock modes. |
 
@@ -133,8 +134,8 @@ public/pitch/  index.html, deck.css, deck.js, basil.jpg, fonts/
 scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts
 data/  synthetic-trips.jsonl
 docs/  ML.md, MODEL_CARD.md, PITCH.md
-tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
-module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, planMotion.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts
+tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, model-artifact.test.ts, data-loop.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
+module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, planMotion.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmTypes.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: artifact.test.ts, calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts
 root  package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, instrumentation.ts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
 ```
 
@@ -219,13 +220,18 @@ Capture is opt-in on the onboarding health step. `app/page.tsx` owns a random in
 validate them. The planner route rebuilds the engine plan server-side on `plan_ready` and
 writes a `TripDossier`; the swarm route writes bounded findings on `swarm_done`. The finished
 plan renders `TripOutcomePanel`, which posts one explicit outcome to `/api/trips/outcome`.
-`GET /api/trips?installId=` lists only that install's trips.
+`GET /api/trips` lists only that install's trips; the install id is preferred in an
+`X-Install-Id` header so it stays out of proxy logs, with the query parameter kept for
+compatibility.
 
 `lib/data/dose.ts` is the single dose model. It maps concierge block kinds to exertion, raises
 hike exertion from verified distance, elevation, and difficulty, counts walking kinds only,
 and uses the engine's `stepsPerExertionMinute` and `kmPerStep`. The concierge's `stepEstimate`
-is shown as an agent estimate and is never a training label. An empty day is unsafe; a rest
-day with a real recovery block may legitimately carry zero steps.
+is shown as an agent estimate and is never a training label. `reconcileDayCaps` marks a day
+over its ceiling when either the agent estimate or the computed block dose is over, so a
+long block cannot hide behind a low self-report. An empty day is unsafe; a rest day with a
+real recovery block may legitimately carry zero steps. The fallback route sizes its anchors
+against the engine ceiling and reports the computed dose rather than an invented factor.
 
 `lib/model/` is a calibration layer, not a new predictor. The engine's modeled risk becomes
 the prior log-odds, the model learns the residual, and isotonic PAVA fixes the scale:
@@ -237,24 +243,32 @@ p      = isotonic(σ(η))
 ```
 
 `lib/model/logistic.ts` is dependency-free IRLS with Gaussian priors and a Laplace
-covariance; `calibration.ts` owns PAVA and the metrics; `train.ts` groups folds by `userId`;
-`predict.ts` returns the probability, a 90% interval, the sample size, and a tier. With zero
-labels `β = 0`, so the model is exactly the engine.
+covariance; `calibration.ts` owns PAVA and the metrics; `train.ts` groups folds by `userId`,
+fits the scaler and coefficients inside each fold, and runs an inner grouped cross-validation
+so the isotonic map for an outer fold never sees that fold's labels. The artifact records
+`pipelineVersion`; `artifact.ts` rejects another pipeline, another engine version, a
+zero-row file, or any malformed dimension, and falls back to the engine. `predict.ts`
+returns the probability, a 90% interval, the sample size, and a tier. With zero labels
+`β = 0`, so the model is exactly the engine.
 
-Tiers are `engine` (fewer than 50 labels), `synthetic` (demo artifact, never live), `pooled`
-(at least 50 real labels), and `condition` (at least 200 labels for that condition). A
-synthetic artifact is visible on `/model` but cannot change a live plan. When real data
-arrives, the learned model may only tighten a cap, never widen it above the profile ceiling.
+Tiers are `engine` (fewer than 50 labels, zero rows, or a stale engine version), `synthetic`
+(demo artifact, never live), `pooled` (at least 50 real labels), and `condition` (at least
+200 labels for that condition). A synthetic artifact is visible on `/model` but cannot
+change a live plan, and a static test proves no live API, capture, or planning module
+imports it. When real data arrives, the learned model may only tighten a cap, never widen it
+above the profile ceiling.
 
 `lib/db/postgres.ts` owns a parameterized `pg` pool and the idempotent `trip_captures` and
 `model_runs` schema; `npm run db:init` applies it. Production, development, and tests use
 separate PostgreSQL databases through `DATABASE_URL`. Capture is best-effort but the planner
 and swarm streams wait for their pending writes before closing. `scripts/synthetic.ts` writes
-the JSONL cohort and, when `DATABASE_URL` is set, seeds the same dossiers into Postgres.
-`scripts/export-training.ts` writes only explicitly labeled rows to the gitignored training
-JSONL; `scripts/train-model.ts --source outcomes` writes `lib/model/model.json`,
-`docs/MODEL_CARD.md`, and a `model_runs` row. See `docs/ML.md` for the full contract, schema,
-metrics, consent rules, and scale-up ladder.
+the JSONL cohort and marks every row `synthetic: true`; when `DATABASE_URL` is set it also
+seeds the same dossiers into Postgres for inspection. `scripts/export-training.ts` writes
+only explicitly labeled rows to the gitignored training JSONL and excludes mock plans, other
+data schemas, and other engine versions. Both the CLI and `trainModel` refuse to label the
+synthetic cohort `--source outcomes`. `scripts/train-model.ts --source outcomes` writes
+`lib/model/model.json`, `docs/MODEL_CARD.md`, and a `model_runs` row. See `docs/ML.md` for
+the full contract, schema, metrics, consent rules, and scale-up ladder.
 
 ### Biological pacing engine
 
@@ -464,6 +478,11 @@ and vanilla JavaScript; do not rebuild it in React.
   `next/font/google`, so builds need no network.
 - **Vitest 4, not 5:** the scaffold pins `@types/node@^20`; Vitest 5 needs `>=22`, and Vitest
   4 avoids `--legacy-peer-deps`.
+- **Baseline security headers:** `next.config.ts` sends `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: strict-origin-when-cross-origin`, and `X-Frame-Options: SAMEORIGIN` on every
+  route. SAMEORIGIN keeps the dev-only mock-browser frame embeddable while blocking every
+  cross-origin embed; the remote TinyFish previews are iframes inside this page and are
+  unaffected.
 - **Scaffold in place:** `.git` and a user-owned `README.md` existed; the README is untouched.
   Generated `cacheComponents` and `partialPrefetching` were removed.
 - **Sun Life:** the stability window was not supplied and stays `null`; alerts say so. Never
@@ -488,12 +507,21 @@ and vanilla JavaScript; do not rebuild it in React.
   Database writes are awaited before the SSE stream closes.
 - **Computed dose, not self-report:** the concierge's `stepEstimate` is an agent claim. Every
   training row is computed from block kind, duration, exertion, and verified hike elevation,
-  so live and fallback plans yield comparable doses. An empty day is unsafe, not zero.
+  so live and fallback plans yield comparable doses. A displayed day is inside its cap only
+  when the agent estimate and the computed dose both fit; an empty day is unsafe, not zero.
 - **Calibration, not a new predictor:** the engine's modeled risk is the prior log-odds; the
   model learns the residual. A zero-coefficient artifact is exactly the engine, and a
   synthetic artifact can never drive a live plan.
+- **Nested calibration, not in-sample:** feature scaling and coefficients are fitted inside
+  each fold, and an inner grouped cross-validation fits the isotonic map before it scores an
+  outer fold. The reported Brier, log loss, and ECE are honest out-of-fold estimates.
+- **Mock data never trains:** the synthetic cohort carries `synthetic: true`; the training
+  CLI and `trainModel` refuse it under `--source outcomes`; export skips mock plans, other
+  data schemas, and other engine versions. Install-scoped conflicts stop another browser
+  from overwriting a dossier or its findings.
 - **Consent before data:** capture is opt-in on the health step; the only id is a random
-  localStorage install id; an unanswered follow-up is not a negative label.
+  localStorage install id; the flare answer is explicit rather than a default checkbox; the
+  public outcome route stores no free text; an unanswered follow-up is not a negative label.
 - **Scripts with `tsx`:** `tsx` is a dev dependency for the synthetic and training CLIs. It
   resolves TypeScript and path aliases without a build step.
 - **Primitive-only UI:** compose `components/ui`; raw form controls live only there. Button
@@ -632,7 +660,11 @@ allowed fixtures prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.
   to take or use a medication; copy refers to the clinician's plan.
 - The concierge is a planning aid. Every day carries the engine's step and walking ceiling,
   recovery minutes, and checkpoint. Agent estimates are labelled as estimates; a day above a
-  ceiling shows a caution and the Pacing limit always wins.
+  ceiling, including a day whose block dose exceeds the ceiling while its estimate does not,
+  shows a caution and the Pacing limit always wins.
+- The post-trip label requires an explicit flare answer; an untouched control is never saved
+  as a negative. The public outcome route ignores free text, and the only identity is the
+  anonymous install id.
 - Agent findings show the source URL and retrieved time. Missing fields show "Not found",
   never a guess. Malformed JSON shows the raw text plus a parse error.
 - Geocoded coordinates are labelled approximate. A place without a verified or geocoded
@@ -766,9 +798,10 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 - `lib/healthTripEngine*.test.ts` covers every condition x 2-7 days, caps, invariants,
   recovery, scores, determinism, Sun Life, validation, docs, and re-exports. Shared input is
   in `tests/healthTripFixtures.ts`.
-- `lib/tinyfish*.test.ts`, `lib/swarmGoals.test.ts`, `tests/swarm-route*.test.ts`, and
-  `tests/swarm-runner*.test.ts` cover parsing, mapping, schemas, normalisation, missing key,
-  isolation, retries, mock, timeout, abort, and swarm_done. All network is mocked.
+- `lib/tinyfish*.test.ts`, `lib/swarmGoals.test.ts`, `lib/swarmTypes.test.ts`,
+  `tests/swarm-route*.test.ts`, and `tests/swarm-runner*.test.ts` cover parsing, mapping,
+  schemas, normalisation, bounded upstream text, request bounds, missing key, isolation,
+  retries, mock, timeout, abort, and swarm_done. All network is mocked.
 - `lib/swarmReducer*.test.ts`, `lib/swarmTelemetry.test.ts`, `hooks/swarmFrames.test.ts`,
   `hooks/swarmBatch.test.ts`, `lib/swarmMock.test.ts`, `tests/swarm-retry.test.ts`,
   `lib/swarmErrors.test.ts`, `lib/pacingStrip.test.ts`, `lib/careCard.test.ts`,
@@ -779,22 +812,28 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
   onboarding gate, and headline copy.
 - `lib/agent/*.test.ts` covers request bounds, assistant-text and JSON parsing, specialist
   normalisation, coordinate validation, concierge plan building and wire normalisation, the
-  fallback route, prompt safety and limits, tool-activity humanisation, geocoding, planner
-  reducer transitions and phase messages, and the warmup memo and retry.
+  fallback route and its anchor sizing, prompt safety and limits, tool-activity humanisation,
+  geocoding, planner reducer transitions and phase messages, and the warmup memo and retry.
   `hooks/plannerFrames.test.ts` covers the SSE frame guard. `tests/instrumentation.test.ts`
   proves the warmup starts only on the Node runtime and never during a production build.
 - `tests/agent-route.test.ts` runs the whole mock planner route through real SSE: roster, seven
   agent starts, immediate phase messages, activity, plan_ready, mock flags, map coordinates,
   planner_done last, and 400s for bad bodies. No OpenCode service or model call is made.
 - `lib/data/*.test.ts`, `lib/db/trips.test.ts`, and `lib/model/*.test.ts` cover computed dose,
-  empty and over-cap days, hike exertion, dossier and outcome parsing, isotonic monotonicity,
-  coefficient recovery, grouped folds, tiers, PostgreSQL upserts, outcome scoping, and
-  training export.
-- `tests/agent-capture.test.ts`, `tests/swarm-capture.test.ts`, and `tests/outcome-route.test.ts`
-  run the real mock routes against PostgreSQL: consent gating, computed dose, swarm stub
-  creation, explicit label storage, wrong-install 404, and trip-log scoping. These files skip
-  when `DATABASE_URL` is absent; `vitest` runs files sequentially so schema truncation cannot
-  race across files.
+  empty and over-cap days, block-level cap reconciliation, hike exertion, dossier and outcome
+  parsing, free-text rejection, isotonic monotonicity, coefficient recovery, grouped folds,
+  nested calibration, artifact validation, tier gating, PostgreSQL upserts, install scoping,
+  mock and stale-row export filters, and training export.
+- `tests/model-artifact.test.ts` proves the committed cohort, artifact, and model card are
+  reproducible and that no live API, capture, or planning module imports the model; it also
+  checks the documented ship gate. `lib/model/artifact.test.ts` proves malformed, stale, or
+  zero-row artifacts fall back to the engine.
+- `tests/agent-capture.test.ts`, `tests/swarm-capture.test.ts`, `tests/outcome-route.test.ts`,
+  and `tests/data-loop.test.ts` run the real routes and repository against PostgreSQL:
+  consent gating, computed dose, swarm stub creation, explicit label storage, wrong-install
+  404, trip-log scoping, and capture to outcome to export to training to prediction. These
+  files skip when `DATABASE_URL` is absent; `vitest` runs files sequentially so schema
+  truncation cannot race across files.
 
 Add pure-function tests beside the module or under `tests/`, named `*.test.ts`; Vitest includes
 `**/*.test.ts`. No component-test libraries. Mock fetch in route and SSE tests; never call the
@@ -869,7 +908,10 @@ exempting lines.
   tokens allow a dark theme later.
 - The engine invents no venues or geography. The concierge only selects from verified research.
 - The plan view renders from the current SSE run; the consented dossier is saved, but there is
-  no route to reload or share a saved plan yet.
+  no route to reload or share a saved plan yet. `GET /api/trips` and the outcome API make a
+  later label possible, but the interface still shows the outcome form only while the current
+  plan is on screen. A returning traveler cannot yet reopen it; close that loop before a pilot
+  that depends on real labels.
 - The old rail and `ConstraintSidebar` were removed. The onboarding draft is the only input
   surface; do not reintroduce a permanent sidebar without revisiting the split-screen layout.
 

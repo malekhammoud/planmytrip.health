@@ -151,4 +151,38 @@ describe("placeholder normalisation", () => {
     expect(result.customsRules).toBeNull();
     expect(result.carryRules).toBe("Carry a copy.");
   });
+
+  it("bounds untrusted text, lists, checklists, and source URLs", () => {
+    const long = "x".repeat(20_000);
+    const advisory = normalizeAdvisoryResult(
+      {
+        destinationRiskLevel: long,
+        riskSummary: long,
+        healthNotices: Array.from({ length: 50 }, (_, index) => `Notice ${index}`),
+        environmentalHazards: [long],
+        sourceUrl: `https://example.com/${"x".repeat(2_000)}`,
+      },
+      WORKER_SOURCES.advisory,
+    );
+    expect(advisory.destinationRiskLevel?.length).toBeLessThanOrEqual(1_200);
+    expect(advisory.destinationRiskLevel?.endsWith("…")).toBe(true);
+    expect(advisory.riskSummary?.length).toBeLessThanOrEqual(1_200);
+    expect(advisory.healthNotices).toHaveLength(12);
+    expect(advisory.environmentalHazards[0]?.length).toBeLessThanOrEqual(1_200);
+    expect(advisory.sourceUrl).toBe(WORKER_SOURCES.advisory);
+
+    const coverage = swarmGoals.normalizeCoverageResult(
+      {
+        emergencyMedicalLimit: long,
+        preAuthorizationRules: null,
+        checklist: Array.from({ length: 50 }, (_, index) => ({
+          item: `Item ${index}`,
+          source: "page",
+        })),
+        sourceUrl: WORKER_SOURCES.coverage,
+      },
+      WORKER_SOURCES.coverage,
+    );
+    expect(coverage.checklist).toHaveLength(20);
+  });
 });

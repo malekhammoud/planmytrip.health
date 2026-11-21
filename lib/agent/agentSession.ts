@@ -224,6 +224,8 @@ export async function runAgent(
 ): Promise<string | null> {
   const agent = byId.get(agentId);
   if (agent === undefined) return null;
+  // A disconnected client has already settled every agent; do not open a new session.
+  if (context.signal.aborted) return null;
   emitStatus(
     context,
     agentId,

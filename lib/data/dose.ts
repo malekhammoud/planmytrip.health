@@ -184,6 +184,25 @@ export function adherenceMultiplier(level: AdherenceLevel | null): number | null
   }
 }
 
+/**
+ * Recomputes each day's cap flag from its blocks and the engine ceiling. The agent's
+ * `stepEstimate` is a self-report and can understate a long block, so a day is inside
+ * its caps only when both the estimate and the computed dose are inside them. An empty
+ * day is left alone here; `computePlannerDose` carries that unsafe flag for training.
+ */
+export function reconcileDayCaps(
+  days: readonly PlannerDay[],
+  places: readonly PlannerPlace[],
+): PlannerDay[] {
+  const dose = computePlannerDose(days, places, "concierge");
+  return days.map((day, index) => {
+    const computed = dose[index];
+    const withinComputed =
+      computed.steps <= day.stepCeiling && computed.walkingKm <= day.walkingCapKm;
+    return { ...day, withinCaps: day.withinCaps && withinComputed };
+  });
+}
+
 /** Inputs for the v0 feature row. */
 export interface FeatureInput {
   dose: readonly PlannedDose[];

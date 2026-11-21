@@ -9,6 +9,7 @@
 
 import type { Condition } from "../types";
 import type { TripFeatures } from "../data/types";
+import { ENGINE_VERSION } from "../data/types";
 import { applyIsotonic } from "./calibration";
 import { engineProbability, featureValue } from "./features";
 import { dot, logit, quadraticForm, sigmoid } from "./math";
@@ -31,11 +32,17 @@ function guardProbability(value: number): number {
   return Math.max(MIN_PROBABILITY, Math.min(MAX_PROBABILITY, value));
 }
 
-/** Evidence tier for a condition, based on the artifact's source and counts. */
+/**
+ * Evidence tier for a condition. An empty artifact and an artifact trained for another
+ * engine version are the engine, never a learned estimate: a score offset from an older
+ * engine has a different meaning even if the coefficients are finite.
+ */
 export function tierFor(
   artifact: ModelArtifact,
   condition: Condition,
 ): ModelTier {
+  if (artifact.training.n === 0) return "engine";
+  if (artifact.engineVersion !== ENGINE_VERSION) return "engine";
   if (artifact.source === "synthetic") return "synthetic";
   if (artifact.training.n < 50) return "engine";
   if ((artifact.training.byCondition[condition]?.n ?? 0) >= 200) return "condition";

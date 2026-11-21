@@ -1,10 +1,11 @@
 # Model card: flare calibration
 
-- **Version:** `synthetic-27d2afaf`
-- **Trained:** 2026-11-21T18:44:23.849Z
+- **Version:** `synthetic-5a38cf18`
+- **Trained:** 2026-11-21T21:26:46.703Z
 - **Source:** synthetic
 - **Engine version:** 1
-- **Data hash:** `27d2afaffe85590b07aa66aecc2ca2fe7d8a602c5b02219daa1c1e2aebbccf7b`
+- **Pipeline version:** 2
+- **Data hash:** `5a38cf183b825e452a0f4d6bb5b0727b1dba460f1810d909e13f17c3604159ef`
 
 ## What this is
 
@@ -12,8 +13,7 @@ A calibration layer on top of the deterministic pacing engine. It estimates the
 probability that a traveler reports a flare during the trip or within seven days after.
 The engine's modeled risk is the prior log-odds; the model learns the residual.
 
-**This artifact was trained on synthetic trips. It is a pipeline demonstration, not
-clinical evidence, and it is never used to change a live safety cap.**
+**This artifact was trained on synthetic trips. It is a pipeline demonstration, not clinical evidence, and it is never used to change a live safety cap.**
 
 ## Intended use
 
@@ -60,16 +60,19 @@ the change in log-odds for one standard deviation, holding the engine offset fix
 
 | Metric | Value |
 | --- | --- |
-| Brier score | 0.1600 |
+| Brier score | 0.1612 |
 | Engine-only Brier | 0.1674 |
-| Log loss | 0.4911 |
-| Expected calibration error | 0.0121 |
+| Log loss | 0.4966 |
+| Expected calibration error | 0.0238 |
 | AUROC | 0.6620 |
-| Calibration slope | 0.9550 |
+| Calibration slope | 0.9549 |
 
-Folds are grouped by `userId`, so one synthetic traveler never appears in both training
-and validation. The isotonic map is fit on the out-of-fold predictions, so the reported
-Brier score is slightly optimistic.
+Folds are grouped by `userId`, so one synthetic traveler never appears in both
+training and validation. Each fold's feature scaling and logistic coefficients are fitted on that
+fold's training rows only. For each outer fold, an inner grouped cross-validation inside
+the training rows fits the isotonic map before it scores the outer fold. Brier, log loss,
+and calibration error are therefore nested out-of-fold estimates, not in-sample scores for
+the calibrator.
 
 ## Isotonic calibration
 
@@ -84,6 +87,7 @@ Brier score is slightly optimistic.
 | 0.078 | 0.000 |
 | 0.081 | 0.000 |
 | 0.157 | 0.183 |
+| 0.443 | 0.500 |
 | 0.540 | 0.571 |
 
 The map is flat at zero below the lowest observed event rate, then rises with the

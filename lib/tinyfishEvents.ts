@@ -56,6 +56,15 @@ function envelope(context: UpstreamMappingContext) {
   return { worker: context.worker, seq: context.nextSeq(), ts: context.now() };
 }
 
+/** Upstream text is untrusted; keep every forwarded string small enough to render. */
+const PURPOSE_MAX = 200;
+const URL_MAX = 2_000;
+const RAW_MAX = 2_000;
+
+function bounded(value: string, max: number): string {
+  return value.length <= max ? value : `${value.slice(0, max - 1).trimEnd()}…`;
+}
+
 /**
  * Rebuilds source rows from a TF_API_RESULT payload. Only a direct array of objects
  * with string url or title fields is read; any other shape yields an empty list.
@@ -70,10 +79,11 @@ export function extractSources(
   for (const entry of result.slice(0, MAX_SOURCES_PER_EVENT)) {
     if (!isRecord(entry)) continue;
     const rawUrl = typeof entry.url === "string" ? entry.url.trim() : "";
-    const url = rawUrl !== "" && isHttpUrl(rawUrl) ? rawUrl : undefined;
+    const url =
+      rawUrl !== "" && rawUrl.length <= URL_MAX && isHttpUrl(rawUrl) ? rawUrl : undefined;
     const rawTitle = typeof entry.title === "string" ? entry.title.trim() : "";
     const title =
-      rawTitle === "" ? undefined : rawTitle.slice(0, MAX_SOURCE_TEXT);
+      rawTitle === "" ? undefined : bounded(rawTitle, MAX_SOURCE_TEXT);
     if (url === undefined && title === undefined) continue;
     const key = url ?? `title:${title ?? ""}`;
     if (seen.has(key)) continue;
@@ -118,7 +128,7 @@ function normalizeCompleteResult(
         return {
           findings: emptyFindings(worker),
           sourceUrl: fallbackSourceUrl,
-          rawResult: result,
+          rawResult: bounded(result, RAW_MAX),
           parseError: "The agent returned JSON that is not an object. Showing the raw result.",
         };
       }
@@ -127,7 +137,7 @@ function normalizeCompleteResult(
       return {
         findings: emptyFindings(worker),
         sourceUrl: fallbackSourceUrl,
-        rawResult: result,
+        rawResult: bounded(result, RAW_MAX),
         parseError: "The agent returned text that is not valid JSON. Showing the raw result.",
       };
     }
@@ -139,7 +149,7 @@ function normalizeCompleteResult(
     return {
       findings: emptyFindings(worker),
       sourceUrl: fallbackSourceUrl,
-      rawResult: JSON.stringify(result) ?? String(result),
+      rawResult: bounded(JSON.stringify(result) ?? String(result), RAW_MAX),
       parseError: "The agent returned JSON that is not an object. Showing the raw result.",
     };
   }
@@ -206,8 +216,11 @@ export function mapTinyfishEvent(
       };
     case "STREAMING_URL": {
       const streamingUrl = event.streamingUrl?.trim() ?? "";
-      // The URL is passed to an iframe, so only absolute HTTP(S) previews are safe.
-      if (streamingUrl === "" || !isHttpUrl(streamingUrl)) return null;
+      // The URL is passed to an iframe, so only absolute HTTP(S) previews are safe and
+      // bounded; an unexpectedly long URL is rejected rather than truncated into a
+      // different destination.
+      if (streamingUrl === "" || streamingUrl.length > URL_MAX) return null;
+      if (!isHttpUrl(streamingUrl)) return null;
       return {
         event: "streaming_url",
         data: {
@@ -218,11 +231,13 @@ export function mapTinyfishEvent(
     }
     case "PROGRESS": {
       if (event.purpose === null) return null;
+      const purpose = bounded(event.purpose.trim(), PURPOSE_MAX);
+      if (purpose.length === 0) return null;
       return {
         event: "worker_progress",
         data: {
           ...envelope(context),
-          purpose: event.purpose,
+          purpose,
           ...(event.tinyfishApi === null ? {} : { tinyfishApi: event.tinyfishApi }),
         },
       };

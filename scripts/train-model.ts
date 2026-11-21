@@ -64,6 +64,7 @@ function parseRow(value: unknown): TrainingRow | null {
     offset: value.offset,
     label: value.label,
     days: value.days,
+    ...(value.synthetic === true ? { synthetic: true as const } : {}),
   };
 }
 
@@ -105,8 +106,8 @@ function modelCard(artifact: ModelArtifact): string {
     ? "**This artifact was trained on synthetic trips. It is a pipeline demonstration, not clinical evidence, and it is never used to change a live safety cap.**"
     : "**This artifact was trained on consented traveler outcomes. It is observational, not clinical validation, and it may only tighten a live safety cap.**";
   const foldsText = synthetic
-    ? "Folds are grouped by `userId`, so one synthetic traveler never appears in both training and validation."
-    : "Folds are grouped by `userId`, so one traveler never appears in both training and validation.";
+    ? "Folds are grouped by `userId`, so one synthetic traveler never appears in both\ntraining and validation."
+    : "Folds are grouped by `userId`, so one install never appears in both training and\nvalidation.";
   const cohortText = synthetic ? "synthetic cohort" : "observed cohort";
   const limitationsIntro = synthetic
     ? "- Synthetic dose-response, synthetic adherence, and synthetic outcomes.\n- No real trip has contributed a label."
@@ -117,6 +118,7 @@ function modelCard(artifact: ModelArtifact): string {
 - **Trained:** ${artifact.trainedAt}
 - **Source:** ${artifact.source}
 - **Engine version:** ${artifact.engineVersion}
+- **Pipeline version:** ${artifact.pipelineVersion}
 - **Data hash:** \`${artifact.training.dataHash}\`
 
 ## What this is
@@ -172,8 +174,11 @@ ${coefficientRows}
 | AUROC | ${number(artifact.metrics.auroc, 4)} |
 | Calibration slope | ${number(artifact.metrics.calibrationSlope, 4)} |
 
-${foldsText} The isotonic map is fit on the out-of-fold predictions, so the reported
-Brier score is slightly optimistic.
+${foldsText} Each fold's feature scaling and logistic coefficients are fitted on that
+fold's training rows only. For each outer fold, an inner grouped cross-validation inside
+the training rows fits the isotonic map before it scores the outer fold. Brier, log loss,
+and calibration error are therefore nested out-of-fold estimates, not in-sample scores for
+the calibrator.
 
 ## Isotonic calibration
 
@@ -234,6 +239,11 @@ async function main(): Promise<void> {
       }
     });
   if (rows.length === 0) throw new Error(`no valid training rows in ${input}`);
+  if (source === "outcomes" && rows.some((row) => row.synthetic === true)) {
+    throw new Error(
+      "refusing to label the synthetic cohort as observed outcomes; export real rows with npm run data:export",
+    );
+  }
 
   const dataHash = createHash("sha256").update(raw).digest("hex");
   const artifact = trainModel(rows, {

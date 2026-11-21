@@ -15,6 +15,22 @@ import { parseInstallId, parseRunId } from "@/lib/data/validation";
 /** The three research workers, in stable display order. */
 export const WORKER_IDS = ["advisory", "pharmacy", "coverage"] as const;
 
+/** Destination and medication are prompt inputs and stored summaries, so both are bounded. */
+const SWARM_TEXT_MAX = 120;
+
+/** Collapses whitespace so a newline cannot turn one prompt field into instructions. */
+export function normalizeSwarmText(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function boundedText(value: unknown, allowEmpty = false): string | null {
+  if (typeof value !== "string") return null;
+  const text = normalizeSwarmText(value);
+  if (!allowEmpty && text.length === 0) return null;
+  if (text.length > SWARM_TEXT_MAX) return null;
+  return text;
+}
+
 /** One of the three research workers. */
 export type WorkerId = (typeof WORKER_IDS)[number];
 
@@ -44,9 +60,9 @@ export interface SwarmRequestBody {
 export function isSwarmRequestBody(value: unknown): value is SwarmRequestBody {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
   const body = value as Record<string, unknown>;
-  if (typeof body.destination !== "string" || body.destination.trim() === "") return false;
+  if (boundedText(body.destination) === null) return false;
   if (!isCondition(body.condition)) return false;
-  if (typeof body.medication !== "string") return false;
+  if (boundedText(body.medication, true) === null) return false;
   if (body.runId !== undefined && parseRunId(body.runId) === null) return false;
   if (body.installId !== undefined && parseInstallId(body.installId) === null) {
     return false;

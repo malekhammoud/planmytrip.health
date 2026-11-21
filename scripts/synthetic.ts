@@ -387,6 +387,7 @@ function buildTrip(
       offset,
       label: label === 1 ? 1 : 0,
       days,
+      synthetic: true,
     },
   };
 }

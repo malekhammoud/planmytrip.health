@@ -121,6 +121,7 @@ describe("mapTinyfishEvent", () => {
       "data:text/html,hello",
       "/preview/run_1",
       "ftp://preview.invalid/run_1",
+      `https://preview.invalid/${"x".repeat(3_000)}`,
     ]) {
       expect(
         mapFixture({ type: "STREAMING_URL", run_id: "run_1", streaming_url: streamingUrl }),
@@ -288,6 +289,29 @@ describe("mapTinyfishEvent", () => {
       environmentalHazards: [],
     });
     expect(event.data.sourceUrl).toBe(WORKER_SOURCES.advisory);
+  });
+
+  it("bounds long progress copy and malformed raw results", () => {
+    const progress = mapFixture({
+      type: "PROGRESS",
+      purpose: "p".repeat(5_000),
+    });
+    if (progress === null || progress.event !== "worker_progress") {
+      throw new Error("expected worker_progress");
+    }
+    expect(progress.data.purpose.length).toBeLessThanOrEqual(200);
+    expect(progress.data.purpose.endsWith("…")).toBe(true);
+
+    const raw = mapFixture({
+      type: "COMPLETE",
+      status: "COMPLETED",
+      result: "r".repeat(5_000),
+    });
+    if (raw === null || raw.event !== "worker_complete") {
+      throw new Error("expected worker_complete");
+    }
+    expect(raw.data.rawResult?.length).toBeLessThanOrEqual(2_000);
+    expect(raw.data.rawResult?.endsWith("…")).toBe(true);
   });
 
   it("tags coverage checklist items as page or inferred, never guessing page", () => {

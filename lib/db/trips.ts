@@ -11,7 +11,7 @@
 import type { Condition } from "../types";
 import { isCondition } from "../types";
 import { adherenceMultiplier } from "../data/dose";
-import { ENGINE_VERSION } from "../data/types";
+import { DATA_SCHEMA_VERSION, ENGINE_VERSION } from "../data/types";
 import type {
   OutcomeRecord,
   PlannedDose,
@@ -88,6 +88,12 @@ function asScore(value: unknown): number | null {
     : null;
 }
 
+/** Keeps a caller-supplied limit finite and inside the public API's small-page range. */
+function boundedLimit(limit: number): number {
+  if (!Number.isFinite(limit)) return 20;
+  return Math.max(1, Math.min(100, Math.trunc(limit)));
+}
+
 function toRow(value: unknown): CaptureRow | null {
   if (!isRecord(value)) return null;
   const created = asIso(value.created_at);
@@ -118,6 +124,9 @@ function toRow(value: unknown): CaptureRow | null {
 
 /** Inserts or updates the planner half of a run. Outcome columns are preserved. */
 export async function saveDossier(dossier: TripDossier): Promise<void> {
+  // The type says consent is true, but storage is the last boundary: never persist a
+  // dossier that was not explicitly consented to.
+  if (dossier.consent.capture !== true) return;
   await ensureSchema();
   await getPool().query(
     `INSERT INTO trip_captures (
@@ -135,12 +144,23 @@ export async function saveDossier(dossier: TripDossier): Promise<void> {
       engine_json = EXCLUDED.engine_json,
       plan_json = EXCLUDED.plan_json,
       dose_json = EXCLUDED.dose_json,
-      features_json = EXCLUDED.features_json,
+      features_json = CASE
+        WHEN trip_captures.features_json->>'adherence' IS NOT NULL
+          AND EXCLUDED.features_json->>'adherence' IS NULL
+        THEN jsonb_set(
+          EXCLUDED.features_json,
+          '{adherence}',
+          trip_captures.features_json->'adherence',
+          true
+        )
+        ELSE EXCLUDED.features_json
+      END,
       research_json = EXCLUDED.research_json,
       swarm_json = CASE
         WHEN trip_captures.swarm_json = '[]'::jsonb THEN EXCLUDED.swarm_json
         ELSE trip_captures.swarm_json
-      END`,
+      END
+    WHERE trip_captures.install_id = EXCLUDED.install_id`,
     [
       dossier.runId,
       dossier.installId,
@@ -174,7 +194,29 @@ export async function saveSwarmFindings(
       features_json, research_json, swarm_json
     ) VALUES ($1, $2, 1, $3, $4::timestamptz, 1, '{}'::jsonb, '{}'::jsonb, NULL,
       '[]'::jsonb, '{}'::jsonb, '[]'::jsonb, $5)
-    ON CONFLICT (run_id) DO UPDATE SET swarm_json = EXCLUDED.swarm_json`,
+    ON CONFLICT (run_id) DO UPDATE SET swarm_json = (
+      SELECT COALESCE(jsonb_agg(merged.value ORDER BY merged.worker), '[]'::jsonb)
+      FROM (
+        SELECT DISTINCT ON (candidate.value->>'worker')
+          candidate.value,
+          candidate.value->>'worker' AS worker
+        FROM (
+          SELECT entry.value, 0 AS priority
+          FROM jsonb_array_elements(
+            CASE WHEN jsonb_typeof(trip_captures.swarm_json) = 'array'
+              THEN trip_captures.swarm_json ELSE '[]'::jsonb END
+          ) AS entry
+          UNION ALL
+          SELECT entry.value, 1 AS priority
+          FROM jsonb_array_elements(
+            CASE WHEN jsonb_typeof(EXCLUDED.swarm_json) = 'array'
+              THEN EXCLUDED.swarm_json ELSE '[]'::jsonb END
+          ) AS entry
+        ) AS candidate
+        ORDER BY candidate.value->>'worker', candidate.priority DESC
+      ) AS merged
+    )
+    WHERE trip_captures.install_id = EXCLUDED.install_id`,
     [runId, installId, ENGINE_VERSION, createdAt, JSON.stringify(findings)],
   );
 }
@@ -251,7 +293,7 @@ export async function listTrips(
      WHERE install_id = $1 AND request_json <> '{}'::jsonb
      ORDER BY created_at DESC
      LIMIT $2`,
-    [installId, limit],
+    [installId, boundedLimit(limit)],
   );
   return result.rows
     .map(toRow)
@@ -294,7 +336,10 @@ export async function captureCounts(): Promise<{
 
 /**
  * Exports labeled rows for offline training. A row without a label is skipped, never
- * treated as a negative.
+ * treated as a negative. Mock plans are skipped too: they exist only for tests and
+ * inspection and must never be able to masquerade as observed outcomes. Rows written
+ * under another data schema or engine version are skipped until a migration maps them
+ * explicitly, because their offsets mean something different.
  */
 export async function exportTrainingRows(): Promise<TrainingRow[]> {
   await ensureSchema();
@@ -302,7 +347,12 @@ export async function exportTrainingRows(): Promise<TrainingRow[]> {
     `SELECT run_id, install_id, created_at, request_json, engine_json,
       features_json, dose_json, label_flare
      FROM trip_captures
-     WHERE label_flare IS NOT NULL`,
+     WHERE label_flare IS NOT NULL
+       AND schema_version = $1
+       AND engine_version = $2
+       AND request_json <> '{}'::jsonb
+       AND (plan_json IS NULL OR plan_json->>'mock' IS DISTINCT FROM 'true')`,
+    [DATA_SCHEMA_VERSION, ENGINE_VERSION],
   );
   return result.rows
     .map(toRow)
@@ -370,7 +420,7 @@ export async function listModelRuns(limit = 10): Promise<ModelRunSummary[]> {
   const result = await getPool().query(
     `SELECT model_version, trained_at, source, n, events, metrics_json
      FROM model_runs ORDER BY trained_at DESC LIMIT $1`,
-    [limit],
+    [boundedLimit(limit)],
   );
   return result.rows.flatMap((value: unknown) => {
     if (!isRecord(value)) return [];
