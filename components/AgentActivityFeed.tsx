@@ -44,7 +44,7 @@ export function AgentActivityFeed({ log }: { log: readonly PlannerLogEntry[] }) 
               <span className="t-data-sm shrink-0 text-ink">
                 {NAMES.get(entry.agentId) ?? "Planner"}
               </span>
-              <span className="t-small min-w-0 flex-1 text-muted [overflow-wrap:anywhere]">
+              <span className="t-small mt-1 basis-full min-w-0 text-muted [overflow-wrap:anywhere] md:mt-0 md:basis-auto md:flex-1">
                 {entry.text}
               </span>
             </li>

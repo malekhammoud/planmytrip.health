@@ -6,7 +6,7 @@ export type ButtonVariant = "primary" | "accent" | "secondary" | "ghost";
 
 /**
  * Button sizes. `md` and `sm` are the general sizes; `lg` is 48px and exists
- * only for the constraint rail's Deploy action. Do not use `lg` elsewhere.
+ * only for the onboarding and build primary actions. Do not use `lg` elsewhere.
  */
 export type ButtonSize = "sm" | "md" | "lg";
 

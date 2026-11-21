@@ -124,6 +124,11 @@ export interface PlannerRequest {
   budget: BudgetLevel;
 }
 
+/** Complete trip configuration owned by the onboarding screen. */
+export interface TripConfig extends PlannerRequest {
+  hasSunLifeTravelCoverage: boolean;
+}
+
 /** Category used by map markers and pick lists. */
 export type PlaceCategory = "stay" | "eat" | "hike" | "visit" | "care";
 

@@ -33,9 +33,11 @@ function mappable(place: PlannerPlace): place is PlannerPlace & {
 export function TripMap({
   places,
   days,
+  visible = true,
 }: {
   places: readonly PlannerPlace[];
   days: readonly PlannerDay[];
+  visible?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Leaflet.Map | null>(null);
@@ -81,7 +83,8 @@ export function TripMap({
     const L = leafletRef.current;
     const map = mapRef.current;
     const layer = layerRef.current;
-    if (!ready || L === null || map === null || layer === null) return;
+    if (!ready || !visible || L === null || map === null || layer === null) return;
+    map.invalidateSize();
     layer.clearLayers();
 
     for (const [index, place] of mapped.entries()) {
@@ -123,7 +126,7 @@ export function TripMap({
       );
       map.fitBounds(bounds.pad(0.25), { maxZoom: 15 });
     }
-  }, [days, mapped, ready]);
+  }, [days, mapped, ready, visible]);
 
   if (mapped.length === 0) {
     return (
@@ -142,8 +145,10 @@ export function TripMap({
         role="region"
         aria-label="Map of selected stays, tables, hikes, visits, and care. Numbered markers match the list below."
       />
-      <div className="mt-2">
-        <p className="t-label text-muted">Mapped places</p>
+      <details className="mt-2 border-t border-hairline pt-2">
+        <summary className="t-small min-h-11 cursor-pointer text-muted">
+          Mapped places · {mapped.length}
+        </summary>
         <ol className="mt-2 grid list-none grid-cols-1 gap-x-6 p-0 md:grid-cols-2">
           {mapped.map((place, index) => (
             <li
@@ -164,7 +169,7 @@ export function TripMap({
             </li>
           ))}
         </ol>
-      </div>
+      </details>
       <figcaption className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1">
         {(["stay", "eat", "hike", "visit", "care"] as const).map((category) => (
           <span key={category} className="t-small flex items-center gap-2 text-muted">

@@ -46,10 +46,9 @@ function formatDuration(minutes: number): string {
 function KpiStrip({ plan, condition }: { plan: HealthTripPlan; condition: Condition }) {
   const profileLabel = CONDITION_LABELS[condition];
   const profileFloor = CONDITION_PROFILES[condition].residualRiskFloor;
-  // The 320px rail narrows the 1024px main column; stack there, three-up at 1280px.
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-      <div className="pb-6 md:pb-0 md:pr-4 lg:pb-6 lg:pr-0 xl:pb-0 xl:pr-4">
+    <div className="grid grid-cols-1 md:grid-cols-3">
+      <div className="pb-6 md:pb-0 md:pr-4">
         <Metric
           label="Health Safety Score"
           value={plan.healthSafetyScore}
@@ -63,7 +62,7 @@ function KpiStrip({ plan, condition }: { plan: HealthTripPlan; condition: Condit
           info={`Inputs for ${profileLabel}: profile floor ${profileFloor}/100, step and walking ceilings, planned daily load, exertion, recovery minutes, and trip length. Standard baseline: 10,000 steps, 8 km, exertion 2.2, no recovery.`}
         />
       </div>
-      <div className="border-t border-hairline py-6 md:border-l md:border-t-0 md:px-4 md:py-0 lg:border-l-0 lg:border-t lg:px-0 lg:py-6 xl:border-l xl:border-t-0 xl:px-4 xl:py-0">
+      <div className="border-t border-hairline py-6 md:border-l md:border-t-0 md:px-4 md:py-0">
         <Metric
           label="Daily Step Ceiling"
           value={formatCount(plan.dailyStepCeiling)}
@@ -71,7 +70,7 @@ function KpiStrip({ plan, condition }: { plan: HealthTripPlan; condition: Condit
           sub="Hard limit per day for this profile"
         />
       </div>
-      <div className="border-t border-hairline pt-6 md:border-l md:border-t-0 md:pl-4 md:pt-0 lg:border-l-0 lg:border-t lg:pl-0 lg:pt-6 xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0">
+      <div className="border-t border-hairline pt-6 md:border-l md:border-t-0 md:pl-4 md:pt-0">
         <Metric
           label="Flare / ER Risk Reduction"
           value={plan.riskReductionPct}

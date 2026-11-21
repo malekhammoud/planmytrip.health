@@ -1,20 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { AgentPlanner } from "@/components/AgentPlanner";
-import { AgentSwarmMonitor } from "@/components/AgentSwarmMonitor";
-import { ConstraintSidebar } from "@/components/ConstraintSidebar";
-import { CareCardButton, ItineraryBoard } from "@/components/ItineraryBoard";
-import { SectionHeader } from "@/components/ui";
-import type { BudgetLevel } from "@/lib/agent/agentTypes";
-import { describeTrip } from "@/lib/describeTrip";
-import {
-  buildHealthTripPlan,
-  checkSunLifeCoverage,
-  DEFAULT_MEDICATION_BY_CONDITION,
-  type HealthTripPlan,
-} from "@/lib/healthTripEngine";
-import type { Condition } from "@/lib/types";
+import { useMemo, useState } from "react";
+import { Onboarding } from "@/components/Onboarding";
+import { PlanWorkspace } from "@/components/PlanWorkspace";
+import { buildHealthTripPlan, type HealthTripPlan } from "@/lib/healthTripEngine";
+import type { TripConfig } from "@/lib/agent/agentTypes";
+import { DEFAULT_TRIP } from "@/lib/onboarding";
 
 const SISTER_PRODUCT_URL = "https://ismytripsafe.com";
 
@@ -71,194 +62,60 @@ function SiteFooter() {
 }
 
 /**
- * PlanMyTrip.health home page. It owns every planner input and composes the rail,
- * the headline, and the two result sections. The engine runs only when a
- * destination is present; the Sun Life alert is always derived so the rail stays
- * live while the destination field is empty.
+ * Two screens, one client session. Onboarding collects the trip and health profile;
+ * the workspace keeps both agent teams mounted while the user moves between Plan,
+ * Pacing, Verification, and Team. Editing returns to onboarding without discarding a
+ * running workspace, so Back to plan restores it exactly.
  */
 export default function Home() {
-  const [destination, setDestination] = useState("Tokyo, Japan");
-  const [days, setDays] = useState(4);
-  const [condition, setCondition] = useState<Condition>("asthma_respiratory");
-  const [medication, setMedication] = useState(
-    DEFAULT_MEDICATION_BY_CONDITION.asthma_respiratory,
-  );
-  const [medicationTouched, setMedicationTouched] = useState(false);
-  const [interests, setInterests] = useState("");
-  const [budget, setBudget] = useState<BudgetLevel>("balanced");
-  const [hasSunLifeTravelCoverage, setHasSunLifeTravelCoverage] = useState(false);
+  const [view, setView] = useState<"onboarding" | "workspace">("onboarding");
+  const [trip, setTrip] = useState<TripConfig | null>(null);
   const [deployNonce, setDeployNonce] = useState(0);
-  const [railOpen, setRailOpen] = useState(true);
-
-  // A closed mobile panel must not hide the rail after a resize to desktop,
-  // where its summary is hidden. Force it open whenever 1024px is matched.
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 1024px)");
-    const sync = () => {
-      if (media.matches) setRailOpen(true);
-    };
-    sync();
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
-  }, []);
 
   const plan = useMemo<HealthTripPlan | null>(() => {
-    if (destination.trim().length === 0) return null;
+    if (trip === null) return null;
     return buildHealthTripPlan({
-      destination,
-      days,
-      condition,
-      medication,
-      hasSunLifeTravelCoverage,
+      destination: trip.destination,
+      days: trip.days,
+      condition: trip.condition,
+      medication: trip.medication,
+      hasSunLifeTravelCoverage: trip.hasSunLifeTravelCoverage,
     });
-  }, [destination, days, condition, medication, hasSunLifeTravelCoverage]);
+  }, [trip]);
 
-  const sunLifeAlert = useMemo(
-    () =>
-      plan ? plan.sunLifeAlert : checkSunLifeCoverage(days, hasSunLifeTravelCoverage),
-    [plan, days, hasSunLifeTravelCoverage],
-  );
-
-  const headline = describeTrip({ destination, days, condition });
-
-  /**
-   * A condition change seeds the generic medication name only while the user has
-   * not edited the field. Once touched, the typed value survives every change.
-   */
-  function handleConditionChange(next: Condition) {
-    setCondition(next);
-    if (!medicationTouched) {
-      setMedication(DEFAULT_MEDICATION_BY_CONDITION[next]);
-    }
-  }
-
-  function handleMedicationChange(next: string) {
-    setMedication(next);
-    setMedicationTouched(true);
-  }
-
-  function handleDeploy() {
+  function handleBuild(config: TripConfig): void {
+    setTrip(config);
     setDeployNonce((nonce) => nonce + 1);
+    setView("workspace");
   }
 
   return (
     <div className="flex min-h-dvh flex-col">
       <SiteHeader />
 
-      <main className="flex-1">
-        <div className="page-container pt-16 md:pt-24 lg:pt-6">
-          <div className="lg:grid lg:grid-cols-[320px_1px_minmax(0,1fr)] lg:gap-16">
-            <aside className="mb-16 border-b border-hairline pb-10 md:mb-24 lg:sticky lg:top-[88px] lg:mb-0 lg:max-h-[calc(100vh_-_112px)] lg:self-start lg:overflow-y-auto lg:border-b-0 lg:px-1 lg:pb-0">
-              <details
-                open={railOpen}
-                onToggle={(event) => setRailOpen(event.currentTarget.open)}
-              >
-                <summary className="mb-6 min-h-11 cursor-pointer break-words t-body text-ink [overflow-wrap:anywhere] lg:hidden">
-                  {headline}
-                </summary>
-                <div className="lg:block">
-                  {/* The rail owns no state; page state flows in and changes flow out. */}
-                  <ConstraintSidebar
-                    destination={destination}
-                    days={days}
-                    condition={condition}
-                    medication={medication}
-                    interests={interests}
-                    budget={budget}
-                    hasSunLifeTravelCoverage={hasSunLifeTravelCoverage}
-                    sunLifeAlert={sunLifeAlert}
-                    onDestinationChange={setDestination}
-                    onDaysChange={setDays}
-                    onConditionChange={handleConditionChange}
-                    onMedicationChange={handleMedicationChange}
-                    onInterestsChange={setInterests}
-                    onBudgetChange={setBudget}
-                    onCoverageChange={setHasSunLifeTravelCoverage}
-                    onDeploy={handleDeploy}
-                  />
-                </div>
-              </details>
-            </aside>
-
-            <div aria-hidden="true" className="hidden bg-hairline lg:block" />
-
-            <div className="min-w-0">
-              <h1 className="t-display measure break-words">{headline}</h1>
-              <p className="t-body mt-6 text-muted">
-                Conservative planning limits. Not medical advice.
-              </p>
-
-              <section aria-labelledby="concierge-heading">
-                <SectionHeader
-                  id="concierge-heading"
-                  index="01"
-                  title="Concierge"
-                />
-                <p className="t-body measure mb-6 text-muted">
-                  A specialist team researches the trip. The lead concierge sequences
-                  verified stays, tables, trails, transit, and care into a paced route.
-                </p>
-                <AgentPlanner
-                  destination={destination}
-                  days={days}
-                  condition={condition}
-                  medication={medication}
-                  interests={interests}
-                  budget={budget}
-                  runToken={deployNonce}
-                  onReplan={handleDeploy}
-                />
-              </section>
-
-              <section aria-labelledby="pacing-heading">
-                <SectionHeader
-                  id="pacing-heading"
-                  index="02"
-                  title="Pacing"
-                  action={
-                    plan === null ? undefined : (
-                      <CareCardButton
-                        destination={destination}
-                        condition={condition}
-                        medication={medication}
-                        plan={plan}
-                      />
-                    )
-                  }
-                />
-                {plan === null ? (
-                  <p className="t-small text-muted">
-                    Add a destination to build a paced itinerary.
-                  </p>
-                ) : (
-                  <ItineraryBoard
-                    plan={plan}
-                    destination={destination}
-                    condition={condition}
-                    medication={medication}
-                  />
-                )}
-              </section>
-
-              <section aria-labelledby="verification-heading">
-                <SectionHeader
-                  id="verification-heading"
-                  index="03"
-                  title="Verification"
-                />
-                <div id="agent-swarm-mount">
-                  <AgentSwarmMonitor
-                    destination={destination}
-                    condition={condition}
-                    medication={medication}
-                    runToken={deployNonce}
-                  />
-                </div>
-              </section>
-            </div>
-          </div>
+      <div className="flex-1">
+        <div id="onboarding-screen" hidden={view !== "onboarding"}>
+          <Onboarding
+            initial={trip ?? DEFAULT_TRIP}
+            onComplete={handleBuild}
+            onCancel={trip === null ? undefined : () => setView("workspace")}
+          />
         </div>
-      </main>
+
+        {trip !== null && plan !== null ? (
+          <div id="workspace-screen" hidden={view !== "workspace"}>
+            <PlanWorkspace
+              key={deployNonce}
+              trip={trip}
+              plan={plan}
+              runToken={deployNonce}
+              visible={view === "workspace"}
+              onEditTrip={() => setView("onboarding")}
+              onReplan={() => setDeployNonce((nonce) => nonce + 1)}
+            />
+          </div>
+        ) : null}
+      </div>
 
       <SiteFooter />
     </div>

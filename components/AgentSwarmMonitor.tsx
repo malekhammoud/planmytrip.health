@@ -191,7 +191,7 @@ export function AgentSwarmMonitor({
               </p>
               {inputsChanged ? (
                 <p className="t-small text-caution">
-                  Inputs changed since this run. Deploy again to verify.
+                  Inputs changed since this run. Plan again to verify.
                 </p>
               ) : null}
             </div>

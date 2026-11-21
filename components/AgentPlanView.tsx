@@ -21,7 +21,13 @@ function generated(ts: string): string {
 }
 
 /** Finished concierge plan: summary, map, day plan, picks, safety, and sources. */
-export function AgentPlanView({ plan }: { plan: AgentTripPlan }) {
+export function AgentPlanView({
+  plan,
+  visible = true,
+}: {
+  plan: AgentTripPlan;
+  visible?: boolean;
+}) {
   const outside = plan.days.filter((day) => !day.withinCaps);
   return (
     <div>
@@ -57,7 +63,7 @@ export function AgentPlanView({ plan }: { plan: AgentTripPlan }) {
       ) : null}
 
       <div className="mt-8">
-        <TripMap places={plan.places} days={plan.days} />
+        <TripMap places={plan.places} days={plan.days} visible={visible} />
       </div>
 
       <section className="mt-12" aria-labelledby="concierge-days">

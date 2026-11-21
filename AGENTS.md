@@ -36,6 +36,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 7. KPI strip and paced itinerary | [x] | `feat(ui): add safety KPIs, paced itinerary cards, and care card export` |
 | 8. Documentation and identity audit | [x] | `docs(agents): finalize AGENTS.md for future coding agents` |
 | 9. Agentic concierge and trip map | [x] | `feat(planner): add OpenCode concierge team and trip map` |
+| 10. Onboarding and tabbed workspace | [x] | `feat(ui): add onboarding flow and tabbed trip workspace` |
 
 ## 3. Commands
 
@@ -90,20 +91,21 @@ lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditi
       agent: agentTypes.ts (wire contracts), agentRequest.ts, agentProfiles.ts, agentPrompts.ts, agentConfig.ts, agentClient.ts, agentRunner.ts, agentSession.ts, agentParse.ts, agentPlanParse.ts, agentFallback.ts, agentGeocode.ts, agentEvents.ts, agentMock.ts, plannerReducer.ts
       output: describeTrip.ts, pacingStrip.ts, careCard.ts
 hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
-components/  AgentPlanner.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, TripMap.tsx, AgentSwarmMonitor.tsx, ConstraintSidebar.tsx, ItineraryBoard.tsx, PacingStrip.tsx, WorkerFindings.tsx, WorkerLivePanel.tsx
-components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Field.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
+components/  Onboarding.tsx, PlanWorkspace.tsx, PlanPanel.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, TripMap.tsx, AgentSwarmMonitor.tsx, ItineraryBoard.tsx, PacingStrip.tsx, WorkerFindings.tsx, WorkerLivePanel.tsx
+components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Field.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TabBar.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths), tabOrder.ts (nextTabIndex)
 tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, agent-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
-module tests  lib/: careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; hooks/: swarmFrames.test.ts, plannerFrames.test.ts
+module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts, tabOrder.test.ts; hooks/: swarmFrames.test.ts, plannerFrames.test.ts
 root  package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
 ```
 
-Data flow: page state -> `buildHealthTripPlan` (pure, memoized) -> plan and Sun Life alert;
-Deploy increments `deployNonce`, so `AgentPlanner` POSTs `/api/agent-plan` and
-`AgentSwarmMonitor` POSTs `/api/travel-swarm` with the same token. Planner events flow through
-`useAgentPlan`/`plannerFrames`/`plannerReducer` into the roster, live log, map, and plan;
-TinyFish events flow through `useSwarm`/`swarmReducer` into columns, iframes, and findings.
-The engine plan feeds `ItineraryBoard` and supplies every concierge day with its step and
-walking ceiling. The engine and the safety envelope render independently of both agent teams.
+Data flow: `Onboarding` collects a `TripConfig`; the page normalizes it, increments
+`deployNonce`, and reveals `PlanWorkspace`. The page memoizes `buildHealthTripPlan` and passes
+the engine plan to the workspace. `PlanWorkspace` calls `useAgentPlan`, which POSTs
+`/api/agent-plan`; `AgentSwarmMonitor` POSTs `/api/travel-swarm` with the same token. Planner
+events flow through `plannerFrames`/`plannerReducer` into the roster, live log, map, and Plan
+tab; TinyFish events flow through `useSwarm`/`swarmReducer` into the Verification tab. The
+engine plan feeds Pacing and supplies every concierge day with its step and walking ceiling.
+The engine and the safety envelope render independently of both agent teams.
 
 ### Agentic concierge
 
@@ -139,15 +141,17 @@ request per second, with an identifying User-Agent; it never guesses a location 
 resolved place `geocoded: true`. The fallback map lists only verified or geocoded coordinates.
 
 `TripMap` is a client-only Leaflet view with grayscale OSM tiles, category-shaped numbered
-markers, a 44px hit area, one dashed route per day, a category legend, a numbered key, and the
-required attribution. The Leaflet flag prefix is disabled. Tiles and geocoding are production
-dependencies with licences to verify; see section 9.
+markers, a 44px hit area, one dashed route per day, a category legend, a collapsed numbered key,
+and the required attribution. The Leaflet flag prefix is disabled. Tiles and geocoding are
+production dependencies with licences to verify; see section 9.
 
-The planned UI puts the finished plan first, with the roster collapsed under "Research team".
-While the run is live, the roster and bounded activity log lead; the safety-envelope Pacing
-section stays below. `AgentPlanView` labels every day with agent estimate, modeled ceiling,
-recovery minutes, and the engine checkpoint; a day above its ceiling shows a caution and the
-Pacing limit wins.
+The workspace is tabbed, not one long report. `Plan` leads with the finished concierge plan;
+while the run is live it carries the roster and bounded activity log. `Pacing` holds the engine
+safety envelope and care card. `Verification` holds the three TinyFish columns. `Team` holds the
+full seven-agent roster and log. All four panels stay mounted so both streams continue while the
+user changes tabs; inactive panels use `hidden`. `AgentPlanView` labels every day with agent
+estimate, modeled ceiling, recovery minutes, and the engine checkpoint; a day above its ceiling
+shows a caution and the Pacing limit wins.
 
 ### Biological pacing engine
 
@@ -176,37 +180,45 @@ add a generic medication name and `CONDITION_CHECKPOINTS` entry; update this tab
 section 9; run both engine test files. Exhaustive `Record<Condition, ...>` types fail
 typecheck until complete.
 
-### Home page and constraint rail
+### Onboarding and tabbed workspace
 
-`app/page.tsx` owns every planner input: destination, days (4; slider 2-7), condition,
-medication, `medicationTouched`, interests, `budget` (balanced), `hasSunLifeTravelCoverage`,
-`deployNonce` (0), `railOpen` (true; mobile panel). The plan is memoized only while the
-destination is non-empty; otherwise the alert comes from `checkSunLifeCoverage`. A condition
-change rewrites the default medication only while `medicationTouched` is false.
-`ConstraintSidebar` is stateless: values, alert, callbacks, and `onDeploy` in; Deploy increments
-`deployNonce`, which both `AgentPlanner` and `AgentSwarmMonitor` receive as `runToken`.
-`describeTrip` builds the headline. Section 01 Concierge renders `AgentPlanner`; section 02
-Pacing puts `CareCardButton` in the SectionHeader action and `ItineraryBoard` below; section 03
-Verification renders `AgentSwarmMonitor`. An empty destination keeps a designed empty message
-and never deploys. The rail's primary action reads "Plan my trip"; inputs and the budget feed
-the concierge prompts, not the deterministic engine.
+`app/page.tsx` owns only three things: `view` (`onboarding` or `workspace`), `trip`
+(`TripConfig | null`), and `deployNonce`. It memoizes `buildHealthTripPlan` from the current
+trip. `Onboarding` owns its draft, two steps, `medicationTouched`, and validation. The page
+renders both screens and hides the inactive one with `hidden`, so editing never discards a
+running workspace. `onComplete` normalizes the draft, sets the trip, increments `deployNonce`,
+and reveals the workspace; `onCancel` resets the draft and returns to the running workspace.
+The workspace is keyed by `deployNonce`, so a new build or replan remounts it on the Plan tab
+and aborts older streams.
 
-Deploying runs the concierge and the three live risk checks concurrently. The engine safety
-envelope is already visible before either team finishes.
+`Onboarding` is one focused screen, not a rail. Step 01 collects destination (the only hard
+gate), duration, budget, and optional preferences. Step 02 collects condition, medication
+(name only), Sun Life coverage, the live coverage alert, and a review sentence. The left column
+explains the three jobs; the right column is a 420px form on desktop and stacks below at 1024.
+There is no deploy action before the form is complete. The draft helpers live in
+`lib/onboarding.ts` and are pure-tested.
 
-Below 1024 the rail is a controlled `<details open>` above the main column, summary = trip
-sentence. At 1024+ it is `320px / 1px / fluid` with 64px gaps; the rail is sticky at
-`top: 88px`, scrolls, and is at most `calc(100vh - 112px)` tall. The sister link is in the
-header from 640px, footer below. Gutters 24/40px; section gaps 64/96px from 768px; the footer
-sits 64px/96px below.
+`PlanWorkspace` is the result screen: a trip summary, Edit trip and Plan again actions, and
+four ruled tabs — Plan, Pacing, Verification, Team. The TabBar primitive owns the roving focus
+and arrow, Home, and End keys; the active tab is a 2px accent underline, never a pill. All
+panels stay mounted with `hidden` so `useAgentPlan` and `useSwarm` keep streaming while the user
+moves between tabs. `TripMap` receives `visible` and calls `invalidateSize` when the Plan tab
+returns; a hidden page-level workspace also passes `visible=false`. Plan leads with the
+concierge plan or the live roster; Pacing carries `CareCardButton` and `ItineraryBoard`;
+Verification carries `AgentSwarmMonitor`; Team carries the full roster and log.
+
+The sister link is in the header from 640px and in the footer below. Gutters are 24/40px; the
+footer sits 64px/96px below. The onboarding split is `1fr / 420px` with 80px gap at 1024+; the
+workspace summary wraps its actions below the trip sentence on narrow screens. Tabs use
+`min-h-11`, fit 375px without horizontal scroll, and stay keyboard reachable.
 
 ### Agent swarm monitor
 
-`AgentSwarmMonitor` receives destination, condition, medication, and `runToken` (0 before
-Deploy); token 0 shows the empty state and never fetches. A new token with a destination
+`AgentSwarmMonitor` receives destination, condition, medication, and `runToken` (0 before the
+first plan run); token 0 shows the empty state and never fetches. A new token with a destination
 resets all workers, snapshots input, and starts; Retry reuses that snapshot with one worker.
 It shows "Last run: destination, condition, medication" and warns "Inputs changed since this
-run. Deploy again to verify." when inputs differ.
+run. Plan again to verify." when inputs differ.
 
 Worker state machine (pure `lib/swarmReducer.ts`):
 
@@ -236,8 +248,7 @@ retrieved time, and a raw JSON toggle.
 `ItineraryBoard` derives everything from `plan`; agent results never feed it. The KPI strip
 shows Health Safety Score (`/100`, baseline compare bars), Daily Step Ceiling (`steps`), and
 Flare / ER Risk Reduction (`%`), both modeled figures with a "Modeled estimate" sub-line and
-an input tooltip. It is three-up at 768-1023px and 1280px+, and stacks below 768px and at
-1024-1279px.
+an input tooltip. It is three-up from 768px and stacks below that width.
 
 Each day is a hairline row, not a card: a 64px day number using `.t-metric-day`, title, pacing
 rule, strip, block list, and accent-soft checkpoint. A 160px column carries step and walk caps
@@ -281,7 +292,13 @@ control outside `components/ui` and carries a `design-guard-ignore` comment.
   markers. There are no stock images, flags, or decorative illustrations. Tile and geocode
   providers are licence dependencies, not app assets.
 - **Primitive-only UI:** compose `components/ui`; raw form controls live only there. Button
-  `lg` (48px) exists only for Deploy.
+  `lg` (48px) exists for the onboarding primary action and the workspace build action.
+- **Two screens, one session:** onboarding and workspace are view states, not routes, so a
+  running plan survives Edit trip and Back to plan. The workspace is keyed by `deployNonce` to
+  reset the active tab and streams on a new build.
+- **Tabs keep streams alive:** `TabBar` is a primitive with roving focus; every workspace panel
+  is mounted and toggled with `hidden`. Do not conditionally unmount Verification or the
+  workspace during editing, or the live TinyFish and concierge requests abort.
 - **No CSS modules:** the Tailwind Turbopack loader returns empty class-name exports, so
   `.slider-range`, `.skeleton-pulse`, `.status-pulse`, and `.t-metric-day` live in
   `app/globals.css`. Do not add CSS modules.
@@ -352,8 +369,9 @@ Tailwind text sizes, raw hex in components.
 
 WCAG AA contrast. Every control is keyboard reachable and labelled; tap targets at least 44px.
 No text under 13px except 11px mono labels. Every async surface has designed empty, loading,
-error, and success states. Copy is calm, specific, sentence case, without exclamation marks or
-emoji; sentences stay under 20 words. Numbers carry units. `healthSafetyScore` and
+error, and success states. Workspace tabs use `role="tablist"/"tab"/"tabpanel"`, roving focus,
+and arrow, Home, and End keys. Copy is calm, specific, sentence case, without exclamation marks
+or emoji; sentences stay under 20 words. Numbers carry units. `healthSafetyScore` and
 `riskReductionPct` are always labelled "Modeled estimate" with a tooltip listing inputs.
 
 ### Guard tests
@@ -488,7 +506,7 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 238 tests.
+`npm test` runs Vitest once in a Node environment. The suite has 245 tests.
 
 - `tests/design-guard.test.ts` and `tests/contrast.test.ts` guard styles and 13 WCAG AA token
   pairs; `tests/smoke.test.ts` covers the five conditions.
@@ -499,8 +517,9 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
   `tests/swarm-runner*.test.ts` cover parsing, mapping, schemas, normalisation, missing key,
   isolation, retries, mock, timeout, abort, and swarm_done. All network is mocked.
 - `lib/swarmReducer*.test.ts`, `hooks/swarmFrames.test.ts`, `lib/pacingStrip.test.ts`,
-  `lib/careCard.test.ts`, `lib/describeTrip.test.ts`, and `components/ui/*.test.ts` cover
-  transitions, the idle gate, allowlists, geometry, exact care-card text, and headline.
+  `lib/careCard.test.ts`, `lib/describeTrip.test.ts`, `lib/onboarding.test.ts`, and
+  `components/ui/*.test.ts` cover transitions, the idle gate, allowlists, geometry, exact
+  care-card text, the onboarding gate and normalization, tab keyboard order, and headline.
 - `lib/agent/*.test.ts` covers request bounds, assistant-text and JSON parsing, specialist
   normalisation, coordinate validation, concierge plan building and wire normalisation, the
   fallback route, prompt safety and limits, tool-activity humanisation, geocoding, and planner
@@ -540,9 +559,8 @@ exempting lines.
   provide and supervise that service.
 - Geocoding is covered by mocked fetch tests; the live Nominatim pass has not been exercised
   against a real agent plan. Public OSM tiles and Nominatim are not production-scale endpoints.
-- The concierge plan is rendered from the current SSE run only; it is not persisted across a
-  reload, and there is no account, payment, booking, or rate limiting yet. Those are product
-  work beyond this step.
+- The concierge plan is rendered from the current SSE run only. There is no account, payment,
+  booking, or rate limiting yet; those are product work beyond this step.
 - Consent and privacy: the destination, condition, medication name, and preferences are sent
   to the configured OpenCode model provider; place queries go to Nominatim. Add explicit
   consent, retention, and privacy copy before charging users.
@@ -551,9 +569,10 @@ exempting lines.
 - The user-owned `README.md` is untouched; this guide is the working file. Light theme only;
   tokens allow a dark theme later.
 - The engine invents no venues or geography. The concierge only selects from verified research.
-- The mobile `<details>` summary repeats the trip sentence; this is the Step 5 contract.
-- The KPI strip stacks at 1024-1279px because the 320px rail leaves too little width for
-  three 72px metrics; it is three-up at 768-1023px and 1280px+.
+- Screen state is in memory only: a reload returns to onboarding and ends both streams. There is
+  no route for a shared or saved plan yet.
+- The old rail and `ConstraintSidebar` were removed. The onboarding draft is the only input
+  surface; do not reintroduce a permanent sidebar without revisiting the split-screen layout.
 
 ## 13. How to work here
 

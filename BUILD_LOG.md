@@ -215,7 +215,7 @@ None.
   coordinate validation, concierge plan building, wire normalization, fallback, prompts,
   activity humanization, geocoding including fallback, reducer transitions, frame guards, and
   the full mock SSE route. All network is mocked.
-- Gate: typecheck, 233 tests, lint, production build pass. Browser checks: 375/1280 layout,
+- Gate: typecheck, 238 tests, lint, production build pass. Browser checks: 375/1280 layout,
   mock concierge run, 13 numbered map markers, 44px marker hit areas, five legend dots, map
   key, bottom-left attribution, plan-above-roster view, no console errors. A stale Turbopack
   stylesheet cache hid the new legend until `.next` was cleared. The dev server re-added the
@@ -223,6 +223,35 @@ None.
 - Unverified: live re-run of the hardened JSON parser and geocode fallback, a 7-of-7 live
   agent pass, full live map rendering, production tile/Nominatim licences, and a real OpenCode
   service supervised in production.
+
+### Step 10: onboarding and tabbed workspace
+
+- Replaced the permanent constraint rail and the single 12,000px results page with two
+  screens. `Onboarding` is a two-step form: destination, duration, budget, and preferences,
+  then condition, medication, coverage, the live Sun Life alert, and a review sentence. The
+  primary action reads Continue, then Build my plan. `lib/onboarding.ts` holds the pure draft
+  gate and normalization.
+- Replaced the results page with `PlanWorkspace`: a trip summary, Edit trip and Plan again
+  actions, and four ruled tabs — Plan, Pacing, Verification, Team. The new `TabBar` primitive
+  has roving focus and arrow, Home, and End keys; the active tab is an accent underline, not a
+  pill. All panels stay mounted and toggle with `hidden`, so both SSE streams keep running.
+- The Plan tab leads with the finished concierge plan or the live roster and activity log.
+  Pacing carries the safety envelope and care card. Verification carries the TinyFish columns.
+  Team carries the full roster and log. The plan map receives `visible` and calls
+  `invalidateSize` when the tab or the workspace returns; its numbered key is a collapsed
+  details block.
+- Editing returns to onboarding without discarding the running workspace; Back to plan resets
+  the draft and restores the workspace. The workspace is keyed by `deployNonce`, so a new build
+  or replan remounts on Plan and aborts older streams. The KPI strip is now three-up from 768px
+  because the rail no longer narrows the column. Removed `ConstraintSidebar` and `AgentPlanner`.
+- Added 7 tests (245 total): onboarding draft gate and normalization, plus tab keyboard order.
+  Browser checks: onboarding at 375/1280, step 2, mock workspace at 375/1280, all four tabs,
+  Plan → Pacing → Plan map resize, Edit trip / Back to plan state preservation, no console
+  errors, no horizontal scroll, tabs fit 375px.
+- Gate: typecheck, 245 tests, lint, production build pass. The Next.js dev server re-added its
+  agent-rules block to AGENTS.md.
+- Unverified: live 7-of-7 agent run with the hardened parser and geocode fallback; production
+  deployment of the new screens.
 
 ## Next action
 

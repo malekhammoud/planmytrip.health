@@ -2,7 +2,7 @@
  * Pure state machine for the concierge planner board.
  *
  * Inputs: run lifecycle, agent activity, and plan actions forwarded by useAgentPlan.
- * Outputs: an immutable PlannerState for AgentPlanner.
+ * Outputs: an immutable PlannerState for PlanWorkspace, PlanPanel, and AgentTeamPanel.
  * Invariants: one run token owns its state; activity is bounded; planner_done never
  * erases a ready plan; malformed frames never reach the reducer.
  */
