@@ -632,6 +632,17 @@ thresholds and Sun Life stability window remain VERIFY.
 - Gate: typecheck, 466 tests (439 passed, 27 database tests skipped without `DATABASE_URL`),
   lint, production build pass.
 
+### Pitch deck architecture and ML pass (2026-11-21)
+
+- Rebuilt the architecture slide as two loops: the live run (seven OpenCode agents, the route
+  optimizer, engine caps plus the tighten-only overlay, three TinyFish browsers) and the data
+  loop (dossier, outcome, PostgreSQL, the calibration model).
+- Added two appendix slides: the nested calibration model (prior offset, residual, isotonic,
+  tiers, ship gate) and the data asset (record, consent, scale ladder).
+- Removed tab language from the demo materials; the workspace is one page. Impact now reads
+  "Hours of research become seven minutes."
+- Gate: typecheck, 466 tests (439 passed, 27 skipped), lint, production build pass.
+
 ## Next action
 
 Run a consented pilot cohort against production PostgreSQL, confirm capture and outcome rows
