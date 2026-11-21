@@ -1,3 +1,9 @@
+/**
+ * TinyFish client and SSE parser tests.
+ *
+ * All fetch calls are mocked; no network or real API key is used.
+ */
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createSseParser } from "./sse";
 import {

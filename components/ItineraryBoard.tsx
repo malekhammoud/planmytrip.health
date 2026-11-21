@@ -12,7 +12,6 @@ import {
 } from "@/lib/healthTripEngine";
 import { CONDITION_LABELS, type Condition } from "@/lib/types";
 import { PacingStrip } from "./PacingStrip";
-
 /** Props for {@link ItineraryBoard}. */
 export interface ItineraryBoardProps {
   plan: HealthTripPlan;

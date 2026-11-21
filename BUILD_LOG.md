@@ -143,7 +143,18 @@ None.
 - Gate: typecheck, 179 tests, lint, production build pass.
 - Unverified: real TinyFish iframe/SSE, clipboard permissions, live key behavior.
 
+### Step 8: documentation and identity audit
+
+- Compressed AGENTS.md to 399 lines; corrected the file tree, test inventory, rail state,
+  monitor wording, reduced-motion and streaming_url claims; documented no-CSS-modules.
+- Added headers to three lib test modules and TSDoc to re-export blocks; fixed one stale
+  Step 6 comment; kept ItineraryBoard at 250 lines.
+- Identity: photo/flag/stoplight/score-card/gradient/shadow greps clean; 375px layout and
+  tap targets reviewed in source; design guard and 13 contrast pairs pass.
+- Gate: typecheck, 179 tests, lint, production build pass; dev server 200 and mock SSE
+  verified with curl after a background start. Lockfile unchanged.
+- Unverified: no live TinyFish run or real iframe/clipboard, as before.
+
 ## Next action
 
-Commit Step 6, then Step 7 with page wiring. Then run the Step 8 documentation and
-identity audit, compress AGENTS.md under 400 lines, final gate, final report.
+None. Final gate green; build complete.

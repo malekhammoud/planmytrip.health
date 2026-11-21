@@ -9,6 +9,7 @@
 
 import { HealthTripInputError, type SunLifeAlert } from "./healthTripTypes";
 
+/** Re-exported Sun Life alert types shared with the engine. */
 export type { SunLifeAlert, SunLifeSeverity } from "./healthTripTypes";
 
 // VERIFY: The pre-existing-condition stability window was NOT supplied. Confirm the

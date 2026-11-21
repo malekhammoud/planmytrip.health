@@ -13,6 +13,7 @@
 import { createSseParser, type SseMessage } from "./sse";
 
 export { createSseParser } from "./sse";
+/** Re-exported SSE parser types for existing imports. */
 export type { SseMessage, SseParser } from "./sse";
 
 /** The documented TinyFish SSE endpoint. */

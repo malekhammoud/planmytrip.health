@@ -1,3 +1,9 @@
+/**
+ * Worker schema, goal, placeholder-normalisation, and shared-rule tests.
+ *
+ * Uses the pure builders and normalisers only; no network.
+ */
+
 import { describe, expect, it } from "vitest";
 import { SUN_LIFE_RULES } from "./sunLifeRules";
 import * as swarmGoals from "./swarmGoals";

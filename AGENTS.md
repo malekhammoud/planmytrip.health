@@ -1,36 +1,28 @@
 # AGENTS.md
 
-The single source of truth for anyone, or any agent, working on PlanMyTrip.health.
-Read this file before touching code. Read `BUILD_LOG.md` for the current step and
-the reasons behind decisions. Update this file in the same commit as any change to
-commands, environment variables, layout, data flow, conventions, or limitations.
+The single source of truth for PlanMyTrip.health. Read this first, then `BUILD_LOG.md` for
+the current step and decisions. Update this file in the same commit as any change.
 
 ## 1. What this is
 
-PlanMyTrip.health is a health-first travel planner for people with medical conditions
-or health concerns. Users are patients and caregivers, often anxious, on a phone or
-a laptop. The product does two jobs:
+PlanMyTrip.health is a health-first travel planner for patients and caregivers, often
+anxious, on a phone or laptop. It does two jobs: generate a biologically paced itinerary
+from condition-specific limits, and verify travel risk with three parallel browser agents
+whose live sessions the user can watch.
 
-1. Generate a biologically paced itinerary from condition-specific physiological limits.
-2. Verify real-world travel risk with three parallel browser agents whose live sessions
-   the user can watch.
+It is a planning aid, never medical advice: a well-typeset clinical chart crossed with a Swiss
+timetable, typographic and ruled with hairlines. The pacing strip is the signature element.
+See section 7.
 
-The sister product is [IsMyTripSafe.com](https://ismytripsafe.com). That product is
-photo-led: hero photography, a postcard destination grid, flag emoji, 0 to 100 score
-cards, a green/yellow/red stoplight metaphor, and a search-first landing. PlanMyTrip.health
-deliberately shares none of that. There is no photography, illustration, emoji, flag,
-stoplight color or metaphor, score ring, verdict card, destination grid, centered hero,
-or search-first landing here.
-
-The concept is a well-typeset clinical chart crossed with a Swiss timetable:
-typographic, document-like, ruled with hairlines, generous whitespace. A printed care
-plan, not a SaaS dashboard. The signature element is the pacing strip: a per-day
-timeline of exertion bars and recovery blocks. See section 7 for the design system.
+Sister product [IsMyTripSafe.com](https://ismytripsafe.com) is photo-led (hero photography,
+destination grid, flag emoji, score cards, stoplight metaphor, search-first landing). This
+product shares none of it: no photography, illustration, emoji, flag, stoplight, score ring,
+verdict card, grid, centered hero, or search-first landing.
 
 ## 2. Status
 
-Steps are built and committed in order with the exact messages below. A checked step
-means the code, tests, and this file agree at that commit.
+One step per commit, in order, with these exact messages. A checked step means code, tests,
+and this file agree at that commit. Only the orchestrator commits.
 
 | Step | State | Commit message |
 | --- | --- | --- |
@@ -41,178 +33,71 @@ means the code, tests, and this file agree at that commit.
 | 5. Header, constraint rail, page layout | [x] | `feat(ui): add header and biological constraint sidebar` |
 | 6. Live agent swarm monitor | [x] | `feat(ui): add live TinyFish agent iframes and findings cards` |
 | 7. KPI strip and paced itinerary | [x] | `feat(ui): add safety KPIs, paced itinerary cards, and care card export` |
-| 8. Documentation and identity audit | [ ] Not built yet | `docs(agents): finalize AGENTS.md for future coding agents` |
-
-Current state: every product surface is built and wired: page shell, rail, engine KPI
-strip, paced itinerary, care card export, live 3-worker monitor with iframes and typed
-findings, mock mode, and tests. Step 8 is the documentation and identity audit.
+| 8. Documentation and identity audit | [x] | `docs(agents): finalize AGENTS.md for future coding agents` |
 
 ## 3. Commands
 
-Run everything from the repository root. All commands are non-interactive.
+Run these from the repository root; all are non-interactive.
 
 ```bash
-# Install. If NODE_ENV=production is set in your shell, npm omits dev dependencies,
-# so use --include=dev (TypeScript, ESLint, and Vitest are dev dependencies).
-npm install --include=dev
-
-# Develop
-npm run dev
-
-# Individual checks
-npm run typecheck     # tsc --noEmit
-npm test              # vitest run, never watch
-npm run lint          # eslint
-npm run build         # next build
-
-# Full gate, copy-pasteable
-npm run typecheck && npm test && npm run lint && npm run build
+npm install --include=dev   # dev deps need --include=dev when NODE_ENV=production
+npm run dev                 # next dev; background only during automation
+npm run typecheck           # tsc --noEmit
+npm test                    # vitest run, never watch
+npm run lint                # eslint
+npm run build               # next build
+npm run typecheck && npm test && npm run lint && npm run build   # full gate
 ```
 
-Never run `npm run dev` in the foreground during automation. Start it in the
-background with output in a log file, probe it with `curl --max-time`, then stop it.
-Use `vitest run`, never watch mode. Do not push.
+Never foreground the dev server during automation: use a background log, probe with
+`curl --max-time`, then stop it. Use `vitest run`. Do not push.
 
 ## 4. Environment
 
-| Variable | Where used | Behavior when missing |
+| Variable | Where used | When missing |
 | --- | --- | --- |
-| `TINYFISH_API_KEY` | Server only, `app/api/travel-swarm/route.ts` | Each worker reports `worker_error` with code `missing_api_key`; the stream still returns 200. Never log, echo, or commit it. |
-| `SWARM_MOCK` | Server only, swarm route | When `1` and `NODE_ENV !== "production"`, the route emits mock events carrying `mock: true`. Ignored in production. |
-| `NODE_ENV` | Next.js, swarm mock guard | Next sets it. Production disables mock mode. |
+| `TINYFISH_API_KEY` | Server only, `app/api/travel-swarm/route.ts` | Each worker emits `worker_error` code `missing_api_key`; the stream still returns 200. Never log, echo, or commit it. |
+| `SWARM_MOCK` | Server only, swarm route | Only when `1` and `NODE_ENV !== "production"`; mock events carry `mock: true`. Ignored in production. |
+| `NODE_ENV` | Next.js, swarm mock guard | Next sets it; production disables mock mode. |
 
-`.env.example` is committed and contains empty placeholders. `.env*` is ignored except
-`.env.example`. Never read, print, or commit a real `.env*` file. For local use:
-
-```bash
-cp .env.example .env.local
-# set TINYFISH_API_KEY in .env.local
-npm run dev
-```
+`.env.example` is committed; `.env*` is ignored except it. Never read, print, or commit a real
+`.env*` file. Local use: `cp .env.example .env.local`, set `TINYFISH_API_KEY`, run `npm run dev`.
 
 ## 5. Architecture
 
-Built now:
+Every tracked source file, annotated; `package-lock.json` and generated files
+(`next-env.d.ts`, `.next`, `tsconfig.tsbuildinfo`) are omitted by category.
 
 ```text
-app/
-  globals.css        Paper and Ink tokens, theme mapping, type classes, base styles
-  layout.tsx         Fontsource imports, metadata, html lang, body tokens
-  page.tsx           Client home page: planner state, memoized plan, letterhead,
-                     footer, rail, headline, itinerary and swarm monitor
-  api/travel-swarm/route.ts  Body validation, guarded SSE stream, runSwarm call
-lib/
-  describeTrip.ts             Pure headline sentence builder
-  describeTrip.test.ts        Exact sentence, trimming, empty fallback
-  swarmState.ts               Worker phases, state types, factories
-  swarmReducer.ts             Pure monitor reducer; re-exports state types
-  swarmReducer.test.ts        Transitions and reset paths
-  swarmReducerResults.test.ts Progress cap, findings, mock, done
-  pacingStrip.ts              Pure strip geometry and axis ticks
-  pacingStrip.test.ts         Non-overlap, bounds, total width, empty input
-  careCard.ts                 Deterministic plain-text export
-  careCard.test.ts            Exact format, normalization, fallbacks
-  sse.ts                      Pure buffering SSE parser (createSseParser)
-  tinyfish.ts                 TinyFish fetch client; re-exports the parser
-  tinyfishEvents.ts           Upstream TinyFish event to SwarmEvent mapping
-  swarmTypes.ts               Worker ids, body guard, findings, events, frame encoder
-  swarmGoals.ts               Sources, goals, output schemas, normalisers
-  swarmRunner.ts              Live/mock worker execution, timeouts, errors, swarm_done
-  swarmMock.ts                Dev-only mock findings and lifecycle
-  tinyfish.test.ts            Parser and client tests
-  tinyfishEvents.test.ts      Mapper fixtures, provenance, URL schemes
-  swarmGoals.test.ts          Schema, goal, placeholder, shared-rule tests
-  types.ts                    CONDITIONS, Condition, CONDITION_LABELS, isCondition
-  healthTripEngine.ts         Public entry: validation, buildHealthTripPlan, re-exports
-  healthTripTypes.ts          Inputs, typed error, profiles, blocks, days, plan, alerts
-  conditionProfiles.ts        CONDITION_PROFILES, DEFAULT_MEDICATION_BY_CONDITION,
-                              MEDICATION_DISCLAIMER
-  sunLifeRules.ts             SUN_LIFE_RULES, null stability placeholder,
-                              checkSunLifeCoverage
-  healthScore.ts              MODELED_LOAD_ASSUMPTIONS, modelDayLoad,
-                              computeHealthScores
-  itineraryBuilder.ts         PACING_POLICY, buildItinerary, blocks, checkpoints
-  healthTripEngine.test.ts    Condition/day matrix, caps, recovery, determinism
-  healthTripEngineRules.test.ts  Sun Life, validation, docs, module boundaries
-hooks/
-  useSwarm.ts                 Run-token lifecycle, input snapshot, abort, retry,
-                              Strict Mode guard
-  swarmStream.ts              POST and shared SSE stream consumption
-  swarmFrames.ts              Frame validation, preview allowlist, findings rebuilding
-  swarmFrames.test.ts         Preview allowlist and superseded-frame tests
-components/
-  AgentSwarmMonitor.tsx  Three worker columns, run-context snapshot, empty state,
-                         errors/retry, mock callout
-  WorkerLivePanel.tsx    Live/preparing 16:10 frame with a stable 28px bar
-  WorkerFindings.tsx     Typed DataRow findings, provenance, raw JSON toggle/copy
-  ItineraryBoard.tsx     KPI strip, day rows, CareCardButton
-  PacingStrip.tsx        Inline SVG strip, HTML axis, legend
-  ConstraintSidebar.tsx  Stateless rail: labeled fields, live Sun Life Callout,
-                         Deploy action, empty-destination guard
-  ui/                Paper and Ink primitives, all named exports from
-                     components/ui/index.ts: Button (sm, md, and Deploy-only lg),
-                     Field, TextInput, Select, Slider, Checkbox, StatusGlyph,
-                     SectionHeader, Metric, Callout, DataRow, Skeleton. Pure helpers:
-                     sliderFillPercent (sliderFill.ts) and metricBarWidths
-                     (metricBars.ts), unit-tested in components/ui/*.test.ts.
-                     Slider, Skeleton, and StatusGlyph use the global classes
-                     .slider-range, .skeleton-pulse, and .status-pulse in globals.css.
-tests/
-  healthTripFixtures.ts  Shared engine test input and helpers
-  design-guard.test.ts   Source scan for banned styles, controls, and copy
-  contrast.test.ts       WCAG AA checks for the token pairs
-  smoke.test.ts          Condition vocabulary checks
-vitest.config.mts    Node test environment and the @/ alias
+app/  globals.css, layout.tsx, page.tsx, api/travel-swarm/route.ts
+lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditionProfiles.ts, sunLifeRules.ts, healthScore.ts, itineraryBuilder.ts
+      swarm: swarmTypes.ts (wire contracts), swarmState.ts, swarmReducer.ts, swarmRunner.ts, swarmGoals.ts, swarmMock.ts, sse.ts, tinyfish.ts, tinyfishEvents.ts
+      output: describeTrip.ts, pacingStrip.ts, careCard.ts
+hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts
+components/  AgentSwarmMonitor.tsx, ConstraintSidebar.tsx, ItineraryBoard.tsx, PacingStrip.tsx, WorkerFindings.tsx, WorkerLivePanel.tsx
+components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Field.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
+tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
+module tests  lib/: careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; hooks/: swarmFrames.test.ts
+root  package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
 ```
 
-Nothing product-facing is marked not built. Step 8 audits this file against the repo.
-
-Data flow:
-
-```text
-page.tsx state (destination, days, condition, medication, coverage)
-  -> healthTripEngine (pure, useMemo) -> plan and Sun Life alert
-  -> Deploy increments deployNonce -> AgentSwarmMonitor POSTs /api/travel-swarm
-  -> worker events -> useSwarm/swarmReducer -> columns, iframes, findings
-  -> plan -> ItineraryBoard KPI strip, pacing strips, care card
-```
-
-The itinerary renders from the engine alone, independent of agent results.
+Data flow: page state -> `buildHealthTripPlan` (pure, memoized) -> plan and Sun Life alert;
+Deploy increments `deployNonce`, so `AgentSwarmMonitor` POSTs `/api/travel-swarm`; worker SSE
+flows through `useSwarm`/`swarmReducer` to columns, iframes, and findings; the plan feeds
+`ItineraryBoard`. The itinerary renders from the engine alone, independent of agent results.
 
 ### Biological pacing engine
 
-`buildHealthTripPlan(input)` is pure and deterministic: no I/O, `Date`, `Math.random`,
-or locale output. Invalid input throws `HealthTripInputError` with a stable code and
-field. A generated day that exceeds its modeled caps throws `ItineraryInvariantError`.
-The public API is re-exported from `@/lib/healthTripEngine`.
+`buildHealthTripPlan(input)` is pure and deterministic: no I/O, `Date`, `Math.random`, or
+locale output. Invalid input throws `HealthTripInputError`; a day over its caps throws
+`ItineraryInvariantError`. `@/lib/healthTripEngine` re-exports the public API.
 
-Modeled score. The standard sightseeing baseline is 10,000 steps, 8 km, and average
-exertion 2.2 per day with no recovery. Planned pressure combines:
-
-- Exposure: `max(highest daily step share, highest daily walking share)` of the
-  condition ceiling, normalized from half the ceiling to the full ceiling.
-- Baseline exposure: `max(10,000 / stepCeiling, 8 / walkingKm)`, normalized
-  `(baselineLoad - 1) / 2`.
-- Exertion: `sum(durationMin * exertion) / sum(durationMin)`, normalized
-  `(average - 1) / 2`.
-- Recovery gap: `1 - totalRecoveryMinutes / max(1, recoveryMinutes * days)`.
-- Trip length: `(days - 2) / 5`.
-
-Weights are 45/20/20/15 (exposure/exertion/recovery/trip). Residual risk is
-`floor + (100 - floor) * pressure`; `healthSafetyScore = 100 - residual risk`, rounded
-and clamped 0-100. The baseline uses the same floor, no recovery, and 55/20/15/10.
-`riskReductionPct = (score - baseline) / max(1, 100 - baseline) * 100`, rounded and
-clamped 0-100. All scores are modeled estimates, never clinical validation. The
-generated plan is deliberately conservative: its peak day sits below half the ceiling
-and every day supplies full recovery, so the exposure and recovery terms are zero for
-supported plans and the score is driven by exertion, trip length, and the profile floor.
-The terms are tested with synthetic high-exposure and no-recovery days.
-
-`MODELED_LOAD_ASSUMPTIONS.kmPerStep` is 0.0005 km, a conservative modeled stride. Every
-profile ceiling and day cap fits inside its walking cap. Modeled steps count only
-acclimation, cultural, and transit blocks; meals and recovery contribute zero. The
-residual-risk floor is a modeled score ceiling, not a clinical claim; every profile
-VERIFY line names its floor.
+`lib/healthScore.ts` holds the documented formula: weighted exposure, exertion, recovery,
+and trip-length pressure over a modeled baseline; scores are rounded, clamped 0-100, and
+never clinical validation. The plan is conservative: peak modeled load stays below half the
+exposure ceiling with full daily recovery, so exposure and recovery terms are zero for
+supported plans; synthetic tests cover them. `kmPerStep` is 0.0005 and only acclimation,
+cultural, and transit blocks count steps.
 
 | Condition | Steps/day | Walking | Recovery | Floor | Rationale |
 | --- | --- | --- | --- | --- | --- |
@@ -222,55 +107,37 @@ VERIFY line names its floor.
 | `severe_food_allergy` | 6,000 | 3.5 km | 30 min, optional | 20 | Flexible recovery; emergency planning matters more. |
 | `cardiac_hypertension` | 5,000 | 3.0 km | 45 min, required | 22 | Moderate load with midday recovery and altitude limits. |
 
-`PACING_POLICY` in `lib/itineraryBuilder.ts` sets day cap factors: first 0.45, middle
-0.8, final 0.4. "Lighter" means a smaller final cap; on a 2-day trip it is also below
-Day 1. Adding a condition: add the identifier and label in `lib/types.ts`; add a
-readonly profile with a VERIFY line including the floor; add a generic medication name
-and a `CONDITION_CHECKPOINTS` entry; update this table and the VERIFY register; run both
-engine test files. The exhaustive `Record<Condition, ...>` types make
-`npx tsc --noEmit` fail until every entry exists.
+`PACING_POLICY`: first-day 0.45, middle 0.8, final 0.4 of the ceiling. To add a condition:
+add the id and label in `lib/types.ts`; add a readonly profile with a VERIFY line and floor;
+add a generic medication name and `CONDITION_CHECKPOINTS` entry; update this table and
+section 9; run both engine test files. Exhaustive `Record<Condition, ...>` types fail
+typecheck until complete.
 
 ### Home page and constraint rail
 
-`app/page.tsx` is a client component. It owns every planner input and memoizes
-`buildHealthTripPlan` only while the destination is non-empty; with an empty destination
-it derives the alert with `checkSunLifeCoverage(days, hasSunLifeTravelCoverage)` so the
-rail stays live. `lib/describeTrip.ts` builds the headline from the trimmed destination,
-trip length, and `CONDITION_LABELS`. Deploy increments `deployNonce`; the monitor receives it as `runToken` and starts. The
-Pacing section renders `CareCardButton` in the SectionHeader action and `ItineraryBoard`
-below; the Verification section renders `AgentSwarmMonitor`. If the destination is empty,
-the page keeps a designed empty message instead of the board and never deploys.
+`app/page.tsx` owns every planner input: destination, days (4; slider 2-7), condition,
+medication, `medicationTouched`, `hasSunLifeTravelCoverage`, `deployNonce` (0), `railOpen` (true; mobile
+panel). The plan is memoized only while the destination is non-empty; otherwise the alert
+comes from `checkSunLifeCoverage`. A condition change rewrites the default medication only
+while `medicationTouched` is false. `ConstraintSidebar` is stateless: values, alert,
+callbacks, and `onDeploy` in; Deploy increments `deployNonce`, which the monitor receives as
+`runToken`. `describeTrip` builds the headline; Pacing puts `CareCardButton` in the
+SectionHeader action and `ItineraryBoard` below; Verification renders `AgentSwarmMonitor`.
+An empty destination keeps a designed empty message and never deploys.
 
-Page state: `destination` ("Tokyo, Japan"), `days` (4; slider 2-7), `condition`
-("asthma_respiratory"), `medication` (`DEFAULT_MEDICATION_BY_CONDITION`), `medicationTouched`
-(false), `hasSunLifeTravelCoverage` (false), `deployNonce` (0). `ConstraintSidebar` is
-stateless: it receives the values, the alert, and change callbacks plus `onDeploy`, and
-owns no state. A condition change writes the new generic medication default only while
-`medicationTouched` is false; editing the medication field sets it, so typed values
-survive condition changes.
-
-Breakpoints: below 1024 the rail is a native `<details open>` panel above the main
-column, with the trip sentence as its summary. At 1024 and up the layout is
-`320px / 1px / fluid` with 64px gaps; the rail is sticky at `top: 88px`, scrolls
-independently, and is at most `calc(100vh - 112px)` tall. The sister-product link is in
-the header from 640px up and in the footer below 640. Gutters are 24px, 40px from 768px;
-section gaps are 64px mobile and 96px from 768px. The footer sits 64px/96px below the
-content and carries the planning-aid notice.
+Below 1024 the rail is a controlled `<details open>` above the main column, summary = trip
+sentence. At 1024+ it is `320px / 1px / fluid` with 64px gaps; the rail is sticky at
+`top: 88px`, scrolls, and is at most `calc(100vh - 112px)` tall. The sister link is in the
+header from 640px, footer below. Gutters 24/40px; section gaps 64/96px from 768px; the footer
+sits 64px/96px below.
 
 ### Agent swarm monitor
 
 `AgentSwarmMonitor` receives destination, condition, medication, and `runToken` (0 before
-the first Deploy). Token 0 renders the designed empty state and never fetches. A new
-token with a destination resets all three workers, snapshots the destination, condition,
-and medication, and starts a run. `useSwarm` exposes that snapshot as `runInput`; Retry
-posts the snapshot with one worker even after the planner inputs change. Above the
-columns the monitor shows "Last run: destination, condition, medication". If current
-inputs differ, it adds "Inputs changed since this run. Deploy again to verify."; an empty
-destination shows "Add a destination to run verification." instead of old findings.
-`useSwarm` owns the run-token lifecycle, abort, Strict Mode duplicate guard, and
-per-worker latest-request ids. `hooks/swarmStream.ts` POSTs and reads the shared SSE
-parser; `hooks/swarmFrames.ts` validates frames and preview hosts and rebuilds findings,
-so a malformed payload renders "Not found" instead of crashing.
+Deploy); token 0 shows the empty state and never fetches. A new token with a destination
+resets all workers, snapshots input, and starts; Retry reuses that snapshot with one worker.
+It shows "Last run: destination, condition, medication" and warns "Inputs changed since this
+run. Deploy again to verify." when inputs differ.
 
 Worker state machine (pure `lib/swarmReducer.ts`):
 
@@ -281,139 +148,88 @@ queued/running --worker_error or stream_failed--> error
 complete/error --run_started (same worker)--> queued
 ```
 
-Worker events are accepted only from `queued` or `running`; `run_started` is the only
-transition from `idle`. `worker_progress` keeps the last three purposes. `streaming_url`
-accepts only https previews on `mock.invalid` or `*.unikraft.app`; http, app-origin,
-javascript, data, and other hosts are rejected in both `lib/swarmState.ts` and
-`hooks/swarmFrames.ts`. `// VERIFY:` records that the production host family must be
-confirmed. `swarm_done` stores the completed and failed lists. Any `mock: true` payload
-sets the monitor mock flag and shows the caution "Mock data" Callout; a new full run
-clears it. The monitor uses three columns with 1px hairlines at 1024px and stacked
-hairline rows below. A live frame is 16:10, surface, 1px hairline-strong, 4px radius,
-with a 28px bar containing an accent pulse dot, LIVE, and the host derived from the
-preview URL, hidden below 1280px. The preparing skeleton uses the same bar with a muted
-dot and PREPARING. The iframe uses
-`referrerPolicy="no-referrer"`, `loading="lazy"`, and
-`sandbox="allow-scripts allow-same-origin"` so the cross-origin TinyFish preview can run
-its scripts without top navigation, popups, forms, downloads, or modal escapes.
-Completed workers replace the frame with findings, source link, retrieved time, and a
-raw JSON toggle.
+Worker events are accepted only from queued or running; `run_started` is the only exit from
+idle. Progress keeps the last three purposes. `streaming_url` accepts only https on
+`mock.invalid` or `*.unikraft.app` (VERIFY) in `lib/swarmState.ts` and `hooks/swarmFrames.ts`;
+all other hosts are rejected. `swarm_done` stores completed and failed lists. Any `mock: true`
+payload shows the "Mock data" caution Callout; a full run clears it.
+
+A live frame is 16:10 on surface, 1px hairline-strong, 4px radius, with a 28px bar: accent
+pulse dot, LIVE, and preview host (hidden below 1280px). Preparing uses a muted dot and
+PREPARING. The iframe sets `referrerPolicy="no-referrer"`, `loading="lazy"`, and
+`sandbox="allow-scripts allow-same-origin"`. Completion shows findings, source link,
+retrieved time, and a raw JSON toggle.
 
 ### KPI strip and paced itinerary
 
-`ItineraryBoard` derives everything from `plan`; agent results never feed it. The KPI
-strip shows Health Safety Score (`/100`, compare bars against baseline), Daily Step
-Ceiling (`steps`), and Flare / ER Risk Reduction (`%`). Both modeled scores carry a
-visible "Modeled estimate" sub-line and an info tooltip listing inputs. The strip is
-three-up from 768-1023px and 1280px+, and stacks with horizontal hairlines below 768px
-and from 1024-1279px where the 320px rail leaves too little main width for three 72px
-metrics.
+`ItineraryBoard` derives everything from `plan`; agent results never feed it. The KPI strip
+shows Health Safety Score (`/100`, baseline compare bars), Daily Step Ceiling (`steps`), and
+Flare / ER Risk Reduction (`%`), both modeled figures with a "Modeled estimate" sub-line and
+an input tooltip. It is three-up at 768-1023px and 1280px+, and stacks below 768px and at
+1024-1279px.
 
-Each day is a hairline row, not a card: 64px day number using `.t-metric-day`, the day
-title and pacing rule, the pacing strip, the block list, and an accent-soft checkpoint.
-The right 160px column carries step and walk caps as stacked DataRows (one-decimal km);
-mobile shows them in a two-column row. `.day-row` applies the global 240ms rise and 40ms stagger; reduced motion disables
-it. The pacing strip is an inline SVG with a 64px plot and an HTML 16px axis: ink bars
-scale `exertion / 3` of the plot, recovery is a 12px accent-soft bar with diagonal accent
-hatching (the legend uses the same hatch), a 1px hairline closes the baseline, and axis
-labels every two hours start at 08:00. The SVG has `role="img"` and an aria-label with
-the start/end time and block counts; the block list is the text equivalent.
+Each day is a hairline row, not a card: a 64px day number using `.t-metric-day`, title, pacing
+rule, strip, block list, and accent-soft checkpoint. A 160px column carries step and walk caps
+as stacked DataRows (one-decimal km); mobile shows two columns. `.day-row` applies the global
+240ms rise and 40ms stagger; reduced motion disables both. The inline SVG strip in
+`components/PacingStrip.tsx` has a 64px plot, an HTML 16px axis, ink bars at `exertion / 3`, a hatched
+12px recovery bar, and two-hour labels from 08:00. The block list is its text equivalent.
 
-`CareCardButton` is the SectionHeader action. `buildCareCard` is pure and deterministic
-and the exact format is:
-
-```text
-PlanMyTrip.health care card
-Destination: <destination or Not set>
-Condition: <condition label>
-Medication: <name or None recorded>
-Trip length: <n> days
-Daily step ceiling: <n> steps
-
-Sun Life
-<alert title>
-- <message>
-
-Daily checkpoints
-Day <n> (step cap <n> steps): <checkpoint>
-...
-
-Planning aid only. Not medical advice. Confirm with your clinician and insurer before you travel.
-```
-
-Copy uses `navigator.clipboard.writeText` with a two-second "Copied" label and a live
-status announcement. On failure a read-only textarea shows the same text; that fallback
-is the only raw control outside `components/ui` and carries a `design-guard-ignore`
-comment. The global reduced-motion rule zeroes both animation duration and stagger
-delay.
+`CareCardButton` is the SectionHeader action. `buildCareCard` is pure and deterministic:
+title, trip facts, blank line, Sun Life alert, blank line, `Daily checkpoints`, one
+`Day <n> (step cap <n> steps): <checkpoint>` line per day, blank line, planning notice (exact
+text in `lib/careCard.ts`). With no days it prints `No itinerary days are available.` Copy
+uses `navigator.clipboard.writeText` with a two-second "Copied" label and a live status
+announcement; on failure a read-only textarea shows the text. That fallback is the only raw
+control outside `components/ui` and carries a `design-guard-ignore` comment.
 
 ## 6. Key decisions
 
-- **Next.js 16.4.6, React 19.3.0, Tailwind CSS 4.3.3.** Tailwind v4 is configured in
-  `app/globals.css` with `@theme inline`; there is no `tailwind.config` file. The
-  generated Turbopack CSS rule stays in `next.config.ts`.
-- **No `next/font/google`.** All three families come from local Fontsource packages,
-  imported in `app/layout.tsx`, so builds never need network access.
-- **Vitest 4.1.12, not 5.x.** The scaffold pins `@types/node@^20`; Vitest 5 requires
-  `@types/node >=22`. Dropping to Vitest 4 avoids `--legacy-peer-deps` and unnecessary
-  type-package churn. The test script is `vitest run`.
-- **The scaffold was generated inside the repo** because the directory already held
-  `.git` and a user-owned `README.md`. The README was preserved untouched.
-- **`cacheComponents` and `partialPrefetching` were removed** from the generated
-  `next.config.ts` to keep default App Router caching behavior while the product is
-  built. The Turbopack Tailwind rule was kept.
-- **The Sun Life pre-existing-condition stability window was not supplied.** It stays
-  `null` in `lib/sunLifeRules.ts`, marked as a placeholder. The alerts say the window is
-  not confirmed. Never replace it with an invented number; confirm with the plan
-  administrator.
-- **One Sun Life constant.** Both the engine alert and the Step 4 coverage goal import
-  `SUN_LIFE_RULES` from `lib/sunLifeRules.ts`. Do not duplicate insurance values.
-- **Engine split into modules.** The mandated profiles, score, itinerary, types, and
-  rules live in separate files so no engine module approaches 250 lines; the public
-  entry point re-exports them.
-- **No TinyFish key is present locally.** Verification uses tests and `SWARM_MOCK=1`;
-  never call the live API from automated checks.
-- **Primitive-only UI.** Later steps compose `components/ui` and never restyle a raw
-  control. The guard permits raw form controls only inside `components/ui`. Button `lg`
-  (48px) exists solely for the Step 5 Deploy action, whose spec requires 48px. Slider,
-  Skeleton, and StatusGlyph use global classes in `app/globals.css` (`.slider-range`,
-  `.skeleton-pulse`, `.status-pulse`), because the Tailwind Turbopack loader returns
-  empty class-name exports for CSS modules in this setup. A CSS-module first pass
-  produced `class="undefined"` and a native slider; the global classes fixed it.
-  `.t-metric-day` is deliberately unlayered so Tailwind always emits it. DataRow gained
-  a `layout="stacked"` variant for the three narrow worker panes and the itinerary caps
-  column; the default remains the 120px label row. The Metric tooltip uses inline utilities and state because it
-  must be dismissible and hoverable.
+- **Stack:** Next.js 16.4.6, React 19.3.0, Tailwind 4.3.3, strict TypeScript, Vitest
+  4.1.12. Tailwind v4 uses `@theme inline`; there is no `tailwind.config`, and the generated
+  Turbopack CSS rule stays in `next.config.ts`. Fonts are local Fontsource families, not
+  `next/font/google`, so builds need no network.
+- **Vitest 4, not 5:** the scaffold pins `@types/node@^20`; Vitest 5 needs `>=22`, and Vitest
+  4 avoids `--legacy-peer-deps`.
+- **Scaffold in place:** `.git` and a user-owned `README.md` existed; the README is untouched.
+  Generated `cacheComponents` and `partialPrefetching` were removed.
+- **Sun Life:** the stability window was not supplied and stays `null`; alerts say so. Never
+  invent a number. One `SUN_LIFE_RULES` serves engine and workers.
+- **Engine split:** profiles, score, itinerary, types, and rules are separate files under 250
+  lines; the public entry re-exports.
+- **No live key:** tests and `SWARM_MOCK=1` only; never call TinyFish from automated checks.
+- **Primitive-only UI:** compose `components/ui`; raw form controls live only there. Button
+  `lg` (48px) exists only for Deploy.
+- **No CSS modules:** the Tailwind Turbopack loader returns empty class-name exports, so
+  `.slider-range`, `.skeleton-pulse`, `.status-pulse`, and `.t-metric-day` live in
+  `app/globals.css`. Do not add CSS modules.
+- **DataRow:** default 120px label row; `layout="stacked"` serves worker panes and caps. The
+  Metric tooltip uses inline utilities and state so it can dismiss and hover.
 
 ## 7. Conventions
 
 ### Commits
 
-One step per commit, exact message from section 2. Only the orchestrator commits.
-Never `git push`, never force, never change git config. Check `git status` before
-staging: no `.env*` except `.env.example`, no `node_modules`, no build output.
-Never use `--no-verify`.
+One step per commit, exact message from section 2; only the orchestrator commits. Never push,
+force, or change git config. Stage no `.env*` except `.env.example`, no `node_modules`, no
+build output; never `--no-verify`.
 
 ### TypeScript and code
 
 - Strict TypeScript. No `any`. No unexplained non-null assertions.
-- Named exports in `lib/`. Files under about 250 lines. Small components.
-- Every `lib/` module opens with a header comment: purpose, inputs and outputs,
-  invariants. TSDoc on every exported function and type. Comment why, not what.
-- Every `// VERIFY:` states what to check and where. Add it to section 9.
-- Composition only: later UI composes `components/ui` primitives; do not restyle raw
-  controls.
+- Named exports in `lib/`; files under about 250 lines; small components.
+- Every `lib/` module opens with a header comment (purpose, inputs/outputs, invariants) and
+  TSDoc on every exported function and type. Comment why, not what.
+- Every `// VERIFY:` states what to check and where; add it to section 9. Compose
+  `components/ui`; never restyle a raw control.
 
 ### Paper and Ink design system
 
-Tokens are defined once in `app/globals.css` as CSS variables and exposed to Tailwind
-through `@theme inline`. Use only these names: `paper`, `surface`, `sunken`, `ink`,
-`ink-hover`, `muted`, `hairline`, `hairline-strong`, `accent`, `accent-hover`,
-`accent-soft`, `on-accent`, `caution`, `caution-bar`, `risk`. Use no raw hex values in
-components. Blue means recovery and action; accent is never body text.
-
-Type classes are the only text sizes allowed. Never use Tailwind `text-sm`, `text-xl`,
-and so on.
+Tokens live once in `app/globals.css`, exposed through `@theme inline`: `paper`, `surface`,
+`sunken`, `ink`, `ink-hover`, `muted`, `hairline`, `hairline-strong`, `accent`, `accent-hover`,
+`accent-soft`, `on-accent`, `caution`, `caution-bar`, `risk`. No raw hex in components. Blue
+means recovery and action; accent is never body text. Type classes are the only text sizes;
+never use Tailwind `text-sm`, `text-xl`, and so on.
 
 | Class | Role |
 | --- | --- |
@@ -428,112 +244,101 @@ and so on.
 | `.t-button` | Hanken Grotesk 500, 14/20. Button labels only. |
 | `.t-label` | IBM Plex Mono 500, 11/16, uppercase, 0.08em tracking. |
 | `.t-data` | IBM Plex Mono 400, 13/20, tabular numerals. |
-| `.t-data-sm` | IBM Plex Mono 400, 11/16, tabular numerals. Ticks, axes, and metric captions. |
+| `.t-data-sm` | IBM Plex Mono 400, 11/16, tabular numerals. Ticks, axes, captions. |
 
-Layout: `.page-container` is max 1200px with 24px gutters (40px from 768px). `.measure`
-caps a line at 65ch. Spacing is multiples of 4px. Section gaps are 96px desktop, 64px
-mobile. Radius 4px for frames, code, and callouts; 6px for buttons. Hairlines and
-whitespace only, never shadows.
-Focus is a 2px accent outline with 2px offset. Motion: day rows rise 8px over 240ms
-with a 40ms stagger; color transitions 150ms; everything off under reduced motion.
+Layout: `.page-container` is max 1200px with 24/40px gutters; `.measure` caps a line at 65ch.
+Spacing is multiples of 4px; section gaps are 96px desktop, 64px mobile. Radius 4px for
+frames, code, and callouts, 6px for buttons. Hairlines and whitespace only, never shadows.
+Focus is a 2px accent outline; motion is an 8px, 240ms day-row rise with a 40ms stagger, and
+150ms color transitions, all off under reduced motion.
 
-Banned: gradients, blur, glow, shadows, emoji, flags, stock imagery, illustrations,
-purple, centered heroes, feature-card grids, pill badges, marketing words (unlock,
-supercharge, seamless, revolutionize, welcome to), lorem ipsum, default Tailwind
-palette colors, default Tailwind text sizes, raw hex in components.
+Banned: gradients, blur, glow, shadows, emoji, flags, stock imagery, illustrations, purple,
+centered heroes, feature-card grids, pill badges, marketing words (unlock, supercharge,
+seamless, revolutionize, welcome to), lorem ipsum, default Tailwind palette colors, default
+Tailwind text sizes, raw hex in components.
 
 ### Accessibility and copy
 
-WCAG AA contrast. Every control is keyboard reachable and has a bound label. Tap
-targets at least 44px. No text under 13px except 11px mono labels. Every async surface
-has designed empty, loading, error, and success states. Copy is calm, specific,
-sentence case, without exclamation marks or emoji; sentences stay under 20 words.
-Numbers carry units. `healthSafetyScore` and `riskReductionPct` are always labelled
-"Modeled estimate" with a tooltip listing inputs.
+WCAG AA contrast. Every control is keyboard reachable and labelled; tap targets at least 44px.
+No text under 13px except 11px mono labels. Every async surface has designed empty, loading,
+error, and success states. Copy is calm, specific, sentence case, without exclamation marks or
+emoji; sentences stay under 20 words. Numbers carry units. `healthSafetyScore` and
+`riskReductionPct` are always labelled "Modeled estimate" with a tooltip listing inputs.
 
 ### Guard tests
 
-`tests/design-guard.test.ts` scans `app/**/*.{ts,tsx,css}` (except `app/globals.css`)
-and `components/**/*.tsx`. It fails with `file:line` on canonical and axis/side variants
-of the default palette, raw white/black, hex or rgb/hsl and arbitrary color utilities,
-default and arbitrary text sizes, unapproved font weights, every shadow except
-`shadow-none`, gradients and blur, radii outside the `none`/`frame`/`control` allowlist,
-pill radii outside `components/ui`, raw form controls outside `components/ui`, emoji,
-flag emoji, image usage, and banned marketing copy. A `design-guard-ignore` comment on a
-line exempts that line. Nineteen banned fixtures and four allowed fixtures prove the
-rules. `tests/contrast.test.ts` checks 13 token pairs at 4.5:1 or better.
+`tests/design-guard.test.ts` scans `app/**/*.{ts,tsx,css}` (except `app/globals.css`) and
+`components/**/*.tsx`. It fails with `file:line` on default palette variants, raw white/black,
+hex/rgb/hsl and arbitrary colors, default and arbitrary text sizes, unapproved weights, shadows
+except `shadow-none`, gradients and blur, radii outside `none`/`frame`/`control`, pill radii
+outside `components/ui`, raw form controls outside `components/ui`, emoji, flags, images, and
+banned marketing copy. `design-guard-ignore` exempts a line. Nineteen banned and four allowed
+fixtures prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.5:1 or better.
 
 ## 8. Medical safety rules
 
-- The product is a planning aid, not medical advice. A quiet persistent footer notice
-  reads: "Planning aid only. Not medical advice. Confirm with your clinician and insurer
-  before you travel."
+- The product is a planning aid, not medical advice. The persistent footer reads: "Planning
+  aid only. Not medical advice. Confirm with your clinician and insurer before you travel."
 - All physiological thresholds live in one typed `CONDITION_PROFILES` constant in
-  `lib/conditionProfiles.ts`, each with a rationale string, a modeled residual-risk
-  floor, and a `// VERIFY:` flag. No magic numbers elsewhere.
-- `healthSafetyScore` and `riskReductionPct` are deterministic modeled estimates from a
-  documented formula. Label them "Modeled estimate" with an input tooltip. Never call
-  them measured or clinically validated.
+  `lib/conditionProfiles.ts`, each with a rationale, a modeled residual-risk floor, and a
+  `// VERIFY:` flag. No magic numbers elsewhere.
+- `healthSafetyScore` and `riskReductionPct` are deterministic modeled estimates from the
+  documented formula. Label them "Modeled estimate" with an input tooltip. Never call them
+  measured or clinically validated.
 - Insurance rules (60-day cap, Allianz Global Assistance 24/7 pre-authorization, the
   pre-existing stability window) live in one `SUN_LIFE_RULES` constant in
-  `lib/sunLifeRules.ts`, marked `// VERIFY against current group policy`. The stability
-  window is `null` and unconfirmed. The alert tells the user to
-  "Verify with your plan administrator".
-- Never suggest doses or medication changes. Medication information is limited to
-  generic and brand names, customs, and carry rules.
-- Agent findings show the source URL and retrieved time. Missing fields show
-  "Not found", never a guess. Malformed JSON shows the raw text plus a parse error.
+  `lib/sunLifeRules.ts`, marked `// VERIFY against current group policy`. The window is
+  `null` and unconfirmed. The alert says "Verify with your plan administrator".
+- Never suggest doses or medication changes. Medication information is limited to generic
+  and brand names, customs, and carry rules.
+- Agent findings show the source URL and retrieved time. Missing fields show "Not found",
+  never a guess. Malformed JSON shows the raw text plus a parse error.
 
 ## 9. VERIFY register
 
-Regenerate with `grep -rn "VERIFY:" app lib components`.
-
-At this commit: 8 entries.
+Regenerate with `grep -rn "VERIFY:" app lib components`; there are 8 entries.
 
 | File | What to verify |
 | --- | --- |
-| `lib/conditionProfiles.ts` (asthma) | residual-risk floor 22; 7,000-step ceiling, 4.0 km walking, 30-minute recovery, altitude, heat, and allergens against current respiratory guidance. |
-| `lib/conditionProfiles.ts` (POTS) | residual-risk floor 25; 4,000-step ceiling, 2.5 km walking, 90-minute recovery, altitude, heat, and allergens against current autonomic guidance. |
-| `lib/conditionProfiles.ts` (pregnancy) | residual-risk floor 18; 5,000-step ceiling, 3.0 km walking, 45-minute recovery, altitude, heat, and food safety against current maternity guidance. |
-| `lib/conditionProfiles.ts` (food allergy) | residual-risk floor 20; 6,000-step ceiling, 3.5 km walking, 30-minute optional recovery, heat, and allergens against current allergy guidance. |
-| `lib/conditionProfiles.ts` (cardiac) | residual-risk floor 22; 5,000-step ceiling, 3.0 km walking, 45-minute recovery, altitude, heat, and sodium/allergens against current cardiology guidance. |
+| `lib/conditionProfiles.ts` (asthma) | floor 22; 7,000-step ceiling, 4.0 km walking, 30-minute recovery, altitude, heat, and allergens against respiratory guidance. |
+| `lib/conditionProfiles.ts` (POTS) | floor 25; 4,000-step ceiling, 2.5 km walking, 90-minute recovery, altitude, heat, and allergens against autonomic guidance. |
+| `lib/conditionProfiles.ts` (pregnancy) | floor 18; 5,000-step ceiling, 3.0 km walking, 45-minute recovery, altitude, heat, and food safety against maternity guidance. |
+| `lib/conditionProfiles.ts` (food allergy) | floor 20; 6,000-step ceiling, 3.5 km walking, 30-minute optional recovery, heat, and allergens against allergy guidance. |
+| `lib/conditionProfiles.ts` (cardiac) | floor 22; 5,000-step ceiling, 3.0 km walking, 45-minute recovery, altitude, heat, and sodium/allergens against cardiology guidance. |
 | `lib/sunLifeRules.ts` (stability placeholder) | The window is `null`; confirm the real value with the plan administrator. Never invent a number. |
-| `lib/sunLifeRules.ts` (rules) | 60-day cap, Allianz Global Assistance 24/7 pre-authorization, and stability window against current group policy; record source and checked date. |
-| `lib/swarmState.ts` (preview allowlist) | Confirm the production TinyFish live-preview host family still ends in `.unikraft.app`; `mock.invalid` is dev-only. |
+| `lib/sunLifeRules.ts` (rules) | 60-day cap, Allianz 24/7 pre-authorization, and stability window against current group policy; record source and checked date. |
+| `lib/swarmState.ts` (preview allowlist) | Confirm the production TinyFish preview host family still ends in `.unikraft.app`; `mock.invalid` is the mock-mode host. |
 
 ## 10. External integrations
 
-TinyFish Web Agent API: `POST https://agent.tinyfish.ai/v1/automation/run-sse`, header
-`X-API-Key`, JSON body `{url, goal, output_schema?}`. The key is read only in the route
-and passed to the client; it is never logged or echoed. `output_schema` must be a
-top-level object with `nullable: true` rather than type arrays; no `oneOf`, `const`, or
-`additionalProperties`.
+TinyFish Web Agent API: `POST https://agent.tinyfish.ai/v1/automation/run-sse` with
+`X-API-Key` and JSON `{url, goal, output_schema?}`. The key is read only in the route; never
+log or echo it. `output_schema` is a top-level object using `nullable: true`, never type
+arrays, `oneOf`, `const`, or `additionalProperties`.
 
-Upstream events are `data: <json>` frames: `STARTED` (run_id), `STREAMING_URL`,
-`PROGRESS` (purpose), `HEARTBEAT`, `COMPLETE` (status/result/error), and optional
-`TF_API_RESULT`. Unknown types are ignored; `COMPLETE.result` is authoritative. The route
-forwards absolute http(s) STREAMING_URL values; the client accepts only https previews
-on `mock.invalid` or `*.unikraft.app` before rendering the iframe.
+Upstream `data: <json>` events: `STARTED` (run_id), `STREAMING_URL`, `PROGRESS` (purpose),
+`HEARTBEAT`, `COMPLETE` (status/result/error), and optional `TF_API_RESULT`. Unknown types are
+ignored; `COMPLETE.result` is authoritative. The route forwards absolute http(s) STREAMING_URL
+values; the browser keeps only https `mock.invalid` or `*.unikraft.app` previews.
 
-Our route emits these SSE frames. Every payload has `worker`, an ISO `ts`, and optional
-`mock`. `swarm_done` uses `worker: "swarm"` and is always last on a connected stream.
+Our SSE frames all carry `worker`, an ISO `ts`, and optional `mock`; `swarm_done` uses
+`worker: "swarm"` and is always last on a connected stream.
 
 | Event | Fields | When |
 | --- | --- | --- |
-| `worker_status` | `status` (queued/running) | Before a run and when TinyFish reports STARTED. |
-| `streaming_url` | `streamingUrl` | A safe STREAMING_URL arrives; it may expire. |
+| `worker_status` | `status` (queued/running) | Before a run and on TinyFish STARTED. |
+| `streaming_url` | `streamingUrl` | An absolute http(s) STREAMING_URL arrives; the browser keeps allowlisted https previews. |
 | `worker_progress` | `purpose` | TinyFish PROGRESS. |
 | `worker_complete` | `findings`, `sourceUrl`, `retrievedAt`, `rawResult?`, `parseError?` | COMPLETED. Malformed JSON keeps raw text and parse error. |
 | `worker_error` | `code`, `message` | Missing key, timeout, upstream error, unexpected rejection. |
 | `swarm_done` | `completed`, `failed` | Once after all requested workers settle. |
 
-Headers are `text/event-stream; charset=utf-8`, `Cache-Control: no-cache, no-transform`,
-and `X-Accel-Buffering: no`; a keep-alive comment is sent about every 15s. Client
-disconnect aborts upstream requests. Error codes: `missing_api_key`, `timeout`,
-`upstream_error`. Invalid bodies return 400 JSON.
+Headers are `text/event-stream; charset=utf-8`, `Cache-Control: no-cache, no-transform`, and
+`X-Accel-Buffering: no`; a keep-alive comment goes out about every 15s. Disconnect aborts
+upstreams. Error codes: `missing_api_key`, `timeout`, `upstream_error`; invalid bodies 400 JSON.
 
-Mock mode needs no key or network; every payload carries `mock: true` and preview URLs
-use `mock.invalid`:
+Mock mode needs no key or network; every payload carries `mock: true` and preview URLs use
+`mock.invalid`:
 
 ```bash
 SWARM_MOCK=1 npm run dev
@@ -542,68 +347,53 @@ curl -N -X POST http://localhost:3000/api/travel-swarm \
   -d '{"destination":"Lisbon, Portugal","condition":"asthma_respiratory","medication":"albuterol inhaler"}'
 ```
 
-Each live run drives three real browser agents; never call it in tests or routine
-development. Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
+Each live run drives three real browsers; never call it in tests or routine development.
+Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 <https://docs.tinyfish.ai/api-reference/automation/run-browser-automation-with-sse-streaming.md>,
 <https://docs.tinyfish.ai/live-preview.md>,
 <https://docs.tinyfish.ai/tinyagent/api/agent/structured-output.md>.
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The current suite has 179 tests:
+`npm test` runs Vitest once in a Node environment. The suite has 179 tests.
 
-- `tests/design-guard.test.ts`: token, type, control, emoji, and copy guard.
-- `lib/describeTrip.test.ts`: exact headline, trimming, empty fallback, label reuse.
-- `tests/contrast.test.ts`: WCAG AA contrast for the token pairs.
-- `tests/smoke.test.ts`: the five conditions and the label map.
-- `components/ui/sliderFill.test.ts` and `metricBars.test.ts`: primitive geometry.
-- `lib/healthTripEngine.test.ts` and `healthTripEngineRules.test.ts`: all conditions x
-  2-7 days, caps and invariants, recovery, scores, determinism, Sun Life paths,
-  validation, docs, and module re-exports. Shared input lives in
-  `tests/healthTripFixtures.ts`.
-- `lib/tinyfish.test.ts`, `tinyfishEvents.test.ts`, `swarmGoals.test.ts`, and
-  `tests/swarm-route*.test.ts`: SSE parsing, event mapping, schemas, placeholder
-  normalisation, missing key, isolation, retry subsets, mock mode, timeout, and
-  swarm_done. All network is mocked.
-- `lib/swarmReducer*.test.ts`: every worker transition, the idle event gate, reset,
-  preview allowlist, progress cap, findings, mock flag, and swarm_done. `hooks/swarmFrames.test.ts`:
-  allowlisted preview URLs and superseded frames. `lib/pacingStrip.test.ts` and
-  `lib/careCard.test.ts`: strip geometry, bounds, empty input, and exact care-card text.
+- `tests/design-guard.test.ts` and `tests/contrast.test.ts` guard styles and 13 WCAG AA token
+  pairs; `tests/smoke.test.ts` covers the five conditions.
+- `lib/healthTripEngine*.test.ts` covers every condition x 2-7 days, caps, invariants,
+  recovery, scores, determinism, Sun Life, validation, docs, and re-exports. Shared input is
+  in `tests/healthTripFixtures.ts`.
+- `lib/tinyfish*.test.ts`, `lib/swarmGoals.test.ts`, `tests/swarm-route*.test.ts`, and
+  `tests/swarm-runner*.test.ts` cover parsing, mapping, schemas, normalisation, missing key,
+  isolation, retries, mock, timeout, abort, and swarm_done. All network is mocked.
+- `lib/swarmReducer*.test.ts`, `hooks/swarmFrames.test.ts`, `lib/pacingStrip.test.ts`,
+  `lib/careCard.test.ts`, `lib/describeTrip.test.ts`, and `components/ui/*.test.ts` cover
+  transitions, the idle gate, allowlists, geometry, exact care-card text, and headline.
 
-Add pure-function tests next to the module or under `tests/`, named `*.test.ts`. The
-Vitest include pattern is `**/*.test.ts`. No component-test libraries. Route and SSE
-tests use mocked fetch and fixtures, never the network. Keep the design guard green
-rather than exempting lines.
+Add pure-function tests beside the module or under `tests/`, named `*.test.ts`; Vitest includes
+`**/*.test.ts`. No component-test libraries. Mock fetch in route and SSE tests. Keep the design
+guard green rather than exempting lines.
 
 ## 12. Known limitations and open questions
 
-- All product surfaces exist and are wired; Step 8 audits the docs and identity.
-- The Sun Life stability window is unknown and stored as `null`; no placeholder number
-  is shown. Confirm it with the plan administrator.
-- No live TinyFish run or real key has been exercised. Event handling is verified
-  against docs-shaped fixtures and mocked fetch; streaming URLs may expire after a run.
+- The Sun Life stability window is unknown and stored as `null`; no placeholder number is
+  shown. Confirm it with the plan administrator.
+- No live TinyFish run, key, iframe preview, clipboard permission, or real SSE stream has been
+  exercised. Fixtures and mocked fetch verify event handling; preview URLs may expire.
 - The route tolerates unknown events, stringified `result` values, and partial payloads.
-- The user-owned `README.md` is intentionally untouched; this file is the working guide.
-- Light theme only. Tokens are structured so a dark theme could be added later.
-- Destination strings are labels only. The engine does not invent venues or geography.
-- The mobile `<details>` summary repeats the trip sentence above the headline; this is
-  the Step 5 layout contract, not a second headline.
+- The preview allowlist (`*.unikraft.app`) follows current docs and is marked VERIFY.
+- The user-owned `README.md` is untouched; this guide is the working file. Light theme only;
+  tokens allow a dark theme later.
+- Destination strings are labels only; the engine invents no venues or geography.
+- The mobile `<details>` summary repeats the trip sentence; this is the Step 5 contract.
 - The KPI strip stacks at 1024-1279px because the 320px rail leaves too little width for
-  three 72px metrics; it is three-up at 768-1023 and 1280+.
-- No live iframe preview, clipboard permission, or real TinyFish SSE stream has been
-  exercised; mock and missing-key paths are verified, and the components are reviewed.
-- The preview allowlist (`*.unikraft.app`) is based on current docs and marked VERIFY.
+  three 72px metrics; it is three-up at 768-1023px and 1280px+.
 
 ## 13. How to work here
 
 1. Read this file, then `BUILD_LOG.md`.
-2. Run `git log --oneline`, `git status`, and `git diff`. Never discard uncommitted work
-   from an interrupted step; inspect it and finish it.
+2. Run `git log --oneline`, `git status`, and `git diff`; never discard uncommitted work.
 3. Find the first unchecked step in section 2 and continue there.
-4. Work in dependency order. No scope creep: no extra pages, auth, database, analytics,
-   or libraries.
-5. Run the full gate. Update this file in the same commit as any change it describes.
-6. Commit with the exact step message. Append a short step entry to `BUILD_LOG.md` and
-   set its "Next action" line.
-7. Stuck: three attempts on the same error, then change approach once, then log the
-   exact error and a minimal safe workaround under Blockers. Never loop.
+4. Work in dependency order; no scope creep into pages, auth, databases, analytics, or libraries.
+5. Run the full gate; update this file in the same commit as any change it describes.
+6. Commit the exact message; append to `BUILD_LOG.md` and set its "Next action".
+7. Stuck: three attempts, then change approach once, then log the error under Blockers. Never loop.

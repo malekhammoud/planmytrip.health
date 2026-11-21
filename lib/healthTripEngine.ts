@@ -103,6 +103,7 @@ export {
   TRIP_DAYS_MAX,
   TRIP_DAYS_MIN,
 } from "./healthTripTypes";
+/** Re-exported engine input, day, block, plan, and error types. */
 export type {
   AllergenConstraint,
   AltitudeConstraint,
@@ -136,4 +137,5 @@ export {
   modelDayLoad,
 } from "./healthScore";
 export { PACING_POLICY, buildItinerary } from "./itineraryBuilder";
+/** Re-exported pacing policy type. */
 export type { PacingPolicy } from "./itineraryBuilder";

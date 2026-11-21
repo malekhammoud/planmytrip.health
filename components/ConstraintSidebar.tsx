@@ -49,7 +49,7 @@ export interface ConstraintSidebarProps {
   onMedicationChange: (medication: string) => void;
   /** Called with the next coverage checkbox state. */
   onCoverageChange: (hasCoverage: boolean) => void;
-  /** Called when Deploy is activated; Step 6 wires the swarm to this signal. */
+  /** Called when Deploy is activated; the page increments its deploy token. */
   onDeploy: () => void;
 }
 

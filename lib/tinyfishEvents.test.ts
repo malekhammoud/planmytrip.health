@@ -1,3 +1,9 @@
+/**
+ * Upstream TinyFish event mapping tests.
+ *
+ * Covers status, streaming URL schemes, provenance, completion, and malformed results.
+ */
+
 import { describe, expect, it } from "vitest";
 import { WORKER_SOURCES } from "./swarmGoals";
 import type { WorkerId } from "./swarmTypes";
