@@ -108,8 +108,42 @@ None.
 - Unverified: hydrated interaction beyond the rail resize check; the Deploy button
   increments a nonce only until Step 6.
 
+### Step 6: live agent swarm monitor
+
+- Added the three-column monitor with designed empty state, StatusGlyph phases, live
+  16:10 iframes, 28px LIVE bar, last-3 progress, typed findings, source/retrieved time,
+  raw JSON toggle/copy, mock Callout, and per-worker Retry.
+- Pure reducer plus state module, run-token hook, POST/stream transport, frame
+  validation, Strict Mode duplicate guard, abort, and per-worker latest-request ids.
+- Split reducer, reducer tests, and stream transport to keep every file under ~250.
+- Review cycle 1 fixed: retry now reuses the run's input snapshot; the monitor shows a
+  "Last run" context and warns on changed inputs; raw JSON copy failure is announced;
+  idle worker events are rejected; column order, PREPARING bar, 44px copy/link targets,
+  worker-specific Retry labels, and an https preview allowlist (`*.unikraft.app`,
+  `mock.invalid`) are in place.
+- 13 reducer/frame tests; 179 total at this commit.
+- Browser: mock completion and missing-key/Retry paths exercised; no live key.
+- Unverified: live iframe preview and real SSE stream.
+
+### Step 7: KPI strip and paced itinerary
+
+- Added the KPI strip (score/baseline bars, daily ceiling, risk reduction, visible
+  Modeled estimate labels, input tooltips), hairline day rows, 64px day numbers, caps,
+  inline SVG pacing strips with hatching and 2-hour axis, checkpoint tint, and care card.
+- Added pure layoutStrip and buildCareCard with 15 tests; wired ItineraryBoard and
+  AgentSwarmMonitor into app/page.tsx, with an empty-destination empty state.
+- Findings use a new DataRow `layout="stacked"` variant; the 120px row was unreadable in
+  three narrow worker panes. `.t-metric-day` is unlayered so Tailwind emits it.
+- Review cycle 1 fixed: HSS compare says "Standard baseline" and its tooltip lists the
+  profile floor and standard assumptions; caps compose stacked DataRows; walk caps show
+  one decimal; the legend uses the same hatch; the strip aria-label carries the time
+  range; reduced motion zeros the stagger delay; copy success is announced.
+- Browser checks: 375/768/1280 no horizontal scroll; mock run completed with three
+  findings columns; missing-key run showed three plain errors and Retry buttons.
+- Gate: typecheck, 179 tests, lint, production build pass.
+- Unverified: real TinyFish iframe/SSE, clipboard permissions, live key behavior.
+
 ## Next action
 
-Review and commit Step 5 (`feat(ui): add header and biological constraint sidebar`).
-Then build Steps 6 and 7 in parallel, wire both into app/page.tsx, run the gate, and
-commit in step order.
+Commit Step 6, then Step 7 with page wiring. Then run the Step 8 documentation and
+identity audit, compress AGENTS.md under 400 lines, final gate, final report.

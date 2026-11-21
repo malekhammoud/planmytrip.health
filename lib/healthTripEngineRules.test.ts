@@ -165,7 +165,7 @@ describe("profile documentation and medication names", () => {
       "utf8",
     );
     expect(
-      (profilesSource.match(/\/\/ VERIFY:/g) ?? []).length,
+      (profilesSource.match(/\/\/\s*VERIFY\b/g) ?? []).length,
     ).toBeGreaterThanOrEqual(5);
     expect(
       (profilesSource.match(/residual-risk floor \(\d+\/100\)/g) ?? []).length,
@@ -176,7 +176,7 @@ describe("profile documentation and medication names", () => {
       );
     }
     expect(
-      (rulesSource.match(/\/\/ VERIFY:/g) ?? []).length,
+      (rulesSource.match(/\/\/\s*VERIFY\b/g) ?? []).length,
     ).toBeGreaterThanOrEqual(2);
     expect(rulesSource).toContain("// VERIFY against current group policy");
   });

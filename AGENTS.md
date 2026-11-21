@@ -39,14 +39,13 @@ means the code, tests, and this file agree at that commit.
 | 3. Biological pacing engine | [x] | `feat(engine): add biological pacing and itinerary engine` |
 | 4. TinyFish 3-worker SSE route | [x] | `feat(api): add parallel 3-worker TinyFish SSE swarm` |
 | 5. Header, constraint rail, page layout | [x] | `feat(ui): add header and biological constraint sidebar` |
-| 6. Live agent swarm monitor | [ ] Not built yet | `feat(ui): add live TinyFish agent iframes and findings cards` |
-| 7. KPI strip and paced itinerary | [ ] Not built yet | `feat(ui): add safety KPIs, paced itinerary cards, and care card export` |
+| 6. Live agent swarm monitor | [x] | `feat(ui): add live TinyFish agent iframes and findings cards` |
+| 7. KPI strip and paced itinerary | [x] | `feat(ui): add safety KPIs, paced itinerary cards, and care card export` |
 | 8. Documentation and identity audit | [ ] Not built yet | `docs(agents): finalize AGENTS.md for future coding agents` |
 
-Current state: the full page shell with letterhead, footer, constraint rail, headline,
-and two designed result sections; the Paper and Ink primitives, pacing engine, and
-3-worker TinyFish SSE route are in place. The agent monitor and paced itinerary are the
-remaining surfaces.
+Current state: every product surface is built and wired: page shell, rail, engine KPI
+strip, paced itinerary, care card export, live 3-worker monitor with iframes and typed
+findings, mock mode, and tests. Step 8 is the documentation and identity audit.
 
 ## 3. Commands
 
@@ -100,11 +99,19 @@ app/
   globals.css        Paper and Ink tokens, theme mapping, type classes, base styles
   layout.tsx         Fontsource imports, metadata, html lang, body tokens
   page.tsx           Client home page: planner state, memoized plan, letterhead,
-                     footer, rail, headline, Pacing/Verification mounts
+                     footer, rail, headline, itinerary and swarm monitor
   api/travel-swarm/route.ts  Body validation, guarded SSE stream, runSwarm call
 lib/
   describeTrip.ts             Pure headline sentence builder
   describeTrip.test.ts        Exact sentence, trimming, empty fallback
+  swarmState.ts               Worker phases, state types, factories
+  swarmReducer.ts             Pure monitor reducer; re-exports state types
+  swarmReducer.test.ts        Transitions and reset paths
+  swarmReducerResults.test.ts Progress cap, findings, mock, done
+  pacingStrip.ts              Pure strip geometry and axis ticks
+  pacingStrip.test.ts         Non-overlap, bounds, total width, empty input
+  careCard.ts                 Deterministic plain-text export
+  careCard.test.ts            Exact format, normalization, fallbacks
   sse.ts                      Pure buffering SSE parser (createSseParser)
   tinyfish.ts                 TinyFish fetch client; re-exports the parser
   tinyfishEvents.ts           Upstream TinyFish event to SwarmEvent mapping
@@ -127,7 +134,19 @@ lib/
   itineraryBuilder.ts         PACING_POLICY, buildItinerary, blocks, checkpoints
   healthTripEngine.test.ts    Condition/day matrix, caps, recovery, determinism
   healthTripEngineRules.test.ts  Sun Life, validation, docs, module boundaries
+hooks/
+  useSwarm.ts                 Run-token lifecycle, input snapshot, abort, retry,
+                              Strict Mode guard
+  swarmStream.ts              POST and shared SSE stream consumption
+  swarmFrames.ts              Frame validation, preview allowlist, findings rebuilding
+  swarmFrames.test.ts         Preview allowlist and superseded-frame tests
 components/
+  AgentSwarmMonitor.tsx  Three worker columns, run-context snapshot, empty state,
+                         errors/retry, mock callout
+  WorkerLivePanel.tsx    Live/preparing 16:10 frame with a stable 28px bar
+  WorkerFindings.tsx     Typed DataRow findings, provenance, raw JSON toggle/copy
+  ItineraryBoard.tsx     KPI strip, day rows, CareCardButton
+  PacingStrip.tsx        Inline SVG strip, HTML axis, legend
   ConstraintSidebar.tsx  Stateless rail: labeled fields, live Sun Life Callout,
                          Deploy action, empty-destination guard
   ui/                Paper and Ink primitives, all named exports from
@@ -146,16 +165,16 @@ tests/
 vitest.config.mts    Node test environment and the @/ alias
 ```
 
-Not built yet: the swarm monitor (Step 6) and the KPI strip and itinerary board (Step 7).
+Nothing product-facing is marked not built. Step 8 audits this file against the repo.
 
 Data flow:
 
 ```text
 page.tsx state (destination, days, condition, medication, coverage)
   -> healthTripEngine (pure, useMemo) -> plan and Sun Life alert
-  -> Deploy increments deployNonce -> Step 6 monitor POSTs /api/travel-swarm
-  -> worker events -> useSwarm reducer -> AgentSwarmMonitor
-  -> plan -> Step 7 KPI strip + pacing itinerary
+  -> Deploy increments deployNonce -> AgentSwarmMonitor POSTs /api/travel-swarm
+  -> worker events -> useSwarm/swarmReducer -> columns, iframes, findings
+  -> plan -> ItineraryBoard KPI strip, pacing strips, care card
 ```
 
 The itinerary renders from the engine alone, independent of agent results.
@@ -217,9 +236,10 @@ engine test files. The exhaustive `Record<Condition, ...>` types make
 `buildHealthTripPlan` only while the destination is non-empty; with an empty destination
 it derives the alert with `checkSunLifeCoverage(days, hasSunLifeTravelCoverage)` so the
 rail stays live. `lib/describeTrip.ts` builds the headline from the trimmed destination,
-trip length, and `CONDITION_LABELS`. Deploy increments `deployNonce`; the Verification
-section renders an `#agent-swarm-mount` carrying it for Step 6. The Pacing placeholder is
-marked `STEP 7 MOUNT`; the Verification placeholder is marked `STEP 6 MOUNT`.
+trip length, and `CONDITION_LABELS`. Deploy increments `deployNonce`; the monitor receives it as `runToken` and starts. The
+Pacing section renders `CareCardButton` in the SectionHeader action and `ItineraryBoard`
+below; the Verification section renders `AgentSwarmMonitor`. If the destination is empty,
+the page keeps a designed empty message instead of the board and never deploys.
 
 Page state: `destination` ("Tokyo, Japan"), `days` (4; slider 2-7), `condition`
 ("asthma_respiratory"), `medication` (`DEFAULT_MEDICATION_BY_CONDITION`), `medicationTouched`
@@ -236,6 +256,96 @@ independently, and is at most `calc(100vh - 112px)` tall. The sister-product lin
 the header from 640px up and in the footer below 640. Gutters are 24px, 40px from 768px;
 section gaps are 64px mobile and 96px from 768px. The footer sits 64px/96px below the
 content and carries the planning-aid notice.
+
+### Agent swarm monitor
+
+`AgentSwarmMonitor` receives destination, condition, medication, and `runToken` (0 before
+the first Deploy). Token 0 renders the designed empty state and never fetches. A new
+token with a destination resets all three workers, snapshots the destination, condition,
+and medication, and starts a run. `useSwarm` exposes that snapshot as `runInput`; Retry
+posts the snapshot with one worker even after the planner inputs change. Above the
+columns the monitor shows "Last run: destination, condition, medication". If current
+inputs differ, it adds "Inputs changed since this run. Deploy again to verify."; an empty
+destination shows "Add a destination to run verification." instead of old findings.
+`useSwarm` owns the run-token lifecycle, abort, Strict Mode duplicate guard, and
+per-worker latest-request ids. `hooks/swarmStream.ts` POSTs and reads the shared SSE
+parser; `hooks/swarmFrames.ts` validates frames and preview hosts and rebuilds findings,
+so a malformed payload renders "Not found" instead of crashing.
+
+Worker state machine (pure `lib/swarmReducer.ts`):
+
+```text
+idle --run_started--> queued --worker_status(running)--> running
+queued/running --worker_complete--> complete
+queued/running --worker_error or stream_failed--> error
+complete/error --run_started (same worker)--> queued
+```
+
+Worker events are accepted only from `queued` or `running`; `run_started` is the only
+transition from `idle`. `worker_progress` keeps the last three purposes. `streaming_url`
+accepts only https previews on `mock.invalid` or `*.unikraft.app`; http, app-origin,
+javascript, data, and other hosts are rejected in both `lib/swarmState.ts` and
+`hooks/swarmFrames.ts`. `// VERIFY:` records that the production host family must be
+confirmed. `swarm_done` stores the completed and failed lists. Any `mock: true` payload
+sets the monitor mock flag and shows the caution "Mock data" Callout; a new full run
+clears it. The monitor uses three columns with 1px hairlines at 1024px and stacked
+hairline rows below. A live frame is 16:10, surface, 1px hairline-strong, 4px radius,
+with a 28px bar containing an accent pulse dot, LIVE, and the host derived from the
+preview URL, hidden below 1280px. The preparing skeleton uses the same bar with a muted
+dot and PREPARING. The iframe uses
+`referrerPolicy="no-referrer"`, `loading="lazy"`, and
+`sandbox="allow-scripts allow-same-origin"` so the cross-origin TinyFish preview can run
+its scripts without top navigation, popups, forms, downloads, or modal escapes.
+Completed workers replace the frame with findings, source link, retrieved time, and a
+raw JSON toggle.
+
+### KPI strip and paced itinerary
+
+`ItineraryBoard` derives everything from `plan`; agent results never feed it. The KPI
+strip shows Health Safety Score (`/100`, compare bars against baseline), Daily Step
+Ceiling (`steps`), and Flare / ER Risk Reduction (`%`). Both modeled scores carry a
+visible "Modeled estimate" sub-line and an info tooltip listing inputs. The strip is
+three-up from 768-1023px and 1280px+, and stacks with horizontal hairlines below 768px
+and from 1024-1279px where the 320px rail leaves too little main width for three 72px
+metrics.
+
+Each day is a hairline row, not a card: 64px day number using `.t-metric-day`, the day
+title and pacing rule, the pacing strip, the block list, and an accent-soft checkpoint.
+The right 160px column carries step and walk caps as stacked DataRows (one-decimal km);
+mobile shows them in a two-column row. `.day-row` applies the global 240ms rise and 40ms stagger; reduced motion disables
+it. The pacing strip is an inline SVG with a 64px plot and an HTML 16px axis: ink bars
+scale `exertion / 3` of the plot, recovery is a 12px accent-soft bar with diagonal accent
+hatching (the legend uses the same hatch), a 1px hairline closes the baseline, and axis
+labels every two hours start at 08:00. The SVG has `role="img"` and an aria-label with
+the start/end time and block counts; the block list is the text equivalent.
+
+`CareCardButton` is the SectionHeader action. `buildCareCard` is pure and deterministic
+and the exact format is:
+
+```text
+PlanMyTrip.health care card
+Destination: <destination or Not set>
+Condition: <condition label>
+Medication: <name or None recorded>
+Trip length: <n> days
+Daily step ceiling: <n> steps
+
+Sun Life
+<alert title>
+- <message>
+
+Daily checkpoints
+Day <n> (step cap <n> steps): <checkpoint>
+...
+
+Planning aid only. Not medical advice. Confirm with your clinician and insurer before you travel.
+```
+
+Copy uses `navigator.clipboard.writeText` with a two-second "Copied" label and a live
+status announcement. On failure a read-only textarea shows the same text; that fallback
+is the only raw control outside `components/ui` and carries a `design-guard-ignore`
+comment. The global reduced-motion rule zeroes both animation duration and stagger
+delay.
 
 ## 6. Key decisions
 
@@ -269,9 +379,11 @@ content and carries the planning-aid notice.
   Skeleton, and StatusGlyph use global classes in `app/globals.css` (`.slider-range`,
   `.skeleton-pulse`, `.status-pulse`), because the Tailwind Turbopack loader returns
   empty class-name exports for CSS modules in this setup. A CSS-module first pass
-  produced `class="undefined"` and a native slider; the global classes fixed it. The
-  Metric tooltip uses inline utilities and state because it must be dismissible and
-  hoverable.
+  produced `class="undefined"` and a native slider; the global classes fixed it.
+  `.t-metric-day` is deliberately unlayered so Tailwind always emits it. DataRow gained
+  a `layout="stacked"` variant for the three narrow worker panes and the itinerary caps
+  column; the default remains the 120px label row. The Metric tooltip uses inline utilities and state because it
+  must be dismissible and hoverable.
 
 ## 7. Conventions
 
@@ -309,6 +421,7 @@ and so on.
 | `.t-title` | Instrument Serif 400, 32/36 desktop, 26/30 mobile. Section titles. |
 | `.t-wordmark` | Instrument Serif 400, 26/30 at every viewport. Header wordmark. |
 | `.t-metric` | Instrument Serif 400, 72/72 desktop, 56/56 mobile, tabular numerals. |
+| `.t-metric-day` | Instrument Serif 400, 56/56 desktop, 40/40 mobile. Itinerary day numbers. |
 | `.t-heading` | Hanken Grotesk 600, 17/24. |
 | `.t-body` | Hanken Grotesk 400, 15/24, max measure 65ch. |
 | `.t-small` | Hanken Grotesk 400, 13/20. |
@@ -375,7 +488,7 @@ rules. `tests/contrast.test.ts` checks 13 token pairs at 4.5:1 or better.
 
 Regenerate with `grep -rn "VERIFY:" app lib components`.
 
-At this commit: 7 entries.
+At this commit: 8 entries.
 
 | File | What to verify |
 | --- | --- |
@@ -386,6 +499,7 @@ At this commit: 7 entries.
 | `lib/conditionProfiles.ts` (cardiac) | residual-risk floor 22; 5,000-step ceiling, 3.0 km walking, 45-minute recovery, altitude, heat, and sodium/allergens against current cardiology guidance. |
 | `lib/sunLifeRules.ts` (stability placeholder) | The window is `null`; confirm the real value with the plan administrator. Never invent a number. |
 | `lib/sunLifeRules.ts` (rules) | 60-day cap, Allianz Global Assistance 24/7 pre-authorization, and stability window against current group policy; record source and checked date. |
+| `lib/swarmState.ts` (preview allowlist) | Confirm the production TinyFish live-preview host family still ends in `.unikraft.app`; `mock.invalid` is dev-only. |
 
 ## 10. External integrations
 
@@ -397,8 +511,9 @@ top-level object with `nullable: true` rather than type arrays; no `oneOf`, `con
 
 Upstream events are `data: <json>` frames: `STARTED` (run_id), `STREAMING_URL`,
 `PROGRESS` (purpose), `HEARTBEAT`, `COMPLETE` (status/result/error), and optional
-`TF_API_RESULT`. Unknown types are ignored; `COMPLETE.result` is authoritative. Only
-absolute http(s) streaming URLs reach the UI.
+`TF_API_RESULT`. Unknown types are ignored; `COMPLETE.result` is authoritative. The route
+forwards absolute http(s) STREAMING_URL values; the client accepts only https previews
+on `mock.invalid` or `*.unikraft.app` before rendering the iframe.
 
 Our route emits these SSE frames. Every payload has `worker`, an ISO `ts`, and optional
 `mock`. `swarm_done` uses `worker: "swarm"` and is always last on a connected stream.
@@ -435,7 +550,7 @@ development. Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The current suite has 149 tests:
+`npm test` runs Vitest once in a Node environment. The current suite has 179 tests:
 
 - `tests/design-guard.test.ts`: token, type, control, emoji, and copy guard.
 - `lib/describeTrip.test.ts`: exact headline, trimming, empty fallback, label reuse.
@@ -450,6 +565,10 @@ development. Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
   `tests/swarm-route*.test.ts`: SSE parsing, event mapping, schemas, placeholder
   normalisation, missing key, isolation, retry subsets, mock mode, timeout, and
   swarm_done. All network is mocked.
+- `lib/swarmReducer*.test.ts`: every worker transition, the idle event gate, reset,
+  preview allowlist, progress cap, findings, mock flag, and swarm_done. `hooks/swarmFrames.test.ts`:
+  allowlisted preview URLs and superseded frames. `lib/pacingStrip.test.ts` and
+  `lib/careCard.test.ts`: strip geometry, bounds, empty input, and exact care-card text.
 
 Add pure-function tests next to the module or under `tests/`, named `*.test.ts`. The
 Vitest include pattern is `**/*.test.ts`. No component-test libraries. Route and SSE
@@ -458,8 +577,7 @@ rather than exempting lines.
 
 ## 12. Known limitations and open questions
 
-- The page shell, rail, engine, and swarm route exist; the live monitor and paced
-  itinerary are not wired yet.
+- All product surfaces exist and are wired; Step 8 audits the docs and identity.
 - The Sun Life stability window is unknown and stored as `null`; no placeholder number
   is shown. Confirm it with the plan administrator.
 - No live TinyFish run or real key has been exercised. Event handling is verified
@@ -470,6 +588,11 @@ rather than exempting lines.
 - Destination strings are labels only. The engine does not invent venues or geography.
 - The mobile `<details>` summary repeats the trip sentence above the headline; this is
   the Step 5 layout contract, not a second headline.
+- The KPI strip stacks at 1024-1279px because the 320px rail leaves too little width for
+  three 72px metrics; it is three-up at 768-1023 and 1280+.
+- No live iframe preview, clipboard permission, or real TinyFish SSE stream has been
+  exercised; mock and missing-key paths are verified, and the components are reviewed.
+- The preview allowlist (`*.unikraft.app`) is based on current docs and marked VERIFY.
 
 ## 13. How to work here
 
