@@ -91,7 +91,7 @@ twenty-five minutes earlier. The workspace is one page; scroll it.
 ### 2:31 — impact
 
 > For people managing a condition, the caregiver at 2 a.m., the clinician who gets a summary.
-> Hours of research become seven minutes. A guess becomes a citation.
+> Hours of research become seven minutes.
 
 ### 2:43 — close
 
@@ -149,15 +149,17 @@ number and the source line.
 | Slide | Title words | Body words | Accent | Result |
 | --- | --- | --- | --- | --- |
 | 1 Cover | — | 12 | none | PASS. No footer. One personal photograph, provided by the presenter; not stock. |
-| 2 Problem | 9 | 33 | the `0` | PASS. Every number sourced in the label. |
-| 3 Solution | 9 | 31 | `Pace` | PASS. Three rows, one rule each. |
-| 4 Demo | 7 | 19 | `Live` | PASS. Stage cue and fallback. |
-| 5 Architecture | 10 | 7 | `never` | PASS. Two-loop inline SVG: live run and data loop. |
-| 6 Comparison | 11 | 11 footnote | one `Yes` | PASS. Table excluded from the body budget. |
-| 7 Impact | 7 | 30 | `seven` | PASS. Three bullets, no sub-bullets. |
+| 2 Problem | 1 | 33 | the `0` | PASS. Every number sourced in the label. |
+| 3 Solution | 1 | 31 | `Pace` | PASS. Three rows, one rule each. |
+| 4 Demo | 1 | 19 | `Live` | PASS. Stage cue and fallback. |
+| 5 Architecture | 1 | 7 | `not` | PASS. Two-loop inline SVG: live run and data loop. |
+| 6 Comparison | 1 | 11 footnote | one `Yes` | PASS. Table excluded from the body budget. |
+| 7 Impact | 1 | 24 | `seven` | PASS. Three bullets, no sub-bullets. |
 | 8 Close | 5 + 6 | 0 | URL | PASS. |
-| 9 Model | 9 | 21 + table | `never` | PASS. Appendix; formula, tiers, ship gate. |
-| 10 Data | 10 | 10 + tables | `dose` | PASS. Appendix; not presented in the three minutes. |
+| 9 Model | 1 | 21 + table | `never` | PASS. Appendix; formula, tiers, ship gate. |
+| 10 Data | 1 | 10 + tables | `dose` | PASS. Appendix; not presented in the three minutes. |
+
+Titles are the presenter's section names, not assertions. The content carries the takeaway.
 
 Banned check: no emoji, no icons, no gradients, shadows, blur, glass, centered text, pill
 badges, decorative shapes, purple, marketing filler, agenda or thank-you slide. No app tabs;

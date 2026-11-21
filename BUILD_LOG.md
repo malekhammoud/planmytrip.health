@@ -643,6 +643,14 @@ thresholds and Sun Life stability window remain VERIFY.
   "Hours of research become seven minutes."
 - Gate: typecheck, 466 tests (439 passed, 27 skipped), lint, production build pass.
 
+### Pitch deck plain section titles (2026-11-21)
+
+- Replaced the assertion headlines with the presenter's section names: Problem, Solution,
+  Demo, Architecture, Comparison, Impact, Model, Data. The close keeps its memorial line.
+- Impact now carries "Hours of research become seven minutes" in the body; the architecture
+  slide keeps "Generation is probabilistic. The ceiling is not." with one accent.
+- Gate: typecheck, 466 tests (439 passed, 27 skipped), lint, production build pass.
+
 ## Next action
 
 Run a consented pilot cohort against production PostgreSQL, confirm capture and outcome rows

@@ -414,6 +414,11 @@ body {
 
 /* ---------- 07 Impact ---------- */
 
+.impact-line {
+  max-width: 1400px;
+  margin-bottom: 56px;
+}
+
 .list-label {
   margin: 0;
 }
