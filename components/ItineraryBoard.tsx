@@ -13,6 +13,7 @@ import {
 } from "@/lib/healthTripEngine";
 import type { VerificationAdjustment } from "@/lib/verificationOverlay";
 import { hostOf } from "@/components/mission/missionMeta";
+import { NewMark } from "@/components/mission/NewMark";
 import { CONDITION_LABELS, type Condition } from "@/lib/types";
 import { PacingStrip } from "./PacingStrip";
 /** Props for {@link ItineraryBoard}. */
@@ -199,7 +200,9 @@ function ItineraryDayRow({
         <BlockList blocks={day.blocks} />
         {recovery === undefined ? null : (
           <div className="mt-4 border-t border-solid border-hairline pt-3">
-            <p className="t-label text-accent">Adjusted by verification</p>
+            <p className="t-label text-accent">
+              Adjusted by verification <NewMark />
+            </p>
             <p className="t-small mt-1 text-ink">
               Afternoon recovery {recovery.fromValue ?? 0} to {recovery.toValue ?? 0}{" "}
               min. Reason: {recovery.reason.trim().replace(/[.!?]+$/, "")}. Source:{" "}

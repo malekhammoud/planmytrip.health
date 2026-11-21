@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties } from "react";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import type { WorkerId } from "@/lib/swarmTypes";
 
 interface Panel {
@@ -129,6 +130,7 @@ const PANELS: Record<WorkerId, readonly Panel[]> = {
 /** Dev-only fake browser viewport; production rewrites this route to 404. */
 export function MockBrowser({ worker }: { worker: WorkerId }) {
   const panels = PANELS[worker];
+  const reduced = useReducedMotion();
   const [panelIndex, setPanelIndex] = useState(0);
   const [cursor, setCursor] = useState({ left: 28, top: 42 });
   const [clicks, setClicks] = useState(0);
@@ -165,7 +167,7 @@ export function MockBrowser({ worker }: { worker: WorkerId }) {
   const cursorStyle = {
     left: `${cursor.left}%`,
     top: `${cursor.top}%`,
-    transition: "left 900ms var(--ease), top 900ms var(--ease)",
+    transition: reduced ? "none" : "left 900ms var(--ease), top 900ms var(--ease)",
   } as CSSProperties;
 
   return (

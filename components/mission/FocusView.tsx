@@ -51,6 +51,10 @@ function useFullscreenSupported(): boolean {
   return useSyncExternalStore(subscribeFullscreen, getFullscreen, () => false);
 }
 
+// VERIFY: three distinct TinyFish preview streams can be embedded at once while the
+// hidden ones stay mounted. A provider that limits concurrent viewers would need the
+// hidden frames paused rather than left attached. Recheck on a real three-worker run.
+
 /** One mounted live view; `visible` only controls which chrome is shown. */
 export function FocusView({ worker, state, visible, onRetry }: FocusViewProps) {
   const meta = MISSION_WORKERS[worker];

@@ -489,6 +489,31 @@ thresholds and Sun Life stability window remain VERIFY.
   property coverage. Verified in mock mode that the master toggle restores 30-minute recovery,
   a per-adjustment toggle restores one day, and the source links remain present.
 
+### Step 19: hardening and documentation
+
+- Stream audit at `SWARM_MOCK_SPEED=12`: 3 `worker_status`, 3 `worker_started`, 3
+  `streaming_url`, 44 `worker_progress`, 8 `worker_sources`, 1 heartbeat, 3
+  `worker_complete`, then `swarm_done`. Per-worker sequences were monotonic (advisory 1-20,
+  pharmacy 1-25, coverage 1-20), and the final summary reported 44 steps, 15 sources, 3
+  findings, 0 unknown events. Byte count 13,878 with no buffering.
+- Fail path with `SWARM_MOCK_FAIL=coverage`: coverage emitted `worker_error` code
+  `site_blocked` after real progress, the other two completed, `swarm_done` listed the failed
+  worker, the status read "Verification complete" with `2 of 3 findings`, the title read
+  `Verified 2/3`, and the focus moved to the failed worker with a Retry action.
+- Reduced-motion audit with `Emulation.setEmulatedMedia`: `animationName` was `none` for
+  `.anim-pulse-dot`, `.anim-rise`, and `.anim-arrive`; typing was instant; the pace strip
+  transitions were off; 19 static "New" labels marked arrivals and remained readable.
+- Alive rubric over every new file: all eight checks pass. Real events only, no percentage or
+  ETA, reduced motion complete, idle stillness, clock isolated to time and silence states,
+  feed/source caps, quiet and stalled states, and the Paper and Ink guard green.
+- Docs: AGENTS.md now carries the event schema, telemetry model, mission-control component
+  map, motion tokens and classes, overlay rules, mock env vars, guard additions, and four new
+  VERIFY rows (limits, stealth retry, TF_API_RESULT shape, multi-viewer iframes).
+- Decision: the P4 change chip and tween are wired to a plan prop change, but Edit trip
+  remounts the workspace by design (Step 13), so the current flow does not exercise the chip
+  in the browser. The pure math is tested; a future in-place sidebar will show it.
+- No push: this phase commits locally only, per the safety rail.
+
 ## Next action
 
 Run a consented pilot cohort against production PostgreSQL, confirm capture and outcome rows

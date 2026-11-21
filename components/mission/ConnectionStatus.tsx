@@ -32,7 +32,9 @@ const DOT_CLASS = {
 export function ConnectionStatus({ state, onRetry, dotOnly = false }: ConnectionStatusProps) {
   const active = state.phase === "queued" || state.phase === "running";
   const now = useNow(active);
-  const health = connectionHealth(state.lastEventAt, now);
+  // Before the first event there is no silence to report, only a pending stream.
+  const health =
+    state.lastEventAt === null ? "live" : connectionHealth(state.lastEventAt, now);
   const showText = !dotOnly && active && health !== "live" && now > 0;
 
   return (

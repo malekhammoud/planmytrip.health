@@ -40,6 +40,10 @@ export const KEEP_ALIVE_MS = 15_000;
 
 const MISSING_KEY_MESSAGE =
   "The live agent check is not configured on this server. Verify the API key and retry.";
+
+// VERIFY: a SITE_BLOCKED retry with browser_profile "stealth" is accepted by the
+// provider and does not double-bill or duplicate side effects. Confirm on the next live
+// blocked-site run, then record the result in AGENTS.md section 9.
 const TIMEOUT_MESSAGE = "The agent did not finish in time. Retry this check.";
 const END_MESSAGE = "The agent stream ended before it reported a result. Retry this check.";
 const NETWORK_MESSAGE = "The agent service could not be reached. Retry this check.";

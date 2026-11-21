@@ -50,7 +50,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 16. Mission control | [x] | `feat(ui): add live mission control for agent swarm` |
 | 17. Verification overlay | [x] | `feat(engine): add tighten-only live verification overlay` |
 | 18. Animated plan changes | [x] | `feat(ui): animate plan changes and live adjustments` |
-| 19. Mission control docs | [ ] | `docs(agents): document live mission control and telemetry` |
+| 19. Mission control docs | [x] | `docs(agents): document live mission control and telemetry` |
 
 ## 3. Commands
 
@@ -628,7 +628,7 @@ allowed fixtures prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.
 
 ## 9. VERIFY register
 
-Regenerate with `grep -rn "VERIFY:" app lib components`; there are 15 entries.
+Regenerate with `grep -rn "VERIFY:" app lib components`; there are 19 entries.
 
 | File | What to verify |
 | --- | --- |
@@ -640,6 +640,10 @@ Regenerate with `grep -rn "VERIFY:" app lib components`; there are 15 entries.
 | `lib/sunLifeRules.ts` (stability placeholder) | The window is `null`; confirm the real value with the plan administrator. Never invent a number. |
 | `lib/sunLifeRules.ts` (rules) | 60-day cap, Allianz 24/7 pre-authorization, and stability window against current group policy; record source and checked date. |
 | `lib/swarmState.ts` (preview allowlist) | Docs list `*.unikraft.app`; a live production run on 2026-11-21 returned `*.tetra-data.production.tinyfish.io`, so both provider domains are allowlisted. Recheck if TinyFish introduces another host family. |
+| `lib/swarmConfig.ts` (limits) | Confirm TinyFish still accepts `max_steps: 60`, `max_duration_seconds: 100`, and `cursor_style: "standard"`, and that one worker fits the 120s route budget. |
+| `lib/swarmRunner.ts` (stealth retry) | Confirm a `SITE_BLOCKED` retry with `browser_profile: "stealth"` is accepted, does not double-bill, and does not repeat a side effect. |
+| `lib/tinyfishEvents.ts` (TF_API_RESULT) | The provider documents an array but not its item shape. This build reads only direct string `url` and `title`; confirm the real shape on a live run before widening it. |
+| `components/mission/FocusView.tsx` (iframe multi-viewer) | Confirm three distinct TinyFish previews can be embedded at once with two hidden but mounted. A concurrent-viewer limit would require pausing hidden frames. |
 | `lib/verificationOverlay.ts` (keyword rules) | Heat, air-quality, altitude, outbreak, and allergen keywords are product heuristics, not clinical thresholds. Have a clinician confirm the mapping and the 30-minute recovery extension. |
 | `lib/agent/agentGeocode.ts` (Nominatim) | Public Nominatim allows one request per second and requires an identifying User-Agent. Confirm the production geocoder's licence, quota, and attribution. |
 | `components/TripMap.tsx` (tiles) | Confirm the production tile licence, attribution text, and request volume. Public OSM tiles are not a high-volume production endpoint. |
@@ -753,10 +757,14 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 - `lib/tinyfish*.test.ts`, `lib/swarmGoals.test.ts`, `tests/swarm-route*.test.ts`, and
   `tests/swarm-runner*.test.ts` cover parsing, mapping, schemas, normalisation, missing key,
   isolation, retries, mock, timeout, abort, and swarm_done. All network is mocked.
-- `lib/swarmReducer*.test.ts`, `hooks/swarmFrames.test.ts`, `lib/pacingStrip.test.ts`,
-  `lib/careCard.test.ts`, `lib/describeTrip.test.ts`, `lib/onboarding.test.ts`, and
-  `components/ui/*.test.ts` cover transitions, the idle gate, allowlists, geometry, exact
-  care-card text, the onboarding gate and normalization, and headline copy.
+- `lib/swarmReducer*.test.ts`, `lib/swarmTelemetry.test.ts`, `hooks/swarmFrames.test.ts`,
+  `hooks/swarmBatch.test.ts`, `lib/swarmMock.test.ts`, `tests/swarm-retry.test.ts`,
+  `lib/swarmErrors.test.ts`, `lib/pacingStrip.test.ts`, `lib/careCard.test.ts`,
+  `lib/describeTrip.test.ts`, `lib/onboarding.test.ts`, `lib/planMotion.test.ts`,
+  `lib/verificationOverlay.test.ts`, `components/mission/missionMeta.test.ts`, and
+  `components/ui/*.test.ts` cover telemetry, caps, retries, mock ordering, error copy,
+  geometry, exact care-card text, tween and diff math, the tighten-only overlay, the
+  onboarding gate, and headline copy.
 - `lib/agent/*.test.ts` covers request bounds, assistant-text and JSON parsing, specialist
   normalisation, coordinate validation, concierge plan building and wire normalisation, the
   fallback route, prompt safety and limits, tool-activity humanisation, geocoding, planner
@@ -792,8 +800,11 @@ exempting lines.
   workers with no failures; advisory and coverage were rich, while pharmacy returned empty
   findings in that concurrent run after a standalone retry returned Salbutamol and local brands.
   A 2026-11-21 one-page run completed advisory and coverage while medication/customs exposed a
-  Retry; the page keeps the failed column visible with its source and retry action.
-  Iframe rendering and clipboard permissions remain unverified.
+  Retry; the page keeps the failed column visible with its source and retry action. The new
+  mission control was exercised in mock mode only: three iframes rendered, the fail path
+  reached `SITE_BLOCKED`, and reduced motion switched every named class off. A live production
+  run with the 120s/100s/60-step limits, the stealth retry, and the multi-viewer frames still
+  needs to be run. Clipboard permissions remain unverified.
 - The route tolerates unknown events, stringified `result` values, and partial payloads.
 - The preview allowlist covers `mock.invalid`, `*.unikraft.app` (docs), and `*.tinyfish.io`
   (verified live 2026-11-21).
@@ -813,6 +824,9 @@ exempting lines.
 - The workspace is intentionally one long page. On a phone, live verification sits below the
   full safety envelope; both streams keep running while the reader scrolls. Do not reintroduce
   tabs to shorten it.
+- The KPI tween and four-second diff chip are wired to a plan prop change, but Edit trip
+  remounts the workspace by design, so the current single-page flow does not exercise the chip
+  in the browser. The math and lifetime are unit-tested; an in-place plan update will show it.
 - The default free model hit a provider quota during development; production must set
   `OPENCODE_MODEL`. A quota failure maps to `agent_unavailable`.
 - The embedded `@opencode/sdk` host requires Node 26 for `await using`; this app is on Node 22

@@ -9,9 +9,8 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
 import { hostOf, WORKER_TAG } from "@/components/mission/missionMeta";
-import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { NewMark } from "@/components/mission/NewMark";
 import type { SwarmState } from "@/lib/swarmReducer";
 import { collectSources } from "@/lib/swarmTelemetry";
 import { WORKER_IDS, type SwarmSourceItem, type WorkerId } from "@/lib/swarmTypes";
@@ -23,19 +22,6 @@ interface SourceRow {
 }
 
 const API_LABEL = { search: "search", fetch: "fetch" } as const;
-
-function NewMark() {
-  const reduced = useReducedMotion();
-  const [visible, setVisible] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setVisible(false), 4000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (!reduced || !visible) return null;
-  return <span className="t-label text-accent">New</span>;
-}
 
 function rows(state: SwarmState): SourceRow[] {
   const output: SourceRow[] = [];

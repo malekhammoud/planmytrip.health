@@ -7,6 +7,7 @@
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Button, DataRow } from "@/components/ui";
+import { NewMark } from "@/components/mission/NewMark";
 import type { WorkerState } from "@/lib/swarmReducer";
 import {
   type AdvisoryFindings,
@@ -202,6 +203,7 @@ export function WorkerFindings({
               className={reveal ? "anim-arrive" : undefined}
               style={style}
             >
+              {reveal ? <NewMark /> : null}
               <DataRow label={row.label} layout="stacked">
                 {row.value}
               </DataRow>

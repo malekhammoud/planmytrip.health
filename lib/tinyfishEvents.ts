@@ -35,6 +35,10 @@ export interface UpstreamMappingContext {
 const MAX_SOURCES_PER_EVENT = 10;
 const MAX_SOURCE_TEXT = 200;
 
+// VERIFY: TF_API_RESULT is documented as an array with an unspecified item shape. This
+// build reads only direct string url and title fields and ignores everything else; check
+// the real shape after the next production run and only then widen the reader.
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

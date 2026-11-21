@@ -47,18 +47,28 @@ function lastProgressAt(state: SwarmState, worker: WorkerId): number {
   return steps[steps.length - 1]?.t ?? value.startedAt ?? 0;
 }
 
-/** Most recent active worker, or the most recently settled one. Never invents a phase. */
+/** Most recent active worker, an error when nothing is active, or the newest settled. */
 function autoWorker(state: SwarmState): WorkerId {
   const active = WORKER_IDS.filter((worker) => {
     const phase = state.workers[worker].phase;
     return phase === "queued" || phase === "running";
   });
-  const pool = active.length > 0 ? active : [...WORKER_IDS];
-  return pool.reduce((best, worker) => {
-    const score = lastProgressAt(state, worker);
-    const bestScore = lastProgressAt(state, best);
-    return score > bestScore ? worker : best;
-  });
+  if (active.length > 0) {
+    return active.reduce((best, worker) =>
+      lastProgressAt(state, worker) > lastProgressAt(state, best) ? worker : best,
+    );
+  }
+  const failed = WORKER_IDS.filter((worker) => state.workers[worker].phase === "error");
+  if (failed.length > 0) {
+    return failed.reduce((best, worker) => {
+      const score = state.workers[worker].endedAt ?? 0;
+      const bestScore = state.workers[best].endedAt ?? 0;
+      return score > bestScore ? worker : best;
+    });
+  }
+  return WORKER_IDS.reduce((best, worker) =>
+    lastProgressAt(state, worker) > lastProgressAt(state, best) ? worker : best,
+  );
 }
 
 /** The one mission surface. */

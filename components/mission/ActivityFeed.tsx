@@ -88,7 +88,13 @@ export function ActivityFeed({ state }: ActivityFeedProps) {
   const [jump, setJump] = useState(0);
   const delta = Math.max(0, feed.length - previousLength);
   const instant = delta >= 3;
-  const origin = feed[0]?.at ?? 0;
+  const origin = WORKER_IDS.reduce((earliest, worker) => {
+    const steps = state.workers[worker].steps;
+    const first = steps[0]?.t;
+    if (first === undefined) return earliest;
+    return Math.min(earliest, first);
+  }, feed[0]?.at ?? Number.POSITIVE_INFINITY);
+  const safeOrigin = Number.isFinite(origin) ? origin : 0;
   const newestId = feed[feed.length - 1]?.id;
 
   const scrollToLatest = (): void => {
@@ -180,7 +186,7 @@ export function ActivityFeed({ state }: ActivityFeedProps) {
                 line={line}
                 newest={line.id === newestId}
                 instant={instant}
-                origin={origin}
+                origin={safeOrigin}
               />
             ))}
           </ol>
