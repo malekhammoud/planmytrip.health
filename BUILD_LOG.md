@@ -514,9 +514,36 @@ thresholds and Sun Life stability window remain VERIFY.
   in the browser. The pure math is tested; a future in-place sidebar will show it.
 - No push: this phase commits locally only, per the safety rail.
 
+### Pitch deck (2026-11-21)
+
+- Added a static 1920×1080 Paper and Ink deck at `public/pitch/`, served at `/pitch` by a
+  rewrite in `next.config.ts`. Eight presented slides plus a data-moat appendix: cover,
+  problem, solution, demo cue, architecture, comparison, impact, close, and appendix.
+- The deck uses the product tokens and type classes, local Instrument Serif, Hanken Grotesk,
+  and IBM Plex Mono woff2 files, an inline SVG architecture diagram, and one personal
+  photograph (`basil.jpg`), used with the family's consent and the only raster asset.
+- Added `docs/PITCH.md` with the 2:55 script, the tab-by-tab demo runbook and fallback ladder,
+  sources, the 0-of-5 planner audit, and a rubric check.
+- Gate: typecheck, 286 tests, lint, production build pass. `/pitch` and all assets return 200
+  from the production build.
+- Unverified: the live presentation with two staggered runs; the 0-of-5 audit screenshots.
+
+### Pitch deck copy revision (2026-11-21)
+
+- Enlarged the cover photograph to 900px, moved the story line into a full-width bottom band,
+  and added the "Basil and his mother" caption and a vertical hairline. The cover now uses the
+  full page instead of leaving the lower half empty.
+- Replaced the cancer-specific problem statistic with general-health prevalence: 45% of
+  Canadians live with a chronic disease, 1 in 12 with three or more, and 64% of adults 50+ plan
+  a trip this year. The gap remains 0 of 5 planners.
+- Plain-language pass: the cover, solution, impact, and close now state the problem and the time
+  saved without metaphor.
+- Gate: typecheck, 286 tests, lint, production build pass.
+
 ## Next action
 
 Run a consented pilot cohort against production PostgreSQL, confirm capture and outcome rows
 arrive, and replace the synthetic artifact only after the pooled tier is reached. Monitor
-pharmacy consistency and check the live iframe and clipboard behavior. The clinical thresholds
-and Sun Life stability window remain VERIFY.
+pharmacy consistency and check the live iframe and clipboard behavior. Before the pitch,
+rehearse the two staggered demo runs and complete the 0-of-5 planner audit. The clinical
+thresholds and Sun Life stability window remain VERIFY.

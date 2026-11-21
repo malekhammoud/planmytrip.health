@@ -129,9 +129,10 @@ hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, swarmBatch.ts, useNow.ts, u
 components/  Onboarding.tsx, PlanWorkspace.tsx, MissionBand.tsx, PlanPanel.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, VerificationAdjustments.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
 components/mission/  MissionControl.tsx, StatusBar.tsx, FocusView.tsx, WorkerTile.tsx, ActivityFeed.tsx, TempoStrip.tsx, SourcesList.tsx, FindingsReveal.tsx, PreRun.tsx, ConnectionStatus.tsx, Elapsed.tsx, missionMeta.ts
 components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Field.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
+public/pitch/  index.html, deck.css, deck.js, basil.jpg, fonts/
 scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts
 data/  synthetic-trips.jsonl
-docs/  ML.md, MODEL_CARD.md
+docs/  ML.md, MODEL_CARD.md, PITCH.md
 tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
 module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, planMotion.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts
 root  package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, instrumentation.ts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
@@ -443,6 +444,17 @@ the text. That fallback is the only raw control outside `components/ui` and carr
 the master "Apply live adjustments" Checkbox and one Checkbox per checkpoint, recovery-day, or
 checklist adjustment, with reason, worker, source link, and retrieved time. Turning the master
 off restores the engine plan exactly.
+
+### Pitch deck
+
+`public/pitch/` is a static 1920×1080 Paper and Ink deck served at `/pitch` by a rewrite in
+`next.config.ts`. It is presentation-only: not an app route, not covered by the design guard,
+and it adds no application code. It has nine slides (eight presented, one appendix), local
+woff2 fonts under `public/pitch/fonts`, an inline SVG architecture diagram, and one raster
+asset, `basil.jpg`, a personal photograph used with the family's consent. Arrow keys advance,
+`F` toggles fullscreen, `Home` / `End` jump, and the page prints to PDF. `docs/PITCH.md` holds
+the three-minute script, demo runbook, sources, and rubric check. Edit the deck as HTML, CSS,
+and vanilla JavaScript; do not rebuild it in React.
 
 ## 6. Key decisions
 
