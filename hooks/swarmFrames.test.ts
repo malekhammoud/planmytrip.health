@@ -33,6 +33,7 @@ describe("swarmFrames", () => {
     for (const streamingUrl of [
       "https://mock.invalid/stream/advisory",
       "https://preview-abc123.unikraft.app/session/1",
+      "https://ip-13-56-19-124.tetra-data.production.tinyfish.io/tf-abc/stream/0",
     ]) {
       const actions = collect(
         frame("streaming_url", { worker: "advisory", streamingUrl }),
@@ -52,6 +53,7 @@ describe("swarmFrames", () => {
       "https://planmytrip.health/stream/advisory",
       "https://example.com/stream/advisory",
       "https://evilunikraft.app/stream/advisory",
+      "https://eviltinyfish.io/stream/advisory",
       "https://sub.mock.invalid/stream/advisory",
       "https://unikraft.app/stream/advisory",
       "javascript:alert(1)",

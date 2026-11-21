@@ -114,6 +114,7 @@ describe("swarmReducer transitions", () => {
       "https://live.tinyfish.ai/session/abc",
       "https://unikraft.app/session/1",
       "https://evilunikraft.app/session/1",
+      "https://eviltinyfish.io/session/1",
       "https://sub.mock.invalid/stream/advisory",
       "https://planmytrip.health/stream/advisory",
       "javascript:alert(1)",
@@ -131,6 +132,7 @@ describe("swarmReducer transitions", () => {
 
     for (const streamingUrl of [
       "https://preview-abc123.unikraft.app/session/1",
+      "https://ip-13-56-19-124.tetra-data.production.tinyfish.io/tf-abc/stream/0",
       "https://mock.invalid/stream/advisory",
     ]) {
       state = swarmReducer(state, {

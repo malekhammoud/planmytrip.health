@@ -5,7 +5,7 @@
  * request abort signal, and the dev mock flag.
  * Outputs: queued/running status, streaming URL, progress, completion, error, and done
  * events for the requested workers.
- * Invariants: each live worker has its own AbortController and 110s timeout; a rejected
+ * Invariants: each live worker has its own AbortController and 240s timeout; a rejected
  * worker becomes one upstream_error and aborts sibling upstreams; every path emits
  * exactly one swarm_done. The API key is passed only to the TinyFish client and never
  * appears in an event.
@@ -27,15 +27,16 @@ import type {
   WorkerOutcome,
 } from "@/lib/swarmTypes";
 
-/** Worker timeout before a calm timeout error is emitted. */
-export const WORKER_TIMEOUT_MS = 110_000;
+/** Worker timeout before a calm timeout error is emitted. Live browser runs routinely
+ * spend 90-150s navigating advisory and pharmacy sites, so 110s cut valid runs short. */
+export const WORKER_TIMEOUT_MS = 240_000;
 
 /** SSE keep-alive interval used by the route. */
 export const KEEP_ALIVE_MS = 15_000;
 
 const MISSING_KEY_MESSAGE =
   "The live agent check is not configured on this server. Verify the API key and retry.";
-const TIMEOUT_MESSAGE = "The agent did not finish within 110 seconds. Retry this check.";
+const TIMEOUT_MESSAGE = "The agent did not finish within 4 minutes. Retry this check.";
 const UNEXPECTED_MESSAGE = "The agent check stopped unexpectedly. Retry this worker.";
 const END_MESSAGES = {
   ended: "The agent stream ended before it reported a result. Retry this check.",

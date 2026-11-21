@@ -84,18 +84,22 @@ export function isLive(
   return phase === "queued" || phase === "running";
 }
 
-// VERIFY: Confirm the production TinyFish live-preview host family still ends in
-// .unikraft.app; mock.invalid is the dev-only mock host. Recheck before release and
-// record the source and checked date in AGENTS.md section 9.
+// VERIFY: TinyFish preview hosts. Docs still show *.unikraft.app, but a live production
+// run on 2026-11-21 returned https://ip-*.tetra-data.production.tinyfish.io/..., so both
+// provider domains are allowlisted. mock.invalid is the dev-only mock host.
 /**
- * True only for https preview URLs on mock.invalid or a *.unikraft.app host. This keeps
- * app-origin, javascript, data, http, and third-party frames out of the live columns.
+ * True only for https preview URLs on mock.invalid or a *.unikraft.app / *.tinyfish.io
+ * host. This keeps app-origin, javascript, data, http, and third-party frames out of the
+ * live columns.
  */
 export function isAllowedPreviewUrl(value: string): boolean {
   try {
     const url = new URL(value);
     if (url.protocol !== "https:") return false;
-    return url.hostname === "mock.invalid" || url.hostname.endsWith(".unikraft.app");
+    if (url.hostname === "mock.invalid") return true;
+    return ["unikraft.app", "tinyfish.io"].some((domain) =>
+      url.hostname.endsWith(`.${domain}`),
+    );
   } catch {
     return false;
   }

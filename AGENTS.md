@@ -150,9 +150,11 @@ complete/error --run_started (same worker)--> queued
 
 Worker events are accepted only from queued or running; `run_started` is the only exit from
 idle. Progress keeps the last three purposes. `streaming_url` accepts only https on
-`mock.invalid` or `*.unikraft.app` (VERIFY) in `lib/swarmState.ts` and `hooks/swarmFrames.ts`;
-all other hosts are rejected. `swarm_done` stores completed and failed lists. Any `mock: true`
-payload shows the "Mock data" caution Callout; a full run clears it.
+`mock.invalid`, `*.unikraft.app`, or `*.tinyfish.io` (VERIFY) in `lib/swarmState.ts` and
+`hooks/swarmFrames.ts`; all other hosts are rejected. Live workers abort after 240s so slow
+browser runs can still finish; `/api/travel-swarm` declares `maxDuration = 300`. `swarm_done`
+stores completed and failed lists. Any `mock: true` payload shows the "Mock data" caution
+Callout; a full run clears it.
 
 A live frame is 16:10 on surface, 1px hairline-strong, 4px radius, with a 28px bar: accent
 pulse dot, LIVE, and preview host (hidden below 1280px). Preparing uses a muted dot and
@@ -307,7 +309,7 @@ Regenerate with `grep -rn "VERIFY:" app lib components`; there are 8 entries.
 | `lib/conditionProfiles.ts` (cardiac) | floor 22; 5,000-step ceiling, 3.0 km walking, 45-minute recovery, altitude, heat, and sodium/allergens against cardiology guidance. |
 | `lib/sunLifeRules.ts` (stability placeholder) | The window is `null`; confirm the real value with the plan administrator. Never invent a number. |
 | `lib/sunLifeRules.ts` (rules) | 60-day cap, Allianz 24/7 pre-authorization, and stability window against current group policy; record source and checked date. |
-| `lib/swarmState.ts` (preview allowlist) | Confirm the production TinyFish preview host family still ends in `.unikraft.app`; `mock.invalid` is the mock-mode host. |
+| `lib/swarmState.ts` (preview allowlist) | Docs list `*.unikraft.app`; a live production run on 2026-11-21 returned `*.tetra-data.production.tinyfish.io`, so both provider domains are allowlisted. Recheck if TinyFish introduces another host family. |
 
 ## 10. External integrations
 
@@ -319,7 +321,8 @@ arrays, `oneOf`, `const`, or `additionalProperties`.
 Upstream `data: <json>` events: `STARTED` (run_id), `STREAMING_URL`, `PROGRESS` (purpose),
 `HEARTBEAT`, `COMPLETE` (status/result/error), and optional `TF_API_RESULT`. Unknown types are
 ignored; `COMPLETE.result` is authoritative. The route forwards absolute http(s) STREAMING_URL
-values; the browser keeps only https `mock.invalid` or `*.unikraft.app` previews.
+values; the browser keeps only https `mock.invalid`, `*.unikraft.app`, or `*.tinyfish.io`
+previews.
 
 Our SSE frames all carry `worker`, an ISO `ts`, and optional `mock`; `swarm_done` uses
 `worker: "swarm"` and is always last on a connected stream.
@@ -377,10 +380,13 @@ guard green rather than exempting lines.
 
 - The Sun Life stability window is unknown and stored as `null`; no placeholder number is
   shown. Confirm it with the plan administrator.
-- No live TinyFish run, key, iframe preview, clipboard permission, or real SSE stream has been
-  exercised. Fixtures and mocked fetch verify event handling; preview URLs may expire.
+- A live TinyFish SSE run was verified on 2026-11-21: the key, progress events, and preview
+  URL worked; the preview host was `*.tinyfish.io`, and the 110s timeout was raised to 240s
+  after a valid advisory run was cut off mid-navigation. A full three-worker run, iframe
+  rendering, and clipboard permissions remain unverified.
 - The route tolerates unknown events, stringified `result` values, and partial payloads.
-- The preview allowlist (`*.unikraft.app`) follows current docs and is marked VERIFY.
+- The preview allowlist covers `mock.invalid`, `*.unikraft.app` (docs), and `*.tinyfish.io`
+  (verified live 2026-11-21).
 - The user-owned `README.md` is untouched; this guide is the working file. Light theme only;
   tokens allow a dark theme later.
 - Destination strings are labels only; the engine invents no venues or geography.

@@ -155,6 +155,21 @@ None.
   verified with curl after a background start. Lockfile unchanged.
 - Unverified: no live TinyFish run or real iframe/clipboard, as before.
 
+## Production deployment (2026-11-21)
+
+- Hosted at https://planmytrip.health (canonical apex, `www` 301) behind nginx on
+  127.0.0.1:3005, with `planmytrip.service` on a dedicated system account and Certbot TLS
+  for the apex and `www`.
+- The first live TinyFish run exposed two integration mismatches: previews now come from
+  `*.tetra-data.production.tinyfish.io` (docs still show `*.unikraft.app`), and a valid
+  advisory run was cut off at 110s while still navigating. Allowlisted `*.tinyfish.io`,
+  raised the worker timeout to 240s, and set the route `maxDuration` to 300.
+- A second live one-worker run completed in 165s with advisory findings, a preview URL,
+  and `swarm_done` `completed: ["advisory"]`. A full three-worker run and iframe rendering
+  remain unverified.
+- Gate: typecheck, 179 tests, lint, and production build pass.
+
 ## Next action
 
-None. Final gate green; build complete.
+Monitor the first production three-worker runs; confirm the live iframe preview and
+clipboard behavior. The clinical thresholds and Sun Life stability window remain VERIFY.
