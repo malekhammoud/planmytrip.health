@@ -46,6 +46,10 @@
   localStorage install id; an unanswered follow-up is not a negative label.
 - **Scripts with `tsx`:** `tsx` is a dev dependency for the synthetic and training CLIs. It
   resolves TypeScript and path aliases without a build step.
+- **Route derived, not re-planned:** the route planner orders stops inside a day, pins meals,
+  and chooses a leg mode, but never moves a place to another day. The plan, the computed dose,
+  and the captured dossier therefore stay identical. Cross-day pacing is instructed in the
+  concierge prompt and reported as a caution; reassigning days needs its own capture-aware step.
 
 ## Blockers
 
@@ -386,9 +390,37 @@ thresholds and Sun Life stability window remain VERIFY.
   explicit false label against the capture. The two browser-test rows were then removed; the
   production store keeps one consented, unlabeled trip and no training labels.
 
+### Step 14: transport-aware route and Maps handoff
+
+- Added `lib/route/`: great-circle geometry, per-leg mode choice, an open-path visit optimizer
+  (nearest-neighbour seed, 2-opt, Or-opt), the plan-to-route projection, and the Google Maps
+  URL builder. `docs/ROUTE.md` records the algorithms, complexity, and limits.
+- Onboarding step 01 now asks for an optional starting point and the travel method. The
+  request, planner prompt, and workspace summary carry both; the concierge is told to group
+  each day around one area reachable by that method and never to place two demanding days back
+  to back.
+- Each day's place-bearing blocks become stops with verified coordinates. Meals and check-ins
+  keep their slot, the day's own base is not repeated, and the rest are ordered from the base.
+  Legs resolve to walk, transit, or car. A demanding day (a hike, or 70% of the walking
+  ceiling) avoids walking above 0.6 km when the selected mode allows it.
+- `RoutePanel` shows trip and day totals, the ordered stops, each leg with its mode, the
+  engine's day ceiling, cautions, and one Google Maps button per day plus an arrival link. The
+  map draws the optimized order. Times are labelled modeled, and the panel says the links send
+  the stops to Google.
+- Fixed a pre-existing wire bug: `normalizeWirePlan` looked blocks up by `placeName`, but wire
+  frames carry `placeId`, so every block lost its place on receipt and the map never drew day
+  lines. Blocks now resolve by id or name, with a round-trip test.
+- Tests: 361 total. Added 62 route tests plus request, onboarding, prompt, and wire round-trip
+  coverage.
+- Verified in a mock run at 1276 px and 375 px: four day links, the arrival link, four map
+  lines, no horizontal overflow, and 44 px map buttons.
+- Gate: typecheck, 345 passed with 16 PostgreSQL tests skipped because no `DATABASE_URL` is
+  configured in this environment, lint, and a production build.
+
 ## Next action
 
 Run a consented pilot cohort against production PostgreSQL, confirm capture and outcome rows
-arrive, and replace the synthetic artifact only after the pooled tier is reached. Monitor
-pharmacy consistency and check the live iframe and clipboard behavior. The clinical thresholds
-and Sun Life stability window remain VERIFY.
+arrive, and replace the synthetic artifact only after the pooled tier is reached. Then run a
+full 7-of-7 concierge pass with the new transport question and open the generated Google Maps
+links on a phone. Live transit schedules, opening hours, and cross-day pacing rebalancing
+remain follow-ups.

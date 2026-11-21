@@ -131,10 +131,19 @@ function asPlanPlace(value: unknown, index: number): PlannerPlace | null {
   };
 }
 
-function asPlanBlock(value: unknown, places: ReadonlyMap<string, PlannerPlace>): PlannerDayBlock {
+function asPlanBlock(
+  value: unknown,
+  places: PlaceResolver,
+): PlannerDayBlock {
   const record = isRecord(value) ? value : {};
   const placeName = asText(record.placeName, 160);
-  const place = placeName === null ? null : places.get(placeKey(placeName)) ?? null;
+  const placeId = asText(record.placeId, 80);
+  const byName =
+    placeName === null ? undefined : places.byName.get(placeKey(placeName));
+  const byId = placeId === null ? undefined : places.byId.get(placeId);
+  // A live concierge result names the place; a plan read back from the wire carries the
+  // stable id. Resolve either, and drop the link when neither matches a selected place.
+  const place = byName ?? byId ?? null;
   return {
     time: asText(record.time, 40) ?? "",
     kind: asBlockKind(record.kind),
@@ -143,6 +152,12 @@ function asPlanBlock(value: unknown, places: ReadonlyMap<string, PlannerPlace>):
     durationMin: Math.max(0, Math.min(720, asNumber(record.durationMin) ?? 0)),
     placeId: place?.id ?? null,
   };
+}
+
+/** Looks a block up by the concierge's place name or by the stable wire id. */
+interface PlaceResolver {
+  byName: ReadonlyMap<string, PlannerPlace>;
+  byId: ReadonlyMap<string, PlannerPlace>;
 }
 
 function dayNumberOf(value: unknown, fallback: number): number {
@@ -154,7 +169,7 @@ function asPlanDay(
   value: unknown,
   index: number,
   caps: readonly PlannerCapInput[],
-  places: ReadonlyMap<string, PlannerPlace>,
+  places: PlaceResolver,
 ): PlannerDay {
   const record = isRecord(value) ? value : {};
   const day = dayNumberOf(record, index + 1);
@@ -270,6 +285,10 @@ export function buildConciergePlan(
   const drafts = selectDrafts(record, research);
   const places = drafts.map((draft, index) => finalizePlace(draft, index, null));
   const placeByKey = new Map(places.map((place) => [placeKey(place.name), place]));
+  const resolver: PlaceResolver = {
+    byName: placeByKey,
+    byId: new Map(places.map((place) => [place.id, place])),
+  };
   const rawDays = Array.isArray(record.days)
     ? [...record.days].sort(
         (left, right) => dayNumberOf(left, 0) - dayNumberOf(right, 0),
@@ -278,7 +297,7 @@ export function buildConciergePlan(
   const days: PlannerDay[] = [];
   for (let index = 0; index < request.days; index += 1) {
     const raw = rawDays[index];
-    days.push(asPlanDay(raw, index, caps, placeByKey));
+    days.push(asPlanDay(raw, index, caps, resolver));
   }
   attachDays(places, days);
   const outside = days.filter((day) => !day.withinCaps);
@@ -313,6 +332,10 @@ export function normalizeWirePlan(value: unknown): AgentTripPlan | null {
         .slice(0, 32)
     : [];
   const byId = new Map(places.map((place) => [place.id, place]));
+  const resolver: PlaceResolver = {
+    byId,
+    byName: new Map(places.map((place) => [placeKey(place.name), place])),
+  };
   const caps: PlannerCapInput[] = Array.isArray(value.days)
     ? value.days.map((day, index) => {
         const record = isRecord(day) ? day : {};
@@ -326,7 +349,7 @@ export function normalizeWirePlan(value: unknown): AgentTripPlan | null {
     : [];
   const days = Array.isArray(value.days)
     ? value.days
-        .map((day, index) => asPlanDay(day, index, caps, byId))
+        .map((day, index) => asPlanDay(day, index, caps, resolver))
         .slice(0, 7)
     : [];
   const summary = asText(value.summary, 1200);

@@ -9,6 +9,8 @@ import type {
 
 const request: PlannerRequest = {
   destination: "Lisbon, Portugal",
+  origin: "",
+  transport: "mixed",
   days: 4,
   condition: "asthma_respiratory",
   medication: "albuterol",
@@ -267,6 +269,20 @@ describe("normalizeWirePlan", () => {
     expect(wire?.days).toHaveLength(4);
     expect(wire?.places).toHaveLength(5);
     expect(wire?.places[0]?.sourceUrl).toBe("https://example.com/hotel-a");
+  });
+
+  it("keeps every block's place link through the wire round trip", () => {
+    const plan = buildConciergePlan(raw, request, research(), caps, "2026-11-21T10:00:00.000Z");
+    const wire = normalizeWirePlan(JSON.parse(JSON.stringify(plan)));
+    const linked = plan.days.flatMap((day) => day.blocks).filter((block) => block.placeId !== null);
+    expect(linked.length).toBeGreaterThan(0);
+    for (const [index, day] of (wire?.days ?? []).entries()) {
+      const source = plan.days[index];
+      if (source === undefined) continue;
+      expect(day.blocks.map((block) => block.placeId)).toEqual(
+        source.blocks.map((block) => block.placeId),
+      );
+    }
   });
 
   it("rejects a payload without a summary or days", () => {

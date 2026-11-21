@@ -7,7 +7,7 @@
  * timestamp; plans contain only verified research picks; no medical claim is encoded here.
  */
 
-import type { Condition } from "@/lib/types";
+import type { Condition, TransportMode } from "@/lib/types";
 
 /** The seven planner agents, in display order. */
 export const PLANNER_AGENT_IDS = [
@@ -117,11 +117,15 @@ export const PLANNER_AGENTS: readonly PlannerAgentMeta[] = [
 /** Validated inputs for one concierge run. */
 export interface PlannerRequest {
   destination: string;
+  /** Free-text starting point, such as a home city or airport. May be empty. */
+  origin: string;
   days: number;
   condition: Condition;
   medication: string;
   interests: string;
   budget: BudgetLevel;
+  /** How the traveler expects to move between stops inside the destination. */
+  transport: TransportMode;
   /** Opaque browser-generated id that joins the planner and swarm captures. */
   runId?: string;
   /** Anonymous install id for the local trip log. */

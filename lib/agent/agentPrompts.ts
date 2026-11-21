@@ -8,7 +8,7 @@
  */
 
 import { CONDITION_PROFILES } from "@/lib/conditionProfiles";
-import { CONDITION_LABELS } from "@/lib/types";
+import { CONDITION_LABELS, TRANSPORT_LABELS } from "@/lib/types";
 import {
   BUDGET_LABELS,
   type PlannerCapInput,
@@ -209,9 +209,11 @@ function tripLine(request: PlannerRequest): string {
   const medication = request.medication || "none recorded";
   return [
     `Destination: ${request.destination}.`,
+    `Starting from: ${request.origin || "not provided"}.`,
     `Trip length: ${request.days} days.`,
     `Condition: ${CONDITION_LABELS[request.condition]}.`,
     `Medication name only: ${medication}.`,
+    `Getting around: ${TRANSPORT_LABELS[request.transport]}.`,
     `Budget: ${BUDGET_LABELS[request.budget]}.`,
     `Preferences: ${request.interests || "no extra preferences"}.`,
   ].join(" ");
@@ -248,6 +250,7 @@ export function buildConciergePrompt(
     `Verified research:\n${JSON.stringify(research)}`,
     "Select only places named in the research. Do not invent venues, coordinates, or sources.",
     "Build exactly one day per trip day. Use each day's step and walking ceiling. Insert a rest day after any hike day, and keep at least one recovery block in every active day.",
+    `Group each day around one area that the traveler can cross by ${TRANSPORT_LABELS[request.transport].toLowerCase()}. Never place two demanding days back to back; put a light or rest day between a hike and the next full day.`,
     "Use one stay as the base. Include real meals, transit, the day's anchor, recovery, and check-in or checkout where relevant.",
     "For placeName, use the exact name from the research. Use null for generic blocks such as rest, meals without a named venue, or transit.",
     "stepEstimate and walkingKm are your honest estimates for the day. recoveryMinutes must meet the profile's recovery length.",

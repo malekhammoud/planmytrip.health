@@ -1,9 +1,11 @@
 /**
- * Canonical condition vocabulary shared by the pacing engine, the API route,
- * and the interface. This is the only module that defines condition identifiers.
+ * Canonical trip vocabulary shared by the pacing engine, the API route, the route
+ * planner, and the interface. This is the only module that defines condition and
+ * transport identifiers.
  *
- * Inputs: none. Outputs: CONDITIONS, Condition, CONDITION_LABELS, isCondition.
- * Invariant: every Condition has exactly one human label from CONDITION_LABELS.
+ * Inputs: none. Outputs: CONDITIONS, Condition, CONDITION_LABELS, isCondition, and the
+ * transport mode vocabulary used by onboarding and the route planner.
+ * Invariant: every Condition and TransportMode has exactly one human label.
  */
 
 /** The five supported condition groups, in stable display order. */
@@ -34,5 +36,37 @@ export const CONDITION_LABELS = {
 export function isCondition(value: unknown): value is Condition {
   return (
     typeof value === "string" && (CONDITIONS as readonly string[]).includes(value)
+  );
+}
+
+/** How the traveler moves between stops inside the destination. */
+export const TRANSPORT_MODES = ["walk", "transit", "car", "mixed"] as const;
+
+/** A supported way of getting around. */
+export type TransportMode = (typeof TRANSPORT_MODES)[number];
+
+/** Labels for the onboarding select, the route panel, and the planner prompt. */
+export const TRANSPORT_LABELS = {
+  walk: "Walking",
+  transit: "Public transit",
+  car: "Car",
+  mixed: "Mixed",
+} as const satisfies Record<TransportMode, string>;
+
+/** One calm sentence explaining what each mode assumes. */
+export const TRANSPORT_HINTS = {
+  walk: "Every stop is reachable on foot within your walking ceiling.",
+  transit: "Trains, buses, and short walks between stops.",
+  car: "Drive between stops and walk only at each place.",
+  mixed: "Walk short hops and take transit or a car for longer ones.",
+} as const satisfies Record<TransportMode, string>;
+
+/**
+ * Narrows untrusted input to a TransportMode. The planner falls back to mixed
+ * rather than rejecting a request that predates this field.
+ */
+export function isTransportMode(value: unknown): value is TransportMode {
+  return (
+    typeof value === "string" && (TRANSPORT_MODES as readonly string[]).includes(value)
   );
 }

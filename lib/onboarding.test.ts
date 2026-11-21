@@ -8,9 +8,11 @@ import {
 describe("onboarding draft", () => {
   it("starts without a destination and with a safe default profile", () => {
     expect(DEFAULT_TRIP.destination).toBe("");
+    expect(DEFAULT_TRIP.origin).toBe("");
     expect(DEFAULT_TRIP.days).toBe(4);
     expect(DEFAULT_TRIP.condition).toBe("asthma_respiratory");
     expect(DEFAULT_TRIP.budget).toBe("balanced");
+    expect(DEFAULT_TRIP.transport).toBe("mixed");
     expect(DEFAULT_TRIP.hasSunLifeTravelCoverage).toBe(false);
   });
 
@@ -25,12 +27,14 @@ describe("onboarding draft", () => {
       normalizeTripConfig({
         ...DEFAULT_TRIP,
         destination: "  Lisbon,   Portugal  ",
+        origin: "  Toronto,   ON ",
         days: 20,
         medication: "  albuterol  ",
         interests: "  quiet food  ",
       }),
     ).toMatchObject({
       destination: "Lisbon, Portugal",
+      origin: "Toronto, ON",
       days: 7,
       medication: "albuterol",
       interests: "quiet food",
@@ -38,14 +42,22 @@ describe("onboarding draft", () => {
     expect(normalizeTripConfig({ ...DEFAULT_TRIP, days: 1 }).days).toBe(2);
   });
 
+  it("keeps the selected transport", () => {
+    expect(
+      normalizeTripConfig({ ...DEFAULT_TRIP, transport: "walk" }).transport,
+    ).toBe("walk");
+  });
+
   it("bounds long labels to the API limits", () => {
     const config = normalizeTripConfig({
       ...DEFAULT_TRIP,
       destination: "x".repeat(200),
+      origin: "w".repeat(200),
       medication: "y".repeat(200),
       interests: "z".repeat(300),
     });
     expect(config.destination).toHaveLength(120);
+    expect(config.origin).toHaveLength(120);
     expect(config.medication).toHaveLength(120);
     expect(config.interests).toHaveLength(240);
   });

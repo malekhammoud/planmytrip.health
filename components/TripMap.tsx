@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type * as Leaflet from "leaflet";
 import type { PlannerDay, PlannerPlace } from "@/lib/agent/agentTypes";
+import type { TripRoute } from "@/lib/route/routeTypes";
 
 // VERIFY: Confirm the production tile licence, attribution text, and request volume
 // with the chosen tile provider before launch. The public OSM tiles are not a
@@ -33,10 +34,13 @@ function mappable(place: PlannerPlace): place is PlannerPlace & {
 export function TripMap({
   places,
   days,
+  route,
   visible = true,
 }: {
   places: readonly PlannerPlace[];
   days: readonly PlannerDay[];
+  /** Optimized route; when present its stop order draws the day lines. */
+  route?: TripRoute;
   visible?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -102,22 +106,43 @@ export function TripMap({
         .addTo(layer);
     }
 
-    const byId = new Map(mapped.map((place) => [place.id, place]));
-    for (const day of days) {
-      const points: Leaflet.LatLngExpression[] = [];
-      for (const item of day.blocks) {
-        if (item.placeId === null) continue;
-        const place = byId.get(item.placeId);
-        if (place !== undefined) points.push([place.lat, place.lng]);
+    if (route !== undefined) {
+      for (const day of route.days) {
+        const points: Leaflet.LatLngExpression[] = [];
+        if (day.base !== null) {
+          points.push([day.base.point.lat, day.base.point.lng]);
+        }
+        for (const stop of day.stops) {
+          points.push([stop.lat, stop.lng]);
+        }
+        if (points.length > 1) {
+          L.polyline(points, {
+            color: "var(--accent)",
+            weight: 1.5,
+            opacity: 0.65,
+            dashArray: "4 4",
+            className: "trip-map-route",
+          }).addTo(layer);
+        }
       }
-      if (points.length > 1) {
-        L.polyline(points, {
-          color: "var(--accent)",
-          weight: 1.5,
-          opacity: 0.65,
-          dashArray: "4 4",
-          className: "trip-map-route",
-        }).addTo(layer);
+    } else {
+      const byId = new Map(mapped.map((place) => [place.id, place]));
+      for (const day of days) {
+        const points: Leaflet.LatLngExpression[] = [];
+        for (const item of day.blocks) {
+          if (item.placeId === null) continue;
+          const place = byId.get(item.placeId);
+          if (place !== undefined) points.push([place.lat, place.lng]);
+        }
+        if (points.length > 1) {
+          L.polyline(points, {
+            color: "var(--accent)",
+            weight: 1.5,
+            opacity: 0.65,
+            dashArray: "4 4",
+            className: "trip-map-route",
+          }).addTo(layer);
+        }
       }
     }
 
@@ -127,7 +152,7 @@ export function TripMap({
       );
       map.fitBounds(bounds.pad(0.25), { maxZoom: 15 });
     }
-  }, [days, mapped, ready, visible]);
+  }, [days, mapped, ready, route, visible]);
 
   if (mapped.length === 0) {
     return (

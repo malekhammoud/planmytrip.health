@@ -14,6 +14,7 @@ import {
   BUDGET_LABELS,
   type TripConfig,
 } from "@/lib/agent/agentTypes";
+import { TRANSPORT_LABELS } from "@/lib/types";
 
 /** Props for {@link PlanWorkspace}. */
 export interface PlanWorkspaceProps {
@@ -57,11 +58,13 @@ export function PlanWorkspace({
 }: PlanWorkspaceProps) {
   const { state, runInput, retry } = useAgentPlan({
     destination: trip.destination,
+    origin: trip.origin,
     days: trip.days,
     condition: trip.condition,
     medication: trip.medication,
     interests: trip.interests,
     budget: trip.budget,
+    transport: trip.transport,
     runId,
     installId,
     captureConsent: trip.captureConsent,
@@ -85,7 +88,7 @@ export function PlanWorkspace({
             })}
           </h1>
           <p className="t-data mt-2 text-muted">
-            {BUDGET_LABELS[trip.budget]} ·{" "}
+            {TRANSPORT_LABELS[trip.transport]} · {BUDGET_LABELS[trip.budget]} ·{" "}
             {trip.interests || "No extra preferences"} ·{" "}
             {trip.hasSunLifeTravelCoverage
               ? "Sun Life coverage recorded"
@@ -123,6 +126,8 @@ export function PlanWorkspace({
           state={state}
           runInput={runInput}
           visible={visible}
+          origin={trip.origin}
+          transport={trip.transport}
           capture={{ runId, installId, consent: trip.captureConsent }}
           onRetry={retry}
         />

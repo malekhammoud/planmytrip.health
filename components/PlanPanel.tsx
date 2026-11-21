@@ -8,13 +8,17 @@ import type { PlannerState } from "@/lib/agent/plannerReducer";
 import { BUDGET_LABELS, type PlannerAgentId } from "@/lib/agent/agentTypes";
 import type { PlannerAgentState } from "@/lib/agent/plannerReducer";
 import type { TripCaptureContext } from "@/lib/data/types";
-import { CONDITION_LABELS } from "@/lib/types";
+import { CONDITION_LABELS, TRANSPORT_LABELS, type TransportMode } from "@/lib/types";
 
 /** Props for {@link PlanPanel}. */
 export interface PlanPanelProps {
   state: PlannerState;
   runInput: AgentPlanRunInput | null;
   visible: boolean;
+  /** Free-text starting point used by the arrival map link. */
+  origin: string;
+  /** Travel method used to order stops and choose each leg's mode. */
+  transport: TransportMode;
   capture: TripCaptureContext;
   onRetry: () => void;
 }
@@ -43,7 +47,8 @@ function RunContext({ runInput }: { runInput: AgentPlanRunInput | null }) {
   return (
     <p className="t-small text-muted">
       Last plan: {runInput.destination} · {runInput.days} days ·{" "}
-      {CONDITION_LABELS[runInput.condition]} · {BUDGET_LABELS[runInput.budget]}
+      {TRANSPORT_LABELS[runInput.transport]} · {CONDITION_LABELS[runInput.condition]} ·{" "}
+      {BUDGET_LABELS[runInput.budget]}
     </p>
   );
 }
@@ -124,6 +129,8 @@ export function PlanPanel({
   state,
   runInput,
   visible,
+  origin,
+  transport,
   capture,
   onRetry,
 }: PlanPanelProps) {
@@ -139,7 +146,13 @@ export function PlanPanel({
     return (
       <div>
         {mockNote}
-        <AgentPlanView plan={state.plan} visible={visible} capture={capture} />
+        <AgentPlanView
+          plan={state.plan}
+          visible={visible}
+          origin={origin}
+          transport={transport}
+          capture={capture}
+        />
       </div>
     );
   }
