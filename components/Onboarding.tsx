@@ -124,6 +124,9 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
             Tell us the trip and the health limits. We build the pacing, the concierge
             plan, and the live checks around them.
           </p>
+          <p className="t-small measure mt-3 text-muted">
+            Planning can take up to 12 minutes. The safety envelope appears immediately.
+          </p>
 
           <ol className="mt-10 list-none p-0">
             {[

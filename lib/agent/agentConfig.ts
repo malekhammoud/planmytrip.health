@@ -63,10 +63,7 @@ function agentConfig(): Record<string, unknown> {
       description: `${meta.role}. ${meta.checks}`,
       mode: "primary",
       system: AGENT_SYSTEM_PROMPTS[meta.id],
-      steps:
-        meta.id === "concierge" || meta.id === "care" || meta.id === "transit"
-          ? 10
-          : 14,
+      steps: meta.id === "concierge" ? 12 : 20,
       permissions: [
         { action: "*", resource: "*", effect: "deny" },
         { action: "websearch", resource: "*", effect: "allow" },

@@ -24,7 +24,7 @@ import type {
 } from "./agentTypes";
 
 /** Per-specialist research budget. */
-export const SPECIALIST_TIMEOUT_MS = 360_000;
+export const SPECIALIST_TIMEOUT_MS = 420_000;
 
 /** Lead-concierge synthesis budget. */
 export const CONCIERGE_TIMEOUT_MS = 300_000;

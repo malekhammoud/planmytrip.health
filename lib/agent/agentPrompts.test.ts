@@ -21,6 +21,8 @@ describe("agent prompts", () => {
     expect(prompt).toContain("3 km walking");
     expect(prompt).toContain("prenatal vitamins");
     expect(prompt).toContain("Return exactly one JSON object");
+    expect(prompt).toContain("Use at most 10 tool calls");
+    expect(prompt).toContain("Return the JSON object by your 16th step");
     expect(prompt).toContain('"stays"');
     expect(prompt).not.toContain("mg");
   });
@@ -47,6 +49,7 @@ describe("agent prompts", () => {
   it("keeps every system prompt free of dose guidance and markdown", () => {
     for (const prompt of Object.values(AGENT_SYSTEM_PROMPTS)) {
       expect(prompt).toContain("Never give medical advice");
+      expect(prompt).toContain("Reserve your final steps");
       expect(prompt).not.toContain("```");
       expect(prompt).not.toMatch(/\b\d+\s?mg\b/i);
     }

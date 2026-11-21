@@ -227,7 +227,7 @@ export function buildSpecialistPrompt(
     limitsLine(request),
     ROLE_TASK[agent],
     "Search the web and read the actual pages. Prefer official tourism, transit, hospital, and venue pages. Use at least two independent sources when possible.",
-    "Work within 14 research steps. Stop once you have enough verified options; do not keep browsing for marginal additions.",
+    "Use at most 10 tool calls. Return the JSON object by your 16th step, even if some fields are null or empty. Do not start a new research branch once you have enough verified options.",
     "Record sourceUrl for every place. Use numeric latitude and longitude only when the source states or maps the location; otherwise use null.",
     "Return exactly one JSON object. Do not wrap it in markdown. Do not add commentary.",
     "Exact shape:",

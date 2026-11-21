@@ -27,16 +27,16 @@ import type {
   WorkerOutcome,
 } from "@/lib/swarmTypes";
 
-/** Worker timeout before a calm timeout error is emitted. Live browser runs routinely
- * spend 90-150s navigating advisory and pharmacy sites, so 110s cut valid runs short. */
-export const WORKER_TIMEOUT_MS = 240_000;
+/** Worker timeout before a calm timeout error is emitted. A production medication and
+ * customs run was still navigating at four minutes, so the worker gets five. */
+export const WORKER_TIMEOUT_MS = 300_000;
 
 /** SSE keep-alive interval used by the route. */
 export const KEEP_ALIVE_MS = 15_000;
 
 const MISSING_KEY_MESSAGE =
   "The live agent check is not configured on this server. Verify the API key and retry.";
-const TIMEOUT_MESSAGE = "The agent did not finish within 4 minutes. Retry this check.";
+const TIMEOUT_MESSAGE = "The agent did not finish within 5 minutes. Retry this check.";
 const UNEXPECTED_MESSAGE = "The agent check stopped unexpectedly. Retry this worker.";
 const END_MESSAGES = {
   ended: "The agent stream ended before it reported a result. Retry this check.",

@@ -253,9 +253,42 @@ None.
 - Unverified: live 7-of-7 agent run with the hardened parser and geocode fallback; production
   deployment of the new screens.
 
+### Step 11: production deployment and specialist hardening
+
+- Deployed Steps 9-10 to `planmytrip.health` and restarted `planmytrip.service`. Production is
+  the `/opt/planmytrip.health` checkout on `127.0.0.1:3005`; the root-only
+  `/etc/planmytrip.env` now carries `OPENCODE_MODEL=opencode-go/deepseek-v4.1-flash` and the
+  OpenCode Go key. The matching `opencode` v2.3.2 CLI was installed to `/usr/local/bin` so the
+  `planmytrip` user can spawn it. Its managed service port is 49375 because the interactive
+  root service owns 49374.
+- First production concierge run: the app started six specialists but only stay, table,
+  culture, and the concierge returned. Care, transit, and trail hit the 10-step limit and
+  returned prose instead of JSON. The plan still rendered seven places, five geocoded, a map,
+  two capped days, and the safety envelope. The production TinyFish one-worker advisory test
+  completed with a live `*.tinyfish.io` preview URL and findings.
+- Fix: specialists now have 20 model steps (concierge 12) and 420s each; prompts reserve the
+  final steps for JSON and cap tool calls at 10. A live transit and care test then returned
+  parseable, non-empty research. The first full production browser workflow after the fix
+  completed all seven agents in about 7m40s; the plan arrived at 461s with five mapped places,
+  all four tabs switched, Edit trip / Back to plan preserved the workspace, and no console
+  errors were recorded. The onboarding screen was checked at 375px and 1280px.
+- The earlier production three-worker TinyFish run had advisory and coverage complete, but
+  medication and customs timed out at four minutes. Fix: worker timeout is 300s and the route
+  budget is 360s; the timeout copy and tests now say five minutes.
+- Production retry of medication/customs completed in about four minutes with Salbutamol and
+  local brands Ventide, Ventolin, and Ventilastin; customs and carry rules were null/Not found.
+  A subsequent full three-worker production run completed all three workers and emitted
+  `swarm_done` with no failures. Advisory and coverage returned rich findings; pharmacy
+  returned empty findings in that concurrent run, so pharmacy consistency is data-dependent
+  and the per-worker Retry remains important.
+- Gate: typecheck, 245 tests, lint, production build pass. Production home and planner route
+  return 200/400 respectively; the old build's `/api/agent-plan` 404 is gone. Production logs
+  after the final restart are clean.
+- Unverified: live iframe rendering, clipboard permissions, and pharmacy consistency across
+  concurrent runs.
+
 ## Next action
 
-Run a full 7-of-7 live concierge pass with the hardened JSON parser and geocode fallback;
-confirm stay, transit, and care parse, a geocoded marker appears, and the map renders. Then run
-the full three-worker TinyFish pass and confirm the live iframe preview and clipboard behavior.
-The clinical thresholds and Sun Life stability window remain VERIFY.
+Monitor pharmacy consistency in production; if empty findings recur, retry the worker or
+revisit the drugs.com goal. Then check the live iframe and clipboard behavior. The clinical
+thresholds and Sun Life stability window remain VERIFY.

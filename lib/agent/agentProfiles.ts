@@ -17,6 +17,7 @@ const COMMON_RULES = [
   "Use only plain text. No markdown, fences, emoji, or commentary.",
   "Never give medical advice, doses, or medication changes. Never tell the traveler to take or use a medication; refer to their clinician's plan.",
   "Return exactly one JSON object that matches the requested shape.",
+  "Reserve your final steps for that JSON object. If research is incomplete, return the best JSON you have with null or empty values. Never end with a prose summary or a question.",
 ].join(" ");
 
 /** Static system prompt per planner agent. */

@@ -86,13 +86,13 @@ describe("swarmReducer results", () => {
     state = swarmReducer(state, {
       type: "worker_error",
       worker: "coverage",
-      message: "The agent did not finish within 4 minutes. Retry this check.",
+      message: "The agent did not finish within 5 minutes. Retry this check.",
       code: "timeout",
     });
     expect(state.workers.coverage).toMatchObject({
       phase: "error",
       errorCode: "timeout",
-      errorMessage: "The agent did not finish within 4 minutes. Retry this check.",
+      errorMessage: "The agent did not finish within 5 minutes. Retry this check.",
       findings: null,
     });
 

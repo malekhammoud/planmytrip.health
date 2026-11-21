@@ -37,6 +37,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 8. Documentation and identity audit | [x] | `docs(agents): finalize AGENTS.md for future coding agents` |
 | 9. Agentic concierge and trip map | [x] | `feat(planner): add OpenCode concierge team and trip map` |
 | 10. Onboarding and tabbed workspace | [x] | `feat(ui): add onboarding flow and tabbed trip workspace` |
+| 11. Production specialist hardening | [x] | `fix(planner): harden production agent runs` |
 
 ## 3. Commands
 
@@ -130,11 +131,13 @@ every list, and validates coordinates. A failed specialist is isolated; the conc
 runs if any research survives. If synthesis fails, `buildFallbackPlan` assembles a degraded
 route from the verified picks and the engine caps.
 
-Timeouts are 360s per specialist and 300s for the concierge; `/api/agent-plan` declares
-`maxDuration = 900`. `OPENCODE_MODEL` selects a `provider/model` and is passed explicitly to
-every session so a slow config reload cannot silently fall back to the free model. A provider
-quota failure becomes `agent_unavailable`, not an invented plan. `AGENT_MOCK=1` scripts the same
-events and a full sample plan with no service or network.
+Timeouts are 420s per specialist and 300s for the concierge; `/api/agent-plan` declares
+`maxDuration = 900`. Specialists have 20 model steps and the concierge 12. The prompts reserve
+the final steps for the JSON object so a step-limit stop cannot replace the deliverable with
+prose. `OPENCODE_MODEL` selects a `provider/model` and is passed explicitly to every session so
+a slow config reload cannot silently fall back to the free model. A provider quota failure
+becomes `agent_unavailable`, not an invented plan. `AGENT_MOCK=1` scripts the same events and a
+full sample plan with no service or network.
 
 `geocodePlan` fills missing coordinates for up to ten selected places through Nominatim at one
 request per second, with an identifying User-Agent; it never guesses a location and marks each
@@ -232,8 +235,8 @@ complete/error --run_started (same worker)--> queued
 Worker events are accepted only from queued or running; `run_started` is the only exit from
 idle. Progress keeps the last three purposes. `streaming_url` accepts only https on
 `mock.invalid`, `*.unikraft.app`, or `*.tinyfish.io` (VERIFY) in `lib/swarmState.ts` and
-`hooks/swarmFrames.ts`; all other hosts are rejected. Live workers abort after 240s so slow
-browser runs can still finish; `/api/travel-swarm` declares `maxDuration = 300`. `swarm_done`
+`hooks/swarmFrames.ts`; all other hosts are rejected. Live workers abort after 300s so slow
+browser runs can still finish; `/api/travel-swarm` declares `maxDuration = 360`. `swarm_done`
 stores completed and failed lists. Any `mock: true` payload shows the "Mock data" caution
 Callout; a full run clears it.
 
@@ -537,10 +540,13 @@ exempting lines.
 
 - The Sun Life stability window is unknown and stored as `null`; no placeholder number is
   shown. Confirm it with the plan administrator.
-- A live TinyFish SSE run was verified on 2026-11-21: the key, progress events, and preview
-  URL worked; the preview host was `*.tinyfish.io`, and the 110s timeout was raised to 240s
-  after a valid advisory run was cut off mid-navigation. A full three-worker run, iframe
-  rendering, and clipboard permissions remain unverified.
+- Live TinyFish SSE runs were verified on 2026-11-21: the key, progress events, and preview
+  URL worked; the preview host was `*.tinyfish.io`. The timeout was raised from 110s to 240s
+  after an advisory run was cut off, then to 300s after a production medication/customs run
+  timed out at four minutes. The follow-up production full three-worker run completed all three
+  workers with no failures; advisory and coverage were rich, while pharmacy returned empty
+  findings in that concurrent run after a standalone retry returned Salbutamol and local brands.
+  Iframe rendering and clipboard permissions remain unverified.
 - The route tolerates unknown events, stringified `result` values, and partial payloads.
 - The preview allowlist covers `mock.invalid`, `*.unikraft.app` (docs), and `*.tinyfish.io`
   (verified live 2026-11-21).
@@ -556,7 +562,9 @@ exempting lines.
   `OPENCODE_MODEL`. A quota failure maps to `agent_unavailable`.
 - The embedded `@opencode/sdk` host requires Node 26 for `await using`; this app is on Node 22
   and uses `@opencode/client` against a running OpenCode service. A production deployment must
-  provide and supervise that service.
+  provide and supervise that service. Production runs the CLI from `/usr/local/bin` and keeps
+  its managed port on 49375 because the interactive root service owns 49374; the Go key and
+  model live in `/etc/planmytrip.env`, not the repo.
 - Geocoding is covered by mocked fetch tests; the live Nominatim pass has not been exercised
   against a real agent plan. Public OSM tiles and Nominatim are not production-scale endpoints.
 - The concierge plan is rendered from the current SSE run only. There is no account, payment,
