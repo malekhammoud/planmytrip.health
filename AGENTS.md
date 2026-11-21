@@ -36,7 +36,7 @@ means the code, tests, and this file agree at that commit.
 | --- | --- | --- |
 | 1. Project baseline | [x] | `chore: initialize PlanMyTrip.health baseline` |
 | 2. Design system primitives | [x] | `feat(ui): add design system primitives` |
-| 3. Biological pacing engine | [ ] Not built yet | `feat(engine): add biological pacing and itinerary engine` |
+| 3. Biological pacing engine | [x] | `feat(engine): add biological pacing and itinerary engine` |
 | 4. TinyFish 3-worker SSE route | [ ] Not built yet | `feat(api): add parallel 3-worker TinyFish SSE swarm` |
 | 5. Header, constraint rail, page layout | [ ] Not built yet | `feat(ui): add header and biological constraint sidebar` |
 | 6. Live agent swarm monitor | [ ] Not built yet | `feat(ui): add live TinyFish agent iframes and findings cards` |
@@ -44,8 +44,8 @@ means the code, tests, and this file agree at that commit.
 | 8. Documentation and identity audit | [ ] Not built yet | `docs(agents): finalize AGENTS.md for future coding agents` |
 
 Current state: the placeholder home page, the Paper and Ink tokens and type classes, the
-shared condition vocabulary, the design guard, contrast, and smoke tests, and the
-`components/ui` primitives. The engine, swarm route, and full interface are not built yet.
+shared condition vocabulary, the `components/ui` primitives, and the pure pacing engine.
+The swarm route, rail, and full interface are not built yet.
 
 ## 3. Commands
 
@@ -100,7 +100,18 @@ app/
   layout.tsx         Fontsource imports, metadata, html lang, body tokens
   page.tsx           Minimal placeholder home page; replaced in Step 5
 lib/
-  types.ts           CONDITIONS, Condition, CONDITION_LABELS, isCondition
+  types.ts                    CONDITIONS, Condition, CONDITION_LABELS, isCondition
+  healthTripEngine.ts         Public entry: validation, buildHealthTripPlan, re-exports
+  healthTripTypes.ts          Inputs, typed error, profiles, blocks, days, plan, alerts
+  conditionProfiles.ts        CONDITION_PROFILES, DEFAULT_MEDICATION_BY_CONDITION,
+                              MEDICATION_DISCLAIMER
+  sunLifeRules.ts             SUN_LIFE_RULES, null stability placeholder,
+                              checkSunLifeCoverage
+  healthScore.ts              MODELED_LOAD_ASSUMPTIONS, modelDayLoad,
+                              computeHealthScores
+  itineraryBuilder.ts         PACING_POLICY, buildItinerary, blocks, checkpoints
+  healthTripEngine.test.ts    Condition/day matrix, caps, recovery, determinism
+  healthTripEngineRules.test.ts  Sun Life, validation, docs, module boundaries
 components/
   ui/                Paper and Ink primitives, all named exports from
                      components/ui/index.ts: Button (sm, md, and Deploy-only lg),
@@ -111,14 +122,14 @@ components/
                      Slider, Skeleton, and StatusGlyph use CSS modules with token
                      variables only, for native pseudo-elements and pulse.
 tests/
+  healthTripFixtures.ts  Shared engine test input and helpers
   design-guard.test.ts   Source scan for banned styles, controls, and copy
   contrast.test.ts       WCAG AA checks for the token pairs
   smoke.test.ts          Condition vocabulary checks
 vitest.config.mts    Node test environment and the @/ alias
 ```
 
-Not built yet: `lib/healthTripEngine.ts` (Step 3),
-`lib/tinyfish*.ts`, `lib/swarmTypes.ts`, `lib/swarmGoals.ts`, and
+Not built yet: the TinyFish client, event mapper, shared swarm types, worker goals, and
 `app/api/travel-swarm/route.ts` (Step 4), the rail and page composition (Step 5), the
 swarm monitor (Step 6), and the KPI strip and itinerary board (Step 7).
 
@@ -131,7 +142,58 @@ page.tsx state (destination, days, condition, medication, coverage)
   -> useSwarm reducer -> AgentSwarmMonitor (status, live iframe, findings)
 ```
 
-The itinerary must render from the engine alone, independent of agent results.
+The itinerary renders from the engine alone, independent of agent results.
+
+### Biological pacing engine
+
+`buildHealthTripPlan(input)` is pure and deterministic: no I/O, `Date`, `Math.random`,
+or locale output. Invalid input throws `HealthTripInputError` with a stable code and
+field. A generated day that exceeds its modeled caps throws `ItineraryInvariantError`.
+The public API is re-exported from `@/lib/healthTripEngine`.
+
+Modeled score. The standard sightseeing baseline is 10,000 steps, 8 km, and average
+exertion 2.2 per day with no recovery. Planned pressure combines:
+
+- Exposure: `max(highest daily step share, highest daily walking share)` of the
+  condition ceiling, normalized from half the ceiling to the full ceiling.
+- Baseline exposure: `max(10,000 / stepCeiling, 8 / walkingKm)`, normalized
+  `(baselineLoad - 1) / 2`.
+- Exertion: `sum(durationMin * exertion) / sum(durationMin)`, normalized
+  `(average - 1) / 2`.
+- Recovery gap: `1 - totalRecoveryMinutes / max(1, recoveryMinutes * days)`.
+- Trip length: `(days - 2) / 5`.
+
+Weights are 45/20/20/15 (exposure/exertion/recovery/trip). Residual risk is
+`floor + (100 - floor) * pressure`; `healthSafetyScore = 100 - residual risk`, rounded
+and clamped 0-100. The baseline uses the same floor, no recovery, and 55/20/15/10.
+`riskReductionPct = (score - baseline) / max(1, 100 - baseline) * 100`, rounded and
+clamped 0-100. All scores are modeled estimates, never clinical validation. The
+generated plan is deliberately conservative: its peak day sits below half the ceiling
+and every day supplies full recovery, so the exposure and recovery terms are zero for
+supported plans and the score is driven by exertion, trip length, and the profile floor.
+The terms are tested with synthetic high-exposure and no-recovery days.
+
+`MODELED_LOAD_ASSUMPTIONS.kmPerStep` is 0.0005 km, a conservative modeled stride. Every
+profile ceiling and day cap fits inside its walking cap. Modeled steps count only
+acclimation, cultural, and transit blocks; meals and recovery contribute zero. The
+residual-risk floor is a modeled score ceiling, not a clinical claim; every profile
+VERIFY line names its floor.
+
+| Condition | Steps/day | Walking | Recovery | Floor | Rationale |
+| --- | --- | --- | --- | --- | --- |
+| `asthma_respiratory` | 7,000 | 4.0 km | 30 min, required | 22 | Breath-limited ceiling with a short afternoon recovery. |
+| `chronic_fatigue_pots` | 4,000 | 2.5 km | 90 min, required | 25 | Low load with a long recovery for orthostatic symptoms. |
+| `pregnancy_second_trimester` | 5,000 | 3.0 km | 45 min, required | 18 | Moderate load with rest, heat limits, and food safety. |
+| `severe_food_allergy` | 6,000 | 3.5 km | 30 min, optional | 20 | Flexible recovery; emergency planning matters more. |
+| `cardiac_hypertension` | 5,000 | 3.0 km | 45 min, required | 22 | Moderate load with midday recovery and altitude limits. |
+
+`PACING_POLICY` in `lib/itineraryBuilder.ts` sets day cap factors: first 0.45, middle
+0.8, final 0.4. "Lighter" means a smaller final cap; on a 2-day trip it is also below
+Day 1. Adding a condition: add the identifier and label in `lib/types.ts`; add a
+readonly profile with a VERIFY line including the floor; add a generic medication name
+and a `CONDITION_CHECKPOINTS` entry; update this table and the VERIFY register; run both
+engine test files. The exhaustive `Record<Condition, ...>` types make
+`npx tsc --noEmit` fail until every entry exists.
 
 ## 6. Key decisions
 
@@ -148,9 +210,15 @@ The itinerary must render from the engine alone, independent of agent results.
 - **`cacheComponents` and `partialPrefetching` were removed** from the generated
   `next.config.ts` to keep default App Router caching behavior while the product is
   built. The Turbopack Tailwind rule was kept.
-- **The Sun Life pre-existing-condition stability window was not supplied.** It must
-  become a clearly named placeholder constant in the Step 4 insurance rules, marked
-  `// VERIFY:`, and logged. Do not present it as policy.
+- **The Sun Life pre-existing-condition stability window was not supplied.** It stays
+  `null` in `lib/sunLifeRules.ts`, marked as a placeholder. The alerts say the window is
+  not confirmed. Never replace it with an invented number; confirm with the plan
+  administrator.
+- **One Sun Life constant.** Both the engine alert and the Step 4 coverage goal import
+  `SUN_LIFE_RULES` from `lib/sunLifeRules.ts`. Do not duplicate insurance values.
+- **Engine split into modules.** The mandated profiles, score, itinerary, types, and
+  rules live in separate files so no engine module approaches 250 lines; the public
+  entry point re-exports them.
 - **No TinyFish key is present locally.** Verification uses tests and `SWARM_MOCK=1`;
   never call the live API from automated checks.
 - **Primitive-only UI.** Later steps compose `components/ui` and never restyle a raw
@@ -242,14 +310,16 @@ rules. `tests/contrast.test.ts` checks 13 token pairs at 4.5:1 or better.
 - The product is a planning aid, not medical advice. A quiet persistent footer notice
   reads: "Planning aid only. Not medical advice. Confirm with your clinician and insurer
   before you travel."
-- All physiological thresholds live in one typed `CONDITION_PROFILES` constant (Step 3),
-  each with a rationale string and a `// VERIFY:` flag. No magic numbers elsewhere.
+- All physiological thresholds live in one typed `CONDITION_PROFILES` constant in
+  `lib/conditionProfiles.ts`, each with a rationale string, a modeled residual-risk
+  floor, and a `// VERIFY:` flag. No magic numbers elsewhere.
 - `healthSafetyScore` and `riskReductionPct` are deterministic modeled estimates from a
   documented formula. Label them "Modeled estimate" with an input tooltip. Never call
   them measured or clinically validated.
 - Insurance rules (60-day cap, Allianz Global Assistance 24/7 pre-authorization, the
-  pre-existing stability window) live in one `SUN_LIFE_RULES` constant marked
-  `// VERIFY against current group policy` (Step 4). The alert tells the user to
+  pre-existing stability window) live in one `SUN_LIFE_RULES` constant in
+  `lib/sunLifeRules.ts`, marked `// VERIFY against current group policy`. The stability
+  window is `null` and unconfirmed. The alert tells the user to
   "Verify with your plan administrator".
 - Never suggest doses or medication changes. Medication information is limited to
   generic and brand names, customs, and carry rules.
@@ -260,7 +330,17 @@ rules. `tests/contrast.test.ts` checks 13 token pairs at 4.5:1 or better.
 
 Regenerate with `grep -rn "VERIFY:" app lib components`.
 
-At this commit: none. No physiological thresholds or insurance rules exist yet.
+At this commit: 7 entries.
+
+| File | What to verify |
+| --- | --- |
+| `lib/conditionProfiles.ts` (asthma) | residual-risk floor 22; 7,000-step ceiling, 4.0 km walking, 30-minute recovery, altitude, heat, and allergens against current respiratory guidance. |
+| `lib/conditionProfiles.ts` (POTS) | residual-risk floor 25; 4,000-step ceiling, 2.5 km walking, 90-minute recovery, altitude, heat, and allergens against current autonomic guidance. |
+| `lib/conditionProfiles.ts` (pregnancy) | residual-risk floor 18; 5,000-step ceiling, 3.0 km walking, 45-minute recovery, altitude, heat, and food safety against current maternity guidance. |
+| `lib/conditionProfiles.ts` (food allergy) | residual-risk floor 20; 6,000-step ceiling, 3.5 km walking, 30-minute optional recovery, heat, and allergens against current allergy guidance. |
+| `lib/conditionProfiles.ts` (cardiac) | residual-risk floor 22; 5,000-step ceiling, 3.0 km walking, 45-minute recovery, altitude, heat, and sodium/allergens against current cardiology guidance. |
+| `lib/sunLifeRules.ts` (stability placeholder) | The window is `null`; confirm the real value with the plan administrator. Never invent a number. |
+| `lib/sunLifeRules.ts` (rules) | 60-day cap, Allianz Global Assistance 24/7 pre-authorization, and stability window against current group policy; record source and checked date. |
 
 ## 10. External integrations
 
@@ -289,12 +369,16 @@ routine development. Use `SWARM_MOCK=1` locally.
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The current suite has 54 tests:
+`npm test` runs Vitest once in a Node environment. The current suite has 106 tests:
 
 - `tests/design-guard.test.ts`: token, type, control, emoji, and copy guard.
 - `tests/contrast.test.ts`: WCAG AA contrast for the token pairs.
 - `tests/smoke.test.ts`: the five conditions and the label map.
 - `components/ui/sliderFill.test.ts` and `metricBars.test.ts`: primitive geometry.
+- `lib/healthTripEngine.test.ts` and `healthTripEngineRules.test.ts`: all conditions x
+  2-7 days, caps and invariants, recovery, scores, determinism, Sun Life paths,
+  validation, docs, and module re-exports. Shared input lives in
+  `tests/healthTripFixtures.ts`.
 
 Add pure-function tests next to the module or under `tests/`, named `*.test.ts`. The
 Vitest include pattern is `**/*.test.ts`. No component-test libraries. Route and SSE
@@ -303,13 +387,13 @@ rather than exempting lines.
 
 ## 12. Known limitations and open questions
 
-- Only the baseline and `components/ui` primitives exist: no pacing engine, swarm route,
-  agent monitor, itinerary, care card, or full page.
+- Only the baseline, `components/ui` primitives, and the pacing engine exist: no swarm
+  route, agent monitor, itinerary, care card, or full page.
+- The Sun Life stability window is unknown and stored as `null`; no placeholder number
+  is shown. Confirm it with the plan administrator.
 - TinyFish event names and payloads are documented, but no live run has been made. The
   route must still tolerate unknown events, stringified `result` values, and partial
   payloads.
-- The Sun Life pre-existing-condition stability window is unknown. It needs a named
-  placeholder and a `// VERIFY:` flag.
 - No live TinyFish key has been exercised. Missing-key and mock paths are the only
   planned verification.
 - The current home page is a placeholder and will be replaced in Step 5.

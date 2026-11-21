@@ -16,8 +16,8 @@
   documents the workaround.
 - **Next config trimmed.** Removed generated `cacheComponents` and `partialPrefetching`
   to keep default App Router caching behavior. The Turbopack Tailwind rule stays.
-- **Sun Life stability window:** not supplied; a named placeholder and `// VERIFY:` will
-  be added with `SUN_LIFE_RULES` in Step 4. It will not be presented as policy.
+- **Sun Life stability window:** not supplied; `SUN_LIFE_RULES` keeps it as `null` with a
+  `// VERIFY:` marker in `lib/sunLifeRules.ts`. No placeholder number is shown.
 - **TinyFish:** no key exists locally and the live API is never called. Tests and
   `SWARM_MOCK=1` are the verification paths.
 
@@ -26,17 +26,6 @@
 None.
 
 ## Step log
-
-### Step 2: design system primitives
-
-- Added all `components/ui` primitives with typed props, named exports, two pure
-  helpers, and CSS modules for native range, skeleton pulse, and status pulse. Added
-  `.t-button` and `.t-data-sm` to the shared type scale.
-- Added Button `lg` (48px) only for the Step 5 Deploy action, which requires 48px.
-- Gate: typecheck, full suite, lint, and production build pass. Step 2 helper tests: 13.
-- Review: component copy, focus wiring, and guard scanning checked; no blocker.
-- Unverified: no browser rendering of native range thumbs, tooltip overflow, or checkbox
-  focus ring; orchestrator will verify in the Step 5 dev-server pass.
 
 ### Step 1: project baseline
 
@@ -50,8 +39,38 @@ None.
   All fixed before commit; guard now has 19 banned and 4 allowed fixtures.
 - Unverified: no live TinyFish run; docs fetched and event schema recorded in AGENTS.
 
+### Step 2: design system primitives
+
+- Added all `components/ui` primitives with typed props, named exports, two pure
+  helpers, and CSS modules for native range, skeleton pulse, and status pulse. Added
+  `.t-button` and `.t-data-sm` to the shared type scale.
+- Added Button `lg` (48px) only for the Step 5 Deploy action, which requires 48px.
+- Gate: typecheck, full suite, lint, and production build pass. Step 2 helper tests: 13.
+- Review: two hostile cycles. Ten defects fixed (Metric units, tooltip IDs/overflow/
+  WCAG, Select placeholder, Field alert, slider alignment, DataRow overflow, 11px
+  captions, TSDoc); three residual minors fixed before commit. No blocker.
+- Unverified: no browser rendering of native range thumbs, tooltip placement, or
+  checkbox focus ring; the Step 5 dev-server pass will check them.
+
+### Step 3: biological pacing engine
+
+- Split the engine into healthTripTypes, conditionProfiles, sunLifeRules, healthScore,
+  itineraryBuilder, and a public healthTripEngine entry; every file under 250 lines.
+- Five readonly profiles with VERIFY lines, modeled residual-risk floors, generic
+  medication defaults, a deterministic 30-case condition/day matrix, caps, mandatory
+  recovery, Day 1 acclimation, a lighter final cap, and a modeled score formula.
+- Review cycle 2 fixed cap consistency (0.5 m modeled stride), full optional recovery,
+  PACING_POLICY, an itinerary invariant error, recovery/meal step accounting, the 2-day
+  final-day case, missing validation tests, a placeholder/administrator constant, and
+  documentation precision. Engine tests split into two files plus shared fixtures.
+- One `SUN_LIFE_RULES`: 60-day cap, Allianz 24/7, stability window `null` (not
+  supplied); no invented number; every alert includes the administrator notice.
+- Gate: typecheck, 52 engine tests (106 at this commit; 145 with uncommitted Step 4),
+  lint, and production build pass.
+- Unverified: clinical thresholds, residual floors, stride, and insurance rules need
+  clinician and plan-administrator confirmation. No UI labels yet.
+
 ## Next action
 
-Steps 3 and 4 are in progress (engine refactor to module files, swarm route split and
-Sun Life unification). Then the full gate, reviewers, and commits in step order; Step 5
-follows.
+Review and commit Step 3 (`feat(engine): add biological pacing and itinerary engine`),
+then review and commit Step 4. Step 5 follows.
