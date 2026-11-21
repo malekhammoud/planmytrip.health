@@ -35,7 +35,7 @@ means the code, tests, and this file agree at that commit.
 | Step | State | Commit message |
 | --- | --- | --- |
 | 1. Project baseline | [x] | `chore: initialize PlanMyTrip.health baseline` |
-| 2. Design system primitives | [ ] Not built yet | `feat(ui): add design system primitives` |
+| 2. Design system primitives | [x] | `feat(ui): add design system primitives` |
 | 3. Biological pacing engine | [ ] Not built yet | `feat(engine): add biological pacing and itinerary engine` |
 | 4. TinyFish 3-worker SSE route | [ ] Not built yet | `feat(api): add parallel 3-worker TinyFish SSE swarm` |
 | 5. Header, constraint rail, page layout | [ ] Not built yet | `feat(ui): add header and biological constraint sidebar` |
@@ -43,9 +43,9 @@ means the code, tests, and this file agree at that commit.
 | 7. KPI strip and paced itinerary | [ ] Not built yet | `feat(ui): add safety KPIs, paced itinerary cards, and care card export` |
 | 8. Documentation and identity audit | [ ] Not built yet | `docs(agents): finalize AGENTS.md for future coding agents` |
 
-Current state: a static placeholder home page, the Paper and Ink token sheet and type
-classes, the shared condition vocabulary, and the design guard, contrast, and smoke
-tests. The engine, swarm route, and full interface are not built yet.
+Current state: the placeholder home page, the Paper and Ink tokens and type classes, the
+shared condition vocabulary, the design guard, contrast, and smoke tests, and the
+`components/ui` primitives. The engine, swarm route, and full interface are not built yet.
 
 ## 3. Commands
 
@@ -101,6 +101,15 @@ app/
   page.tsx           Minimal placeholder home page; replaced in Step 5
 lib/
   types.ts           CONDITIONS, Condition, CONDITION_LABELS, isCondition
+components/
+  ui/                Paper and Ink primitives, all named exports from
+                     components/ui/index.ts: Button (sm, md, and Deploy-only lg),
+                     Field, TextInput, Select, Slider, Checkbox, StatusGlyph,
+                     SectionHeader, Metric, Callout, DataRow, Skeleton. Pure helpers:
+                     sliderFillPercent (sliderFill.ts) and metricBarWidths
+                     (metricBars.ts), unit-tested in components/ui/*.test.ts.
+                     Slider, Skeleton, and StatusGlyph use CSS modules with token
+                     variables only, for native pseudo-elements and pulse.
 tests/
   design-guard.test.ts   Source scan for banned styles, controls, and copy
   contrast.test.ts       WCAG AA checks for the token pairs
@@ -108,7 +117,7 @@ tests/
 vitest.config.mts    Node test environment and the @/ alias
 ```
 
-Not built yet: `components/ui/*` (Step 2), `lib/healthTripEngine.ts` (Step 3),
+Not built yet: `lib/healthTripEngine.ts` (Step 3),
 `lib/tinyfish*.ts`, `lib/swarmTypes.ts`, `lib/swarmGoals.ts`, and
 `app/api/travel-swarm/route.ts` (Step 4), the rail and page composition (Step 5), the
 swarm monitor (Step 6), and the KPI strip and itinerary board (Step 7).
@@ -144,6 +153,13 @@ The itinerary must render from the engine alone, independent of agent results.
   `// VERIFY:`, and logged. Do not present it as policy.
 - **No TinyFish key is present locally.** Verification uses tests and `SWARM_MOCK=1`;
   never call the live API from automated checks.
+- **Primitive-only UI.** Later steps compose `components/ui` and never restyle a raw
+  control. The guard permits raw form controls only inside `components/ui`. Button `lg`
+  (48px) exists solely for the Step 5 Deploy action, whose spec requires 48px. Slider,
+  Skeleton, and StatusGlyph use small CSS modules for native pseudo-elements and
+  keyframes; modules use only `var(--token)` values and no raw colors, and the design
+  guard does not scan them, so they need manual review. The Metric tooltip uses inline
+  utilities and state because it must be dismissible and hoverable.
 
 ## 7. Conventions
 
@@ -183,8 +199,10 @@ and so on.
 | `.t-heading` | Hanken Grotesk 600, 17/24. |
 | `.t-body` | Hanken Grotesk 400, 15/24, max measure 65ch. |
 | `.t-small` | Hanken Grotesk 400, 13/20. |
+| `.t-button` | Hanken Grotesk 500, 14/20. Button labels only. |
 | `.t-label` | IBM Plex Mono 500, 11/16, uppercase, 0.08em tracking. |
 | `.t-data` | IBM Plex Mono 400, 13/20, tabular numerals. |
+| `.t-data-sm` | IBM Plex Mono 400, 11/16, tabular numerals. Ticks, axes, and metric captions. |
 
 Layout: `.page-container` is max 1200px with 24px gutters (40px from 768px). `.measure`
 caps a line at 65ch. Spacing is multiples of 4px. Section gaps are 96px desktop, 64px
@@ -271,11 +289,12 @@ routine development. Use `SWARM_MOCK=1` locally.
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The current suite has 41 tests:
+`npm test` runs Vitest once in a Node environment. The current suite has 54 tests:
 
 - `tests/design-guard.test.ts`: token, type, control, emoji, and copy guard.
 - `tests/contrast.test.ts`: WCAG AA contrast for the token pairs.
 - `tests/smoke.test.ts`: the five conditions and the label map.
+- `components/ui/sliderFill.test.ts` and `metricBars.test.ts`: primitive geometry.
 
 Add pure-function tests next to the module or under `tests/`, named `*.test.ts`. The
 Vitest include pattern is `**/*.test.ts`. No component-test libraries. Route and SSE
@@ -284,8 +303,8 @@ rather than exempting lines.
 
 ## 12. Known limitations and open questions
 
-- Only the baseline exists: no pacing engine, swarm route, agent monitor, itinerary,
-  care card, or full page.
+- Only the baseline and `components/ui` primitives exist: no pacing engine, swarm route,
+  agent monitor, itinerary, care card, or full page.
 - TinyFish event names and payloads are documented, but no live run has been made. The
   route must still tolerate unknown events, stringified `result` values, and partial
   payloads.

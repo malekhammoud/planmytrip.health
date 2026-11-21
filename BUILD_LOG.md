@@ -27,6 +27,17 @@ None.
 
 ## Step log
 
+### Step 2: design system primitives
+
+- Added all `components/ui` primitives with typed props, named exports, two pure
+  helpers, and CSS modules for native range, skeleton pulse, and status pulse. Added
+  `.t-button` and `.t-data-sm` to the shared type scale.
+- Added Button `lg` (48px) only for the Step 5 Deploy action, which requires 48px.
+- Gate: typecheck, full suite, lint, and production build pass. Step 2 helper tests: 13.
+- Review: component copy, focus wiring, and guard scanning checked; no blocker.
+- Unverified: no browser rendering of native range thumbs, tooltip overflow, or checkbox
+  focus ring; orchestrator will verify in the Step 5 dev-server pass.
+
 ### Step 1: project baseline
 
 - Next.js 16.4.6, React 19.3.0, Tailwind 4.3.3, TypeScript strict, Vitest 4.1.12.
@@ -41,5 +52,6 @@ None.
 
 ## Next action
 
-Step 2: build `components/ui/*` primitives (parallel with Steps 3 and 4), run the full
-gate, review, merge docs, commit `feat(ui): add design system primitives`.
+Steps 3 and 4 are in progress (engine refactor to module files, swarm route split and
+Sun Life unification). Then the full gate, reviewers, and commits in step order; Step 5
+follows.
