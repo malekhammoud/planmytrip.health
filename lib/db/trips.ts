@@ -12,7 +12,6 @@ import type { Condition } from "../types";
 import { isCondition } from "../types";
 import {
   adherenceMultiplier,
-  profileFor,
 } from "../data/dose";
 import type {
   OutcomeRecord,
@@ -276,8 +275,6 @@ export function exportTrainingRows(): TrainingRow[] {
     const score = asScore(parseJson(row.engine_json));
     if (request === null || features === null || score === null) return [];
     if (!isCondition(request.condition)) return [];
-    const profile = profileFor(request.condition);
-    void profile;
     return [
       {
         runId: row.run_id,
