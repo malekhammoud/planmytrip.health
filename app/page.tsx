@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AgentSwarmMonitor } from "@/components/AgentSwarmMonitor";
 import { ConstraintSidebar } from "@/components/ConstraintSidebar";
-import { SectionHeader, Skeleton } from "@/components/ui";
+import { CareCardButton, ItineraryBoard } from "@/components/ItineraryBoard";
+import { SectionHeader } from "@/components/ui";
 import { describeTrip } from "@/lib/describeTrip";
 import {
   buildHealthTripPlan,
@@ -179,16 +181,33 @@ export default function Home() {
               </p>
 
               <section aria-labelledby="pacing-heading">
-                <SectionHeader id="pacing-heading" index="01" title="Pacing" />
-                {/* STEP 7 MOUNT: replace this placeholder with the paced itinerary built from `plan`. */}
-                <div className="flex flex-col gap-4">
-                  <Skeleton width="35%" height={24} />
-                  <Skeleton height={64} />
-                  <Skeleton height={64} />
-                </div>
-                <p className="t-small mt-4 text-muted">
-                  A day-by-day paced itinerary appears here.
-                </p>
+                <SectionHeader
+                  id="pacing-heading"
+                  index="01"
+                  title="Pacing"
+                  action={
+                    plan === null ? undefined : (
+                      <CareCardButton
+                        destination={destination}
+                        condition={condition}
+                        medication={medication}
+                        plan={plan}
+                      />
+                    )
+                  }
+                />
+                {plan === null ? (
+                  <p className="t-small text-muted">
+                    Add a destination to build a paced itinerary.
+                  </p>
+                ) : (
+                  <ItineraryBoard
+                    plan={plan}
+                    destination={destination}
+                    condition={condition}
+                    medication={medication}
+                  />
+                )}
               </section>
 
               <section aria-labelledby="verification-heading">
@@ -197,17 +216,14 @@ export default function Home() {
                   index="02"
                   title="Verification"
                 />
-                {/* STEP 6 MOUNT: deployNonce increments on Deploy; the swarm monitor reads it here. */}
-                <div id="agent-swarm-mount" data-deploy-nonce={deployNonce} />
-                <div className="flex flex-col gap-4">
-                  <Skeleton width="35%" height={24} />
-                  <Skeleton height={64} />
-                  <Skeleton height={64} />
-                  <Skeleton height={64} />
+                <div id="agent-swarm-mount">
+                  <AgentSwarmMonitor
+                    destination={destination}
+                    condition={condition}
+                    medication={medication}
+                    runToken={deployNonce}
+                  />
                 </div>
-                <p className="t-small mt-4 text-muted">
-                  Three independent agent checks appear here after deploy.
-                </p>
               </section>
             </div>
           </div>

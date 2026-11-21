@@ -10,6 +10,8 @@ export interface MetricCompare {
   thisPlan: number;
   /** Value for the comparison baseline. */
   baseline: number;
+  /** Caption for the comparison bar. Defaults to "Baseline". */
+  baselineLabel?: string;
 }
 
 /** Props for {@link Metric}. */
@@ -32,13 +34,14 @@ interface CompareBarsProps {
   thisPlan: number;
   baseline: number;
   unit?: string;
+  baselineLabel?: string;
 }
 
 function displayWithUnit(value: number, unit?: string): string {
   return unit ? `${value} ${unit}` : String(value);
 }
 
-function CompareBars({ thisPlan, baseline, unit }: CompareBarsProps) {
+function CompareBars({ thisPlan, baseline, unit, baselineLabel = "Baseline" }: CompareBarsProps) {
   const widths = metricBarWidths(thisPlan, baseline);
 
   return (
@@ -57,7 +60,7 @@ function CompareBars({ thisPlan, baseline, unit }: CompareBarsProps) {
           style={{ width: `${widths.baseline}%` }}
         />
         <p className="mt-1 flex items-baseline gap-1">
-          <span className="t-label text-muted">Baseline</span>
+          <span className="t-label text-muted">{baselineLabel}</span>
           <span className="t-data-sm text-ink">{displayWithUnit(baseline, unit)}</span>
         </p>
       </div>
@@ -122,7 +125,12 @@ export function Metric({ label, value, unit, sub, compare, info }: MetricProps) 
       </div>
       {sub ? <p className="t-small mt-1 text-muted">{sub}</p> : null}
       {compare ? (
-        <CompareBars thisPlan={compare.thisPlan} baseline={compare.baseline} unit={unit} />
+        <CompareBars
+          thisPlan={compare.thisPlan}
+          baseline={compare.baseline}
+          unit={unit}
+          baselineLabel={compare.baselineLabel}
+        />
       ) : null}
       {info && visible ? (
         <span
