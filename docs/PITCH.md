@@ -33,14 +33,15 @@ Pause after “33.” Do not perform the grief; state it.
 
 ### 0:22 — problem
 
-> Basil wasn’t rare. Two in five Canadians will be diagnosed with cancer. Last year, 247,000
-> people got that news. Many still want to go. No major planner asks what they’re treated for.
+> Basil wasn’t rare. Forty-five percent of Canadians live with a chronic disease. One in
+> twelve lives with three or more. Two-thirds of adults over 50 plan a trip this year. No major
+> planner asks about any of it.
 
 ### 0:37 — solution
 
 > So we built the planner that starts with the body. Plan it: six specialists research, a
-> concierge sequences. Pace it: the engine sets daily step and walking ceilings. Prove it:
-> three live browsers check advisories, drug rules, insurance. Every finding cited.
+> concierge puts the route in order. Pace it: the engine sets daily step and walking caps.
+> Prove it: three live browsers check advisories, drug rules, insurance. Every finding cited.
 
 ### 0:56 — demo
 
@@ -84,12 +85,12 @@ Tab B is the run started two minutes ago. Tab A is the run started twenty-five m
 
 ### 2:31 — impact
 
-> For the patient, the caregiver at 2 a.m., the clinician who gets a summary. Half a day becomes
-> one coffee. A guess becomes a citation.
+> For people managing a condition, the caregiver at 2 a.m., the clinician who gets a summary.
+> Hours of tabs become twelve minutes. A guess becomes a citation.
 
 ### 2:43 — close
 
-> Basil would have gone anyway. This time, the plan would have started with him.
+> Basil would have gone anyway. The planning should have been easier.
 
 Stop. Hold the slide. No “thank you.”
 
@@ -125,13 +126,13 @@ number and the source line.
 
 ## Sources
 
-- **2 in 5**: Canadian Cancer Society, cancer.ca/en/research/cancer-statistics, accessed
-  21 Nov 2026.
-- **247,100 new cases, 2024**: CMAJ, “Projected estimates of cancer in Canada in 2024,”
-  cmaj.ca; PMC11090635.
-- **$25,000–$250,000+ per medical evacuation**: CDC Yellow Book 2026, “Travel Insurance, Travel
-  Health Insurance, and Medical Evacuation Insurance,” ncbi.nlm.nih.gov/books/NBK620908.
-- **0 of 5**: PlanMyTrip.health review of the five planners above, November 2026.
+- **45% and 1 in 12**: Statistics Canada, “A glimpse at the health of Canadians” (2021 data):
+  45.1% lived with at least one major chronic disease and 1 in 12 had three or more.
+  statcan.gc.ca/o1/en/plus/5102-glimpse-health-canadians.
+- **64% of adults 50+**: AARP 2026 Travel Trends Survey: 64% expect at least one leisure trip
+  in 2026. aarp.org/travel/travel-tips/travel-trends-survey-2026.
+- **0 of 5**: PlanMyTrip.health review of Google Travel, Tripadvisor, Expedia, Booking.com, and
+  Kayak, November 2026.
 - **286 tests**: the repository gate at this commit.
 - **Calibration tiers and gates**: `docs/ML.md`; no real trip has contributed a label yet.
 
@@ -140,13 +141,13 @@ number and the source line.
 | Slide | Title words | Body words | Accent | Result |
 | --- | --- | --- | --- | --- |
 | 1 Cover | — | 12 | none | PASS. No footer. One personal photograph, provided by the presenter; not stock. |
-| 2 Problem | 9 | 25 | the `0` | PASS. Every number sourced in the label. |
-| 3 Solution | 9 | 32 | `Pace` | PASS. Three rows, one rule each. |
-| 4 Demo | 7 | 18 | `Live` | PASS. Stage cue and fallback. |
+| 2 Problem | 9 | 33 | the `0` | PASS. Every number sourced in the label. |
+| 3 Solution | 9 | 31 | `Pace` | PASS. Three rows, one rule each. |
+| 4 Demo | 7 | 19 | `Live` | PASS. Stage cue and fallback. |
 | 5 Architecture | 8 | 7 | `not` | PASS. Inline SVG, 1 px boxes, 1.5 px connectors. |
 | 6 Comparison | 11 | 11 footnote | one `Yes` | PASS. Table excluded from the body budget. |
-| 7 Impact | 8 | 29 | `coffee` | PASS. Three bullets, no sub-bullets. |
-| 8 Close | 5 + 9 | 0 | URL | PASS. |
+| 7 Impact | 7 | 30 | `twelve` | PASS. Three bullets, no sub-bullets. |
+| 8 Close | 5 + 6 | 0 | URL | PASS. |
 | 9 Appendix | 10 | 13 + table | `1,000+` | PASS. Not presented in the three minutes. |
 
 Banned check: no emoji, no icons, no gradients, shadows, blur, glass, centered text, pill
@@ -163,9 +164,9 @@ insurer.
 pages, cite each finding with a timestamp, and a deterministic engine owns the daily ceiling.
 When a page does not state something, the field says “Not found.”
 
-**What about cancer?** Five profiles ship today: asthma, POTS, pregnancy, food allergy, and
-cardiac. Cancer is next, and its thresholds will not ship without clinical review. The model is
-the same: condition, limits, pacing.
+**What about cancer?** The pitch is general health. Five condition profiles ship today: asthma,
+POTS, pregnancy, food allergy, and cardiac. Cancer is next, and its thresholds will not ship
+without clinical review. The model is the same: condition, limits, pacing.
 
 **Why TinyFish instead of scrapers?** Real travel and insurance sites are JavaScript-heavy and
 change often. TinyFish runs real browsers, streams the live session so the user can watch, and

@@ -312,6 +312,18 @@ None.
   from the production build.
 - Unverified: the live presentation with two staggered runs; the 0-of-5 audit screenshots.
 
+### Pitch deck copy revision (2026-11-21)
+
+- Enlarged the cover photograph to 900px, moved the story line into a full-width bottom band,
+  and added the "Basil and his mother" caption and a vertical hairline. The cover now uses the
+  full page instead of leaving the lower half empty.
+- Replaced the cancer-specific problem statistic with general-health prevalence: 45% of
+  Canadians live with a chronic disease, 1 in 12 with three or more, and 64% of adults 50+ plan
+  a trip this year. The gap remains 0 of 5 planners.
+- Plain-language pass: the cover, solution, impact, and close now state the problem and the time
+  saved without metaphor.
+- Gate: typecheck, 286 tests, lint, production build pass.
+
 ## Next action
 
 Run the first consented pilot cohort and replace the synthetic artifact with real outcomes.
