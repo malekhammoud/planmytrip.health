@@ -167,13 +167,14 @@ export function applyFrame(
   }
   if (!isRecord(raw)) return false;
   const mock = raw.mock === true ? true : undefined;
+  const ts = asText(raw.ts) ?? undefined;
 
   if (eventName === "swarm_done") {
     const completed = asWorkerList(raw.completed);
     const failed = asWorkerList(raw.failed);
     if (completed === null || failed === null) return false;
     if (!WORKER_IDS.some((worker) => latestRequest[worker] === requestId)) return false;
-    dispatch({ type: "swarm_done", completed, failed, mock });
+    dispatch({ type: "swarm_done", completed, failed, seq: asSeq(raw.seq), ts, mock });
     return true;
   }
 
@@ -183,17 +184,18 @@ export function applyFrame(
   switch (eventName) {
     case "worker_status": {
       if (raw.status !== "queued" && raw.status !== "running") return false;
-      dispatch({ type: "worker_status", worker, status: raw.status, mock });
+      dispatch({ type: "worker_status", worker, status: raw.status, seq: asSeq(raw.seq), ts, mock });
       return false;
     }
     case "worker_started": {
-      const startedAt = asText(raw.startedAt) ?? new Date().toISOString();
+      const startedAt = asText(raw.startedAt) ?? ts ?? "";
       dispatch({
         type: "worker_started",
         worker,
         runId: asText(raw.runId),
         startedAt,
         seq: asSeq(raw.seq),
+        ts,
         mock,
       });
       return false;
@@ -201,7 +203,7 @@ export function applyFrame(
     case "streaming_url": {
       if (typeof raw.streamingUrl !== "string") return false;
       if (!isAllowedPreviewUrl(raw.streamingUrl)) return false;
-      dispatch({ type: "streaming_url", worker, streamingUrl: raw.streamingUrl, mock });
+      dispatch({ type: "streaming_url", worker, streamingUrl: raw.streamingUrl, seq: asSeq(raw.seq), ts, mock });
       return false;
     }
     case "worker_progress": {
@@ -212,6 +214,7 @@ export function applyFrame(
         purpose: raw.purpose,
         tinyfishApi: asTinyfishApi(raw.tinyfishApi),
         seq: asSeq(raw.seq),
+        ts,
         mock,
       });
       return false;
@@ -219,17 +222,17 @@ export function applyFrame(
     case "worker_sources": {
       const items = asSourceItems(raw.items);
       if (items.length === 0) return false;
-      dispatch({ type: "worker_sources", worker, items, seq: asSeq(raw.seq), mock });
+      dispatch({ type: "worker_sources", worker, items, seq: asSeq(raw.seq), ts, mock });
       return false;
     }
     case "worker_heartbeat": {
-      dispatch({ type: "worker_heartbeat", worker, seq: asSeq(raw.seq), mock });
+      dispatch({ type: "worker_heartbeat", worker, seq: asSeq(raw.seq), ts, mock });
       return false;
     }
     case "worker_note": {
       const message = asText(raw.message);
       if (message === null) return false;
-      dispatch({ type: "worker_note", worker, message, seq: asSeq(raw.seq), mock });
+      dispatch({ type: "worker_note", worker, message, seq: asSeq(raw.seq), ts, mock });
       return false;
     }
     case "worker_complete": {
@@ -242,6 +245,7 @@ export function applyFrame(
         ...(typeof raw.rawResult === "string" ? { rawResult: raw.rawResult } : {}),
         ...(typeof raw.parseError === "string" ? { parseError: raw.parseError } : {}),
         seq: asSeq(raw.seq),
+        ts,
         mock,
       });
       return false;
@@ -255,6 +259,7 @@ export function applyFrame(
         code: asErrorCode(raw.code) ?? "upstream_error",
         message: cause,
         seq: asSeq(raw.seq),
+        ts,
         mock,
       });
       return false;

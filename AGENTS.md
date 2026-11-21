@@ -46,7 +46,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 12. ML data loop and calibrated model | [x] | `feat(ml): add trip outcome data loop and calibrated flare model` |
 | 13. One-page live workspace and agent warmup | [x] | `feat(ui): add live one-page planning workspace` |
 | 14. Full TinyFish telemetry | [x] | `feat(api): stream full TinyFish telemetry with limits and mock timeline` |
-| 15. Live swarm telemetry model | [ ] | `feat(state): add live swarm telemetry model` |
+| 15. Live swarm telemetry model | [x] | `feat(state): add live swarm telemetry model` |
 | 16. Mission control | [ ] | `feat(ui): add live mission control for agent swarm` |
 | 17. Verification overlay | [ ] | `feat(engine): add tighten-only live verification overlay` |
 | 18. Animated plan changes | [ ] | `feat(ui): animate plan changes and live adjustments` |
@@ -118,20 +118,20 @@ Every tracked source file, annotated; `package-lock.json` and generated files
 ```text
 app/  globals.css, layout.tsx, page.tsx, model/page.tsx, mock-browser/[worker]/, api/travel-swarm/route.ts, api/agent-plan/route.ts, api/trips/route.ts, api/trips/outcome/route.ts
 lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditionProfiles.ts, sunLifeRules.ts, healthScore.ts, itineraryBuilder.ts
-      swarm: swarmTypes.ts (wire contracts), swarmConfig.ts, swarmState.ts, swarmReducer.ts, swarmRunner.ts, swarmGoals.ts, swarmMock.ts, sse.ts, tinyfish.ts, tinyfishEvents.ts
+      swarm: swarmTypes.ts (wire contracts), swarmConfig.ts, swarmState.ts, swarmReducer.ts, swarmRunner.ts, swarmGoals.ts, swarmMock.ts, swarmTelemetry.ts, sse.ts, tinyfish.ts, tinyfishEvents.ts
       agent: agentTypes.ts (wire contracts), agentRequest.ts, agentProfiles.ts, agentPrompts.ts, agentConfig.ts, agentClient.ts, agentWarmup.ts, agentRunner.ts, agentSession.ts, agentParse.ts, agentPlanParse.ts, agentFallback.ts, agentGeocode.ts, agentEvents.ts, agentMock.ts, plannerReducer.ts
       data: types.ts (versioned contract), dose.ts, tripDossier.ts, capture.ts, validation.ts
       db: postgres.ts (pg pool + schema), trips.ts (async repository)
       model: types.ts, math.ts, features.ts, logistic.ts, calibration.ts, train.ts, predict.ts, artifact.ts, model.json
       output: describeTrip.ts, pacingStrip.ts, careCard.ts
-hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
+hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, swarmBatch.ts, useNow.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
 components/  Onboarding.tsx, PlanWorkspace.tsx, MissionBand.tsx, PlanPanel.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, TripMap.tsx, AgentSwarmMonitor.tsx, ItineraryBoard.tsx, PacingStrip.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx, WorkerLivePanel.tsx
 components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Field.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
 scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts
 data/  synthetic-trips.jsonl
 docs/  ML.md, MODEL_CARD.md
 tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
-module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; hooks/: swarmFrames.test.ts, plannerFrames.test.ts
+module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts
 root  package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, instrumentation.ts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
 ```
 
@@ -329,11 +329,21 @@ run. Plan again to verify." when inputs differ.
 Worker state machine (pure `lib/swarmReducer.ts`):
 
 ```text
-idle --run_started--> queued --worker_status(running)--> running
+idle --run_started--> queued --worker_status(running) or worker_started--> running
 queued/running --worker_complete--> complete
 queued/running --worker_error or stream_failed--> error
 complete/error --run_started (same worker)--> queued
 ```
+
+Each worker keeps `runId`, start and end times, the current purpose, up to 200 steps, a
+step count, heartbeat count and last time, up to 100 deduplicated sources, up to 20 notes,
+a retry count, and the last accepted sequence. Duplicate or out-of-order `seq` values are
+ignored. `lib/swarmTelemetry.ts` derives elapsed time, five-second tempo buckets, connection
+health (`live`, `quiet` after 12s, `stalled` after 30s), the bounded merged feed, a summary
+(running, steps, sources, findings), merged source rows, and staleness. `hooks/useSwarm.ts`
+batches stream actions through `hooks/swarmBatch.ts` so a burst causes one reducer pass per
+animation frame. `hooks/useNow.ts` ticks once a second only while a worker is queued or
+running; idle pages have no clock.
 
 Worker events are accepted only from queued or running; `run_started` is the only exit from
 idle. Progress keeps the last three purposes. `streaming_url` accepts only https on
@@ -654,7 +664,7 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 301 tests.
+`npm test` runs Vitest once in a Node environment. The suite has 318 tests.
 
 - `tests/design-guard.test.ts` and `tests/contrast.test.ts` guard styles and 13 WCAG AA token
   pairs; `tests/smoke.test.ts` covers the five conditions.

@@ -13,12 +13,14 @@
  * nothing is logged.
  */
 
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { createBatchedDispatch } from "@/hooks/swarmBatch";
 import { streamSwarmRequest } from "@/hooks/swarmStream";
 import {
   createQueuedSwarmState,
   createSwarmState,
   swarmReducer,
+  type SwarmAction,
   type SwarmState,
 } from "@/lib/swarmReducer";
 import { WORKER_IDS, type WorkerId } from "@/lib/swarmTypes";
@@ -87,6 +89,8 @@ export function useSwarm({
   runToken,
 }: UseSwarmInput): UseSwarmResult {
   const [state, dispatch] = useReducer(swarmReducer, createSwarmState());
+  // The reducer dispatch is stable, so one batcher lives for the hook's lifetime.
+  const batcher = useMemo(() => createBatchedDispatch<SwarmAction>(dispatch), [dispatch]);
   const [storedInput, setStoredInput] = useState<StoredRunInput | null>(null);
   const runInputRef = useRef<StoredRunInput | null>(null);
   const controllersRef = useRef<Set<AbortController>>(new Set());
@@ -132,7 +136,7 @@ export function useSwarm({
         workers,
         requestId,
         latestRequest: latestRequestRef.current,
-        dispatch,
+        dispatch: batcher.dispatch,
         controller,
         onSettled: () => {
           controllersRef.current.delete(controller);
@@ -142,8 +146,10 @@ export function useSwarm({
         },
       });
     },
-    [runToken],
+    [runToken, batcher],
   );
+
+  useEffect(() => () => batcher.cancel(), [batcher]);
 
   useEffect(() => {
     if (abortTimerRef.current !== null) {

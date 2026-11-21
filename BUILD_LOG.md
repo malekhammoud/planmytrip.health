@@ -409,6 +409,23 @@ thresholds and Sun Life stability window remain VERIFY.
 - Decision: the route cap is 120 seconds even though earlier live runs took longer. The upstream
   limits stop the agent first, so the client never has to invent a terminal state.
 
+### Step 15: live swarm telemetry model
+
+- Extended `WorkerState` with the run id, start and end times, current purpose, up to 200 steps
+  plus a full step count, heartbeat count and last time, up to 100 deduplicated sources, up to
+  20 notes, retry count, last event time, and last accepted sequence. Duplicate and
+  out-of-order frames are ignored per worker.
+- Added `lib/swarmTelemetry.ts`: elapsed time, five-second tempo buckets, connection health
+  (`live`, `quiet` after 12s, `stalled` after 30s), a summary, a merged feed capped at 300
+  lines, merged source rows, and the staleness comparison. Heartbeats are counted but never
+  become feed lines.
+- Added `hooks/swarmBatch.ts`, so the swarm stream coalesces a burst into one reducer pass per
+  animation frame, and `hooks/useNow.ts`, which ticks once a second only while a worker is
+  queued or running.
+- Tests: pure derivations cover empty input, buckets with gaps, duplicates, out-of-order
+  sequences, source merging, staleness, and all caps; the batch queue is tested with fake
+  timers.
+
 ## Next action
 
 Run a consented pilot cohort against production PostgreSQL, confirm capture and outcome rows
