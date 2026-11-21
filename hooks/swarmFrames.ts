@@ -19,6 +19,8 @@ import {
   type CoverageSource,
   type SwarmErrorCode,
   type SwarmFindings,
+  type SwarmSourceItem,
+  type TinyfishApi,
   type WorkerId,
 } from "@/lib/swarmTypes";
 
@@ -36,9 +38,21 @@ function asWorker(value: unknown): WorkerId | null {
   return isWorkerId(value) ? value : null;
 }
 
+const ERROR_CODES: readonly SwarmErrorCode[] = [
+  "missing_api_key",
+  "timeout",
+  "site_blocked",
+  "max_steps_exceeded",
+  "rate_limit",
+  "insufficient_credits",
+  "invalid_input",
+  "cancelled",
+  "upstream_error",
+];
+
 function asErrorCode(value: unknown): SwarmErrorCode | null {
-  return value === "missing_api_key" || value === "timeout" || value === "upstream_error"
-    ? value
+  return typeof value === "string" && (ERROR_CODES as readonly string[]).includes(value)
+    ? (value as SwarmErrorCode)
     : null;
 }
 
@@ -56,6 +70,33 @@ function asHttpUrl(value: unknown): string | null {
 function asWorkerList(value: unknown): WorkerId[] | null {
   if (!Array.isArray(value)) return null;
   return value.filter(isWorkerId);
+}
+
+/** Reads the optional wire sequence; the reducer ignores duplicates when present. */
+function asSeq(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? Math.floor(value)
+    : undefined;
+}
+
+/** Rebuilds source rows defensively; an unknown item shape is skipped, never thrown. */
+function asSourceItems(value: unknown): SwarmSourceItem[] {
+  if (!Array.isArray(value)) return [];
+  const items: SwarmSourceItem[] = [];
+  for (const entry of value.slice(0, 100)) {
+    if (!isRecord(entry)) continue;
+    const url = asHttpUrl(entry.url) ?? undefined;
+    const title = asText(entry.title)?.slice(0, 200) ?? undefined;
+    const api =
+      entry.api === "search" || entry.api === "fetch" ? entry.api : undefined;
+    if (api === undefined || (url === undefined && title === undefined)) continue;
+    items.push({ ...(url === undefined ? {} : { url }), ...(title === undefined ? {} : { title }), api });
+  }
+  return items;
+}
+
+function asTinyfishApi(value: unknown): TinyfishApi | undefined {
+  return value === "search" || value === "fetch" ? value : undefined;
 }
 
 function asTextList(value: unknown): string[] {
@@ -145,6 +186,18 @@ export function applyFrame(
       dispatch({ type: "worker_status", worker, status: raw.status, mock });
       return false;
     }
+    case "worker_started": {
+      const startedAt = asText(raw.startedAt) ?? new Date().toISOString();
+      dispatch({
+        type: "worker_started",
+        worker,
+        runId: asText(raw.runId),
+        startedAt,
+        seq: asSeq(raw.seq),
+        mock,
+      });
+      return false;
+    }
     case "streaming_url": {
       if (typeof raw.streamingUrl !== "string") return false;
       if (!isAllowedPreviewUrl(raw.streamingUrl)) return false;
@@ -153,7 +206,30 @@ export function applyFrame(
     }
     case "worker_progress": {
       if (typeof raw.purpose !== "string") return false;
-      dispatch({ type: "worker_progress", worker, purpose: raw.purpose, mock });
+      dispatch({
+        type: "worker_progress",
+        worker,
+        purpose: raw.purpose,
+        tinyfishApi: asTinyfishApi(raw.tinyfishApi),
+        seq: asSeq(raw.seq),
+        mock,
+      });
+      return false;
+    }
+    case "worker_sources": {
+      const items = asSourceItems(raw.items);
+      if (items.length === 0) return false;
+      dispatch({ type: "worker_sources", worker, items, seq: asSeq(raw.seq), mock });
+      return false;
+    }
+    case "worker_heartbeat": {
+      dispatch({ type: "worker_heartbeat", worker, seq: asSeq(raw.seq), mock });
+      return false;
+    }
+    case "worker_note": {
+      const message = asText(raw.message);
+      if (message === null) return false;
+      dispatch({ type: "worker_note", worker, message, seq: asSeq(raw.seq), mock });
       return false;
     }
     case "worker_complete": {
@@ -165,6 +241,7 @@ export function applyFrame(
         retrievedAt: typeof raw.retrievedAt === "string" ? raw.retrievedAt : "",
         ...(typeof raw.rawResult === "string" ? { rawResult: raw.rawResult } : {}),
         ...(typeof raw.parseError === "string" ? { parseError: raw.parseError } : {}),
+        seq: asSeq(raw.seq),
         mock,
       });
       return false;
@@ -177,6 +254,7 @@ export function applyFrame(
         worker,
         code: asErrorCode(raw.code) ?? "upstream_error",
         message: cause,
+        seq: asSeq(raw.seq),
         mock,
       });
       return false;

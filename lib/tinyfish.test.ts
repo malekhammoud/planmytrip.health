@@ -115,6 +115,12 @@ describe("streamTinyfishRun", () => {
       url: "https://example.test/page",
       goal: "Return only JSON.",
       outputSchema: { type: "object", properties: {} },
+      browserProfile: "stealth",
+      agentConfig: {
+        cursorStyle: "standard",
+        maxSteps: 60,
+        maxDurationSeconds: 100,
+      },
       onEvent: (event) => events.push(event.type),
     });
 
@@ -128,6 +134,35 @@ describe("streamTinyfishRun", () => {
     expect(body.url).toBe("https://example.test/page");
     expect(body.goal).toBe("Return only JSON.");
     expect(body.output_schema).toEqual({ type: "object", properties: {} });
+    expect(body.browser_profile).toBe("stealth");
+    expect(body.agent_config).toEqual({
+      cursor_style: "standard",
+      max_steps: 60,
+      max_duration_seconds: 100,
+    });
+  });
+
+  it("counts unknown upstream types without forwarding them", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        sseResponse([
+          { type: "FUTURE_EVENT", detail: "ignored" },
+          { type: "HEARTBEAT", timestamp: "2026-11-21T00:00:02.000Z" },
+        ]),
+      ),
+    );
+    const events: string[] = [];
+    const unknown: string[] = [];
+    await streamTinyfishRun({
+      apiKey: "test-key-not-real",
+      url: "https://example.test/page",
+      goal: "Return only JSON.",
+      onEvent: (event) => events.push(event.type),
+      onUnknownEvent: (type) => unknown.push(type),
+    });
+    expect(events).toEqual(["HEARTBEAT"]);
+    expect(unknown).toEqual(["FUTURE_EVENT"]);
   });
 
   it("throws a status-only error for a non-2xx response", async () => {

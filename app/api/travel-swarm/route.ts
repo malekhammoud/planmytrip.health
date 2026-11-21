@@ -4,8 +4,9 @@
  *
  * Inputs: a JSON body { destination, condition, medication, workers? } validated by
  * isSwarmRequestBody, plus TINYFISH_API_KEY and the dev-only SWARM_MOCK flag.
- * Outputs: text/event-stream frames (worker_status, streaming_url, worker_progress,
- * worker_complete, worker_error, swarm_done) or a 400 JSON error for a bad body.
+ * Outputs: text/event-stream frames (worker_status, worker_started, streaming_url,
+ * worker_progress, worker_sources, worker_heartbeat, worker_note, worker_complete,
+ * worker_error, swarm_done) or a 400 JSON error for a bad body.
  * Invariants: every stream ends with swarm_done; enqueues are guarded after close; the
  * API key is never logged, echoed, or placed in an event.
  */
@@ -21,7 +22,7 @@ import {
 } from "@/lib/swarmTypes";
 
 export const runtime = "nodejs";
-export const maxDuration = 360;
+export const maxDuration = 120;
 
 const SSE_HEADERS = {
   "Content-Type": "text/event-stream; charset=utf-8",

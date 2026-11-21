@@ -1,18 +1,25 @@
 /**
  * Maps normalised TinyFish run events onto the swarm's own SSE events.
  *
- * Inputs: one parsed TinyfishEvent plus the worker it belongs to, an optional
- * source URL fallback, and a clock.
- * Outputs: zero or one SwarmEvent; heartbeats, unknown types, and TF_API_RESULT
- * are intentionally silent.
- * Invariants: completion always carries typed findings plus sourceUrl and
- * retrievedAt; malformed result text keeps the raw text and a parse error while
- * every finding stays null or empty. No values are invented.
+ * Inputs: one parsed TinyfishEvent plus the worker it belongs to, a source URL fallback,
+ * a clock, and a per-worker sequence source.
+ * Outputs: zero or one SwarmEvent. HEARTBEAT becomes worker_heartbeat, TF_API_RESULT
+ * becomes worker_sources, and unknown upstream types are counted by the client.
+ * Invariants: completion always carries typed findings plus sourceUrl and retrievedAt;
+ * malformed result text keeps the raw text and a parse error while every finding stays
+ * null or empty. Source rows only read string url and title fields, so an undocumented
+ * upstream shape can never throw. No values are invented.
  */
 
 import { WORKER_SOURCES, emptyFindings, normalizeWorkerResult } from "@/lib/swarmGoals";
 import type { TinyfishEvent } from "@/lib/tinyfish";
-import type { SwarmEvent, WorkerId } from "@/lib/swarmTypes";
+import type {
+  SwarmErrorCode,
+  SwarmEvent,
+  SwarmSourceItem,
+  TinyfishApi,
+  WorkerId,
+} from "@/lib/swarmTypes";
 
 /** Context needed to attribute an upstream event to one worker. */
 export interface UpstreamMappingContext {
@@ -21,7 +28,12 @@ export interface UpstreamMappingContext {
   sourceUrl?: string;
   /** Clock injected so tests can pin timestamps. */
   now: () => string;
+  /** Monotonic sequence for this worker, called only for events that are emitted. */
+  nextSeq: () => number;
 }
+
+const MAX_SOURCES_PER_EVENT = 10;
+const MAX_SOURCE_TEXT = 200;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -34,6 +46,53 @@ function isHttpUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+function envelope(context: UpstreamMappingContext) {
+  return { worker: context.worker, seq: context.nextSeq(), ts: context.now() };
+}
+
+/**
+ * Rebuilds source rows from a TF_API_RESULT payload. Only a direct array of objects
+ * with string url or title fields is read; any other shape yields an empty list.
+ */
+export function extractSources(
+  result: unknown,
+  api: TinyfishApi | null,
+): SwarmSourceItem[] {
+  if (api === null || !Array.isArray(result)) return [];
+  const seen = new Set<string>();
+  const items: SwarmSourceItem[] = [];
+  for (const entry of result.slice(0, MAX_SOURCES_PER_EVENT)) {
+    if (!isRecord(entry)) continue;
+    const rawUrl = typeof entry.url === "string" ? entry.url.trim() : "";
+    const url = rawUrl !== "" && isHttpUrl(rawUrl) ? rawUrl : undefined;
+    const rawTitle = typeof entry.title === "string" ? entry.title.trim() : "";
+    const title =
+      rawTitle === "" ? undefined : rawTitle.slice(0, MAX_SOURCE_TEXT);
+    if (url === undefined && title === undefined) continue;
+    const key = url ?? `title:${title ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push({ ...(url === undefined ? {} : { url }), ...(title === undefined ? {} : { title }), api });
+  }
+  return items;
+}
+
+/** Maps one upstream error code or error string onto a UI branch. */
+export function mapTinyfishErrorCode(code: string | null | undefined): SwarmErrorCode {
+  const token = (code ?? "").toUpperCase();
+  if (token.includes("SITE_BLOCKED")) return "site_blocked";
+  if (token.includes("MAX_STEPS_EXCEEDED")) return "max_steps_exceeded";
+  if (token.includes("RATE_LIMIT") || token.includes("DAILY_LIMIT")) return "rate_limit";
+  if (token.includes("INSUFFICIENT_CREDITS")) return "insufficient_credits";
+  if (token.includes("INVALID_INPUT")) return "invalid_input";
+  if (token.includes("CANCELLED")) return "cancelled";
+  if (token.includes("TIMEOUT")) return "timeout";
+  if (token.includes("MISSING_API_KEY") || token.includes("INVALID_API_KEY")) {
+    return "missing_api_key";
+  }
+  return "upstream_error";
 }
 
 interface NormalizedComplete {
@@ -83,24 +142,29 @@ function normalizeCompleteResult(
   return normalizeWorkerResult(worker, result, fallbackSourceUrl);
 }
 
+const FAILED_MESSAGES: Record<string, string> = {
+  site_blocked: "The site blocked the agent. Retry this check.",
+  max_steps_exceeded: "The agent hit its step limit before finishing.",
+  timeout: "The agent did not finish inside its time limit. Retry this check.",
+  cancelled: "The agent run was cancelled. Retry this check.",
+  rate_limit: "TinyFish rate limit reached. Try again in a minute.",
+  insufficient_credits: "The TinyFish account has no credits left. Check the plan.",
+  missing_api_key: "The live agent check is not configured on this server.",
+};
+
 function mapComplete(
   event: Extract<TinyfishEvent, { type: "COMPLETE" }>,
   context: UpstreamMappingContext,
 ): SwarmEvent {
-  const ts = context.now();
   const sourceUrl = context.sourceUrl ?? WORKER_SOURCES[context.worker];
   if (event.status !== "COMPLETED") {
-    const message =
-      event.status === "CANCELLED"
-        ? "The agent run was cancelled. Retry this check."
-        : "The agent could not complete this check. Retry this worker.";
+    const code = mapTinyfishErrorCode(event.error ?? event.status);
     return {
       event: "worker_error",
       data: {
-        worker: context.worker,
-        ts,
-        code: "upstream_error",
-        message,
+        ...envelope(context),
+        code,
+        message: FAILED_MESSAGES[code] ?? "The agent could not complete this check. Retry this worker.",
       },
     };
   }
@@ -108,11 +172,10 @@ function mapComplete(
   return {
     event: "worker_complete",
     data: {
-      worker: context.worker,
-      ts,
+      ...envelope(context),
       findings: normalized.findings,
       sourceUrl: normalized.sourceUrl,
-      retrievedAt: ts,
+      retrievedAt: context.now(),
       rawResult: normalized.rawResult,
       parseError: normalized.parseError,
     },
@@ -120,8 +183,8 @@ function mapComplete(
 }
 
 /**
- * Converts one upstream event into at most one swarm event.
- * STARTED becomes a running status; HEARTBEAT and TF_API_RESULT are ignored.
+ * Converts one upstream event into at most one swarm event. STARTED opens the run,
+ * HEARTBEAT keeps the connection honest, and TF_API_RESULT adds source rows.
  */
 export function mapTinyfishEvent(
   event: TinyfishEvent,
@@ -130,8 +193,12 @@ export function mapTinyfishEvent(
   switch (event.type) {
     case "STARTED":
       return {
-        event: "worker_status",
-        data: { worker: context.worker, ts: context.now(), status: "running" },
+        event: "worker_started",
+        data: {
+          ...envelope(context),
+          runId: event.runId,
+          startedAt: context.now(),
+        },
       };
     case "STREAMING_URL": {
       const streamingUrl = event.streamingUrl?.trim() ?? "";
@@ -140,8 +207,7 @@ export function mapTinyfishEvent(
       return {
         event: "streaming_url",
         data: {
-          worker: context.worker,
-          ts: context.now(),
+          ...envelope(context),
           streamingUrl,
         },
       };
@@ -150,15 +216,21 @@ export function mapTinyfishEvent(
       if (event.purpose === null) return null;
       return {
         event: "worker_progress",
-        data: { worker: context.worker, ts: context.now(), purpose: event.purpose },
+        data: {
+          ...envelope(context),
+          purpose: event.purpose,
+          ...(event.tinyfishApi === null ? {} : { tinyfishApi: event.tinyfishApi }),
+        },
       };
+    }
+    case "HEARTBEAT":
+      return { event: "worker_heartbeat", data: envelope(context) };
+    case "TF_API_RESULT": {
+      const items = extractSources(event.result, event.tinyfishApi);
+      if (items.length === 0) return null;
+      return { event: "worker_sources", data: { ...envelope(context), items } };
     }
     case "COMPLETE":
       return mapComplete(event, context);
-    case "HEARTBEAT":
-    case "TF_API_RESULT":
-      // TF_API_RESULT is documented as optional but its payload is not specified;
-      // COMPLETE.result is the authoritative result for this route.
-      return null;
   }
 }

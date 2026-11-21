@@ -45,6 +45,12 @@ and this file agree at that commit. Only the orchestrator commits.
 | 11. Production specialist hardening | [x] | `fix(planner): harden production agent runs` |
 | 12. ML data loop and calibrated model | [x] | `feat(ml): add trip outcome data loop and calibrated flare model` |
 | 13. One-page live workspace and agent warmup | [x] | `feat(ui): add live one-page planning workspace` |
+| 14. Full TinyFish telemetry | [x] | `feat(api): stream full TinyFish telemetry with limits and mock timeline` |
+| 15. Live swarm telemetry model | [ ] | `feat(state): add live swarm telemetry model` |
+| 16. Mission control | [ ] | `feat(ui): add live mission control for agent swarm` |
+| 17. Verification overlay | [ ] | `feat(engine): add tighten-only live verification overlay` |
+| 18. Animated plan changes | [ ] | `feat(ui): animate plan changes and live adjustments` |
+| 19. Mission control docs | [ ] | `docs(agents): document live mission control and telemetry` |
 
 ## 3. Commands
 
@@ -80,6 +86,8 @@ host, build first, then `chown -R planmytrip:planmytrip .next` before restarting
 | --- | --- | --- |
 | `TINYFISH_API_KEY` | Server only, `app/api/travel-swarm/route.ts` | Each worker emits `worker_error` code `missing_api_key`; the stream still returns 200. Never log, echo, or commit it. |
 | `SWARM_MOCK` | Server only, swarm route | Only when `1` and `NODE_ENV !== "production"`; mock events carry `mock: true`. Ignored in production. |
+| `SWARM_MOCK_SPEED` | Server only, mock timeline | Multiplies the scripted mock clock; tests use `50`. Ignored in production. |
+| `SWARM_MOCK_FAIL` | Server only, mock timeline | One worker id that fails with `site_blocked`; used to exercise the error UI. Ignored in production. |
 | `AGENT_MOCK` | Server only, planner route | Only when `1` and `NODE_ENV !== "production"`; every planner payload carries `mock: true`. Ignored in production. |
 | `OPENCODE_SERVER_URL` | Server only, `lib/agent/agentClient.ts` | When empty, the app discovers or starts the local OpenCode service. |
 | `OPENCODE_SERVER_USERNAME` / `OPENCODE_SERVER_PASSWORD` | Server only, explicit OpenCode server | Optional Basic auth for an explicit server. Never log or commit them. |
@@ -108,9 +116,9 @@ Every tracked source file, annotated; `package-lock.json` and generated files
 (`next-env.d.ts`, `.next`, `tsconfig.tsbuildinfo`) are omitted by category.
 
 ```text
-app/  globals.css, layout.tsx, page.tsx, model/page.tsx, api/travel-swarm/route.ts, api/agent-plan/route.ts, api/trips/route.ts, api/trips/outcome/route.ts
+app/  globals.css, layout.tsx, page.tsx, model/page.tsx, mock-browser/[worker]/, api/travel-swarm/route.ts, api/agent-plan/route.ts, api/trips/route.ts, api/trips/outcome/route.ts
 lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditionProfiles.ts, sunLifeRules.ts, healthScore.ts, itineraryBuilder.ts
-      swarm: swarmTypes.ts (wire contracts), swarmState.ts, swarmReducer.ts, swarmRunner.ts, swarmGoals.ts, swarmMock.ts, sse.ts, tinyfish.ts, tinyfishEvents.ts
+      swarm: swarmTypes.ts (wire contracts), swarmConfig.ts, swarmState.ts, swarmReducer.ts, swarmRunner.ts, swarmGoals.ts, swarmMock.ts, sse.ts, tinyfish.ts, tinyfishEvents.ts
       agent: agentTypes.ts (wire contracts), agentRequest.ts, agentProfiles.ts, agentPrompts.ts, agentConfig.ts, agentClient.ts, agentWarmup.ts, agentRunner.ts, agentSession.ts, agentParse.ts, agentPlanParse.ts, agentFallback.ts, agentGeocode.ts, agentEvents.ts, agentMock.ts, plannerReducer.ts
       data: types.ts (versioned contract), dose.ts, tripDossier.ts, capture.ts, validation.ts
       db: postgres.ts (pg pool + schema), trips.ts (async repository)
@@ -122,8 +130,8 @@ components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Fi
 scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts
 data/  synthetic-trips.jsonl
 docs/  ML.md, MODEL_CARD.md
-tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
-module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; hooks/: swarmFrames.test.ts, plannerFrames.test.ts
+tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
+module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; hooks/: swarmFrames.test.ts, plannerFrames.test.ts
 root  package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, instrumentation.ts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
 ```
 
@@ -330,8 +338,9 @@ complete/error --run_started (same worker)--> queued
 Worker events are accepted only from queued or running; `run_started` is the only exit from
 idle. Progress keeps the last three purposes. `streaming_url` accepts only https on
 `mock.invalid`, `*.unikraft.app`, or `*.tinyfish.io` (VERIFY) in `lib/swarmState.ts` and
-`hooks/swarmFrames.ts`; all other hosts are rejected. Live workers abort after 300s so slow
-browser runs can still finish; `/api/travel-swarm` declares `maxDuration = 360`. `swarm_done`
+`hooks/swarmFrames.ts`, plus the dev-only same-origin `/mock-browser/<worker>` path; all other
+hosts are rejected. Live workers abort after 120s and TinyFish stops them at 100s or 60 steps,
+so one run fits the route budget; `/api/travel-swarm` declares `maxDuration = 120`. `swarm_done`
 stores completed and failed lists. Any `mock: true` payload shows the "Mock data" caution
 Callout; a full run clears it.
 
@@ -585,38 +594,53 @@ A failed lookup leaves `lat` and `lng` null. Map tiles come from `NEXT_PUBLIC_MA
 with `NEXT_PUBLIC_MAP_ATTRIBUTION`; the Leaflet attribution prefix is disabled.
 
 TinyFish Web Agent API: `POST https://agent.tinyfish.ai/v1/automation/run-sse` with
-`X-API-Key` and JSON `{url, goal, output_schema?}`. The key is read only in the route; never
-log or echo it. `output_schema` is a top-level object using `nullable: true`, never type
-arrays, `oneOf`, `const`, or `additionalProperties`.
+`X-API-Key` and JSON `{url, goal, output_schema?, browser_profile?, agent_config?}`. The key is
+read only in the route; never log or echo it. `output_schema` is a top-level object using
+`nullable: true`, never type arrays, `oneOf`, `const`, or `additionalProperties`. Every worker
+sends `agent_config` with `cursor_style: "standard"`, `max_steps: 60`, and
+`max_duration_seconds: 100`; the limits live in `lib/swarmConfig.ts` and keep one worker inside
+the 120s route budget.
 
-Upstream `data: <json>` events: `STARTED` (run_id), `STREAMING_URL`, `PROGRESS` (purpose),
-`HEARTBEAT`, `COMPLETE` (status/result/error), and optional `TF_API_RESULT`. Unknown types are
-ignored; `COMPLETE.result` is authoritative. The route forwards absolute http(s) STREAMING_URL
-values; the browser keeps only https `mock.invalid`, `*.unikraft.app`, or `*.tinyfish.io`
-previews.
+Upstream `data: <json>` events: `STARTED` (run_id), `STREAMING_URL`, `PROGRESS`
+(purpose, optional tinyfish_api), `HEARTBEAT`, `COMPLETE` (status/result/error), and optional
+`TF_API_RESULT` (tinyfish_api, result array). Unknown types are counted and ignored;
+`COMPLETE.result` is authoritative. The route forwards absolute http(s) STREAMING_URL values;
+the browser keeps only https `mock.invalid`, `*.unikraft.app`, or `*.tinyfish.io` previews, plus
+the dev-only same-origin `/mock-browser/<worker>` path. On HTTP 400 `INVALID_INPUT` the worker
+retries once without `output_schema`; on `SITE_BLOCKED` it retries once with
+`browser_profile: "stealth"`. Each retry emits a `worker_note` with calm copy.
 
-TinyFish swarm frames all carry `worker`, an ISO `ts`, and optional `mock`; `swarm_done` uses
-`worker: "swarm"` and is always last on a connected stream. Planner frames use `agentId` and
-their own `planner_done` terminal frame instead.
+TinyFish swarm frames all carry `worker`, a monotonic per-worker `seq`, an ISO `ts`, and
+optional `mock`; `swarm_done` uses `worker: "swarm"` with its own sequence and is always last on
+a connected stream. Planner frames use `agentId` and their own `planner_done` terminal frame
+instead.
 
 | Event | Fields | When |
 | --- | --- | --- |
-| `worker_status` | `status` (queued/running) | Before a run and on TinyFish STARTED. |
-| `streaming_url` | `streamingUrl` | An absolute http(s) STREAMING_URL arrives; the browser keeps allowlisted https previews. |
-| `worker_progress` | `purpose` | TinyFish PROGRESS. |
+| `worker_status` | `status` (queued/running) | Before a run. |
+| `worker_started` | `runId`, `startedAt` | TinyFish STARTED. |
+| `streaming_url` | `streamingUrl` | A usable STREAMING_URL arrives. |
+| `worker_progress` | `purpose`, `tinyfishApi?` | TinyFish PROGRESS. |
+| `worker_sources` | `items: [{url?, title?, api}]` | TF_API_RESULT; only string url/title fields are read. |
+| `worker_heartbeat` | none beyond the envelope | TinyFish HEARTBEAT; never a feed line. |
+| `worker_note` | `message` | A bounded retry or lifecycle note. |
 | `worker_complete` | `findings`, `sourceUrl`, `retrievedAt`, `rawResult?`, `parseError?` | COMPLETED. Malformed JSON keeps raw text and parse error. |
-| `worker_error` | `code`, `message` | Missing key, timeout, upstream error, unexpected rejection. |
-| `swarm_done` | `completed`, `failed` | Once after all requested workers settle. |
+| `worker_error` | `code`, `message` | Missing key, timeout, blocked site, step limit, rate limit, credits, cancelled, upstream error. |
+| `swarm_done` | `completed`, `failed`, `summary` | Once after all requested workers settle. |
 
 Headers are `text/event-stream; charset=utf-8`, `Cache-Control: no-cache, no-transform`, and
 `X-Accel-Buffering: no`; a keep-alive comment goes out about every 15s. Disconnect aborts
-upstreams. Error codes: `missing_api_key`, `timeout`, `upstream_error`; invalid bodies 400 JSON.
+upstreams. Error codes: `missing_api_key`, `timeout`, `site_blocked`, `max_steps_exceeded`,
+`rate_limit`, `insufficient_credits`, `invalid_input`, `cancelled`, `upstream_error`; invalid
+bodies 400 JSON. `/api/travel-swarm` declares `maxDuration = 120`.
 
-Mock mode needs no key or network; every payload carries `mock: true` and preview URLs use
-`mock.invalid`:
+Mock mode needs no key or network; every payload carries `mock: true`, preview URLs use the
+dev-only `/mock-browser/<worker>` page, and the timeline is seeded. `SWARM_MOCK_SPEED`
+multiplies the scripted clock (tests use 50); `SWARM_MOCK_FAIL=<worker>` makes that worker fail
+with `site_blocked`:
 
 ```bash
-SWARM_MOCK=1 npm run dev
+SWARM_MOCK=1 SWARM_MOCK_SPEED=50 npm run dev
 curl -N -X POST http://localhost:3000/api/travel-swarm \
   -H 'Content-Type: application/json' \
   -d '{"destination":"Lisbon, Portugal","condition":"asthma_respiratory","medication":"albuterol inhaler"}'
@@ -630,7 +654,7 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 291 tests.
+`npm test` runs Vitest once in a Node environment. The suite has 301 tests.
 
 - `tests/design-guard.test.ts` and `tests/contrast.test.ts` guard styles and 13 WCAG AA token
   pairs; `tests/smoke.test.ts` covers the five conditions.

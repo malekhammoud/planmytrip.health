@@ -19,6 +19,7 @@ const body = {
 describeDb("swarm capture", () => {
   beforeAll(async () => {
     process.env.SWARM_MOCK = "1";
+    process.env.SWARM_MOCK_SPEED = "50";
     process.env.PLANMYTRIP_CAPTURE_MOCK = "1";
     await ensureSchema();
     await resetDatabaseForTests();
@@ -27,6 +28,7 @@ describeDb("swarm capture", () => {
   afterAll(async () => {
     await closeDatabase();
     delete process.env.SWARM_MOCK;
+    delete process.env.SWARM_MOCK_SPEED;
     delete process.env.PLANMYTRIP_CAPTURE_MOCK;
   });
 

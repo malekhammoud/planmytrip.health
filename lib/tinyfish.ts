@@ -46,6 +46,8 @@ export interface TinyfishProgressEvent {
   runId: string | null;
   timestamp: string | null;
   purpose: string | null;
+  /** Which TinyFish API the step used, when the event names one. */
+  tinyfishApi: "search" | "fetch" | null;
 }
 
 /** HEARTBEAT: keep-alive only. */
@@ -71,6 +73,7 @@ export interface TinyfishTfApiResultEvent {
   type: "TF_API_RESULT";
   runId: string | null;
   timestamp: string | null;
+  tinyfishApi: "search" | "fetch" | null;
   result: unknown;
 }
 
@@ -103,6 +106,10 @@ function asErrorMessage(value: unknown): string | null {
   return null;
 }
 
+function asTinyfishApi(value: unknown): "search" | "fetch" | null {
+  return value === "search" || value === "fetch" ? value : null;
+}
+
 /**
  * Parses one SSE data payload into a known TinyFish event.
  * Returns null for invalid JSON, non-object payloads, and unknown event types.
@@ -128,7 +135,13 @@ export function parseTinyfishEvent(raw: string): TinyfishEvent | null {
         streamingUrl: asString(value.streaming_url),
       };
     case "PROGRESS":
-      return { type: "PROGRESS", runId, timestamp, purpose: asString(value.purpose) };
+      return {
+        type: "PROGRESS",
+        runId,
+        timestamp,
+        purpose: asString(value.purpose),
+        tinyfishApi: asTinyfishApi(value.tinyfish_api),
+      };
     case "HEARTBEAT":
       return { type: "HEARTBEAT", timestamp };
     case "COMPLETE":
@@ -147,6 +160,7 @@ export function parseTinyfishEvent(raw: string): TinyfishEvent | null {
         type: "TF_API_RESULT",
         runId,
         timestamp,
+        tinyfishApi: asTinyfishApi(value.tinyfish_api),
         result: value.result ?? null,
       };
     default:
@@ -157,12 +171,26 @@ export function parseTinyfishEvent(raw: string): TinyfishEvent | null {
 /** Thrown when TinyFish answers with a non-2xx status. The message contains no secrets. */
 export class TinyfishHttpError extends Error {
   readonly status: number;
+  /** Machine-readable error code from the response body, when present. */
+  readonly code: string | null;
 
-  constructor(status: number) {
+  constructor(status: number, code: string | null = null) {
     super(`TinyFish returned HTTP ${status}.`);
     this.name = "TinyfishHttpError";
     this.status = status;
+    this.code = code;
   }
+}
+
+/** Browser profile requested from TinyFish. */
+export type TinyfishBrowserProfile = "lite" | "stealth";
+
+/** Agent runtime limits passed through to TinyFish. */
+export interface TinyfishAgentConfig {
+  cursorStyle?: "fish" | "standard" | "green-pointer";
+  maxSteps?: number;
+  maxDurationSeconds?: number;
+  mode?: "default" | "strict";
 }
 
 /** Arguments for one TinyFish run. */
@@ -171,8 +199,56 @@ export interface StreamTinyfishOptions {
   url: string;
   goal: string;
   outputSchema?: Record<string, unknown>;
+  browserProfile?: TinyfishBrowserProfile;
+  agentConfig?: TinyfishAgentConfig;
   signal?: AbortSignal;
   onEvent: (event: TinyfishEvent) => void;
+  /** Called with the upstream type name for any event this build does not know. */
+  onUnknownEvent?: (type: string) => void;
+}
+
+const KNOWN_TYPES = new Set([
+  "STARTED",
+  "STREAMING_URL",
+  "PROGRESS",
+  "HEARTBEAT",
+  "COMPLETE",
+  "TF_API_RESULT",
+]);
+
+/** Reads error.code from a TinyFish JSON error without echoing the body. */
+async function readErrorCode(response: Response): Promise<string | null> {
+  try {
+    const value: unknown = await response.json();
+    if (!isRecord(value) || !isRecord(value.error)) return null;
+    return typeof value.error.code === "string" ? value.error.code : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Builds the documented request body, omitting empty optional groups. */
+function buildRunPayload(
+  options: StreamTinyfishOptions,
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = { url: options.url, goal: options.goal };
+  if (options.outputSchema !== undefined) payload.output_schema = options.outputSchema;
+  if (options.browserProfile !== undefined) payload.browser_profile = options.browserProfile;
+  if (options.agentConfig !== undefined) {
+    const agentConfig: Record<string, unknown> = {};
+    if (options.agentConfig.cursorStyle !== undefined) {
+      agentConfig.cursor_style = options.agentConfig.cursorStyle;
+    }
+    if (options.agentConfig.maxSteps !== undefined) {
+      agentConfig.max_steps = options.agentConfig.maxSteps;
+    }
+    if (options.agentConfig.maxDurationSeconds !== undefined) {
+      agentConfig.max_duration_seconds = options.agentConfig.maxDurationSeconds;
+    }
+    if (options.agentConfig.mode !== undefined) agentConfig.mode = options.agentConfig.mode;
+    payload.agent_config = agentConfig;
+  }
+  return payload;
 }
 
 /**
@@ -180,11 +256,7 @@ export interface StreamTinyfishOptions {
  * Resolves when the upstream stream ends; rejects on non-2xx, network, or abort.
  */
 export async function streamTinyfishRun(options: StreamTinyfishOptions): Promise<void> {
-  const payload: { url: string; goal: string; output_schema?: Record<string, unknown> } = {
-    url: options.url,
-    goal: options.goal,
-  };
-  if (options.outputSchema !== undefined) payload.output_schema = options.outputSchema;
+  const payload = buildRunPayload(options);
 
   const response = await fetch(TINYFISH_RUN_SSE_URL, {
     method: "POST",
@@ -197,7 +269,7 @@ export async function streamTinyfishRun(options: StreamTinyfishOptions): Promise
     signal: options.signal,
     cache: "no-store",
   });
-  if (!response.ok) throw new TinyfishHttpError(response.status);
+  if (!response.ok) throw new TinyfishHttpError(response.status, await readErrorCode(response));
   if (response.body === null) throw new Error(DEFAULT_STREAM_ERROR);
 
   const reader = response.body.getReader();
@@ -207,7 +279,19 @@ export async function streamTinyfishRun(options: StreamTinyfishOptions): Promise
   const handleMessages = (messages: SseMessage[]): void => {
     for (const message of messages) {
       const event = parseTinyfishEvent(message.data);
-      if (event !== null) options.onEvent(event);
+      if (event !== null) {
+        options.onEvent(event);
+        continue;
+      }
+      // Count unknown types without letting an undocumented payload reach the UI.
+      try {
+        const value: unknown = JSON.parse(message.data);
+        if (isRecord(value) && typeof value.type === "string" && !KNOWN_TYPES.has(value.type)) {
+          options.onUnknownEvent?.(value.type.slice(0, 60));
+        }
+      } catch {
+        // Invalid JSON is not an unknown type; it is simply ignored.
+      }
     }
   };
 

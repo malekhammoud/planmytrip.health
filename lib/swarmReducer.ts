@@ -69,6 +69,20 @@ export function swarmReducer(state: SwarmState, action: SwarmAction): SwarmState
       );
     }
 
+    case "worker_started": {
+      const worker = state.workers[action.worker];
+      if (!isLive(worker.phase)) return state;
+      return withMock(
+        replaceWorker(state, action.worker, { ...worker, phase: "running" }),
+        action.mock,
+      );
+    }
+
+    case "worker_sources":
+    case "worker_heartbeat":
+    case "worker_note":
+      return withMock(state, action.mock);
+
     case "streaming_url": {
       const worker = state.workers[action.worker];
       if (!isLive(worker.phase) || !isAllowedPreviewUrl(action.streamingUrl)) return state;

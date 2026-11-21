@@ -172,6 +172,7 @@ describe("POST /api/travel-swarm", () => {
   it("emits mock events tagged mock:true in development mock mode", async () => {
     vi.stubEnv("NODE_ENV", "test");
     vi.stubEnv("SWARM_MOCK", "1");
+    vi.stubEnv("SWARM_MOCK_SPEED", "50");
     vi.stubEnv("TINYFISH_API_KEY", "");
     const fetchMock = vi.fn<typeof fetch>();
     vi.stubGlobal("fetch", fetchMock);
@@ -184,12 +185,29 @@ describe("POST /api/travel-swarm", () => {
     expect(frames.every((frame) => frame.data.mock === true)).toBe(true);
     const streaming = frames.filter((frame) => frame.event === "streaming_url");
     expect(streaming.map((frame) => frame.data.streamingUrl)).toEqual([
-      "https://mock.invalid/stream/advisory",
-      "https://mock.invalid/stream/pharmacy",
-      "https://mock.invalid/stream/coverage",
+      "/mock-browser/advisory",
+      "/mock-browser/pharmacy",
+      "/mock-browser/coverage",
     ]);
     expect(lastFrame(frames).event).toBe("swarm_done");
     expect(lastFrame(frames).data.mock).toBe(true);
+    expect(lastFrame(frames).data.summary).toMatchObject({ findings: 3 });
+
+    const names = frames.map((frame) => frame.event);
+    expect(names[0]).toBe("worker_status");
+    expect(names.indexOf("worker_started")).toBeLessThan(names.indexOf("streaming_url"));
+    for (const worker of ["advisory", "pharmacy", "coverage"] as const) {
+      const workerFrames = frames.filter((frame) => frame.data.worker === worker);
+      const seq = workerFrames.map((frame) => frame.data.seq);
+      expect(seq).toEqual([...seq].sort((left, right) => Number(left) - Number(right)));
+      expect(new Set(seq).size).toBe(seq.length);
+      expect(workerFrames.some((frame) => frame.event === "worker_progress")).toBe(true);
+      expect(workerFrames.some((frame) => frame.event === "worker_sources")).toBe(true);
+      const completeIndex = workerFrames.findIndex(
+        (frame) => frame.event === "worker_complete",
+      );
+      expect(completeIndex).toBeGreaterThan(0);
+    }
   });
 
   it("ignores mock mode in production", async () => {

@@ -140,67 +140,123 @@ export interface WorkerOutcome {
 }
 
 /** Error codes the UI can branch on. */
-export type SwarmErrorCode = "missing_api_key" | "timeout" | "upstream_error";
+export type SwarmErrorCode =
+  | "missing_api_key"
+  | "timeout"
+  | "site_blocked"
+  | "max_steps_exceeded"
+  | "rate_limit"
+  | "insufficient_credits"
+  | "invalid_input"
+  | "cancelled"
+  | "upstream_error";
 
-/** Payload for worker_status: the worker entered the queue or started running. */
-export interface WorkerStatusPayload {
+/** Which TinyFish search or fetch produced a source row. */
+export type TinyfishApi = "search" | "fetch";
+
+/** One source consulted by an agent, rebuilt defensively from an upstream payload. */
+export interface SwarmSourceItem {
+  /** Absolute http(s) URL when the upstream item carried one. */
+  url?: string;
+  /** Page or result title when the upstream item carried one. */
+  title?: string;
+  /** Which TinyFish API produced it. */
+  api: TinyfishApi;
+}
+
+/** Shared envelope for every worker-scoped frame. */
+export interface SwarmWorkerEnvelope {
   worker: WorkerId;
+  /** Monotonic per worker within one request, starting at 1. */
+  seq: number;
+  /** Server receive time, ISO. */
   ts: string;
-  status: "queued" | "running";
   mock?: true;
+}
+
+/** Payload for worker_status: the worker entered the queue. */
+export interface WorkerStatusPayload extends SwarmWorkerEnvelope {
+  status: "queued" | "running";
+}
+
+/** Payload for worker_started: TinyFish accepted the run. */
+export interface WorkerStartedPayload extends SwarmWorkerEnvelope {
+  runId: string | null;
+  startedAt: string;
 }
 
 /** Payload for streaming_url: the live preview iframe URL for one worker. */
-export interface StreamingUrlPayload {
-  worker: WorkerId;
-  ts: string;
+export interface StreamingUrlPayload extends SwarmWorkerEnvelope {
   streamingUrl: string;
-  mock?: true;
 }
 
 /** Payload for worker_progress: a human-readable purpose update. */
-export interface WorkerProgressPayload {
-  worker: WorkerId;
-  ts: string;
+export interface WorkerProgressPayload extends SwarmWorkerEnvelope {
   purpose: string;
-  mock?: true;
+  tinyfishApi?: TinyfishApi;
+}
+
+/** Payload for worker_sources: sources consulted so far, never findings. */
+export interface WorkerSourcesPayload extends SwarmWorkerEnvelope {
+  items: SwarmSourceItem[];
+}
+
+/** Payload for worker_heartbeat: the upstream stream is still open. */
+export type WorkerHeartbeatPayload = SwarmWorkerEnvelope;
+
+/** Payload for worker_note: bounded lifecycle copy, such as a retry reason. */
+export interface WorkerNotePayload extends SwarmWorkerEnvelope {
+  message: string;
 }
 
 /** Payload for worker_complete: typed findings plus provenance. */
-export interface WorkerCompletePayload {
-  worker: WorkerId;
-  ts: string;
+export interface WorkerCompletePayload extends SwarmWorkerEnvelope {
   findings: SwarmFindings;
   sourceUrl: string;
   retrievedAt: string;
   rawResult?: string;
   parseError?: string;
-  mock?: true;
 }
 
 /** Payload for worker_error: a calm, user-facing failure. */
-export interface WorkerErrorPayload {
-  worker: WorkerId;
-  ts: string;
+export interface WorkerErrorPayload extends SwarmWorkerEnvelope {
   code: SwarmErrorCode;
   message: string;
-  mock?: true;
+}
+
+/** Aggregated counters carried by swarm_done. */
+export interface SwarmDoneSummary {
+  /** Progress steps emitted across the run. */
+  steps: number;
+  /** Deduplicated source rows emitted across the run. */
+  sources: number;
+  /** Workers that produced typed findings. */
+  findings: number;
+  /** Upstream event types this build did not recognise. */
+  unknownEvents: number;
 }
 
 /** Payload for swarm_done: the final frame of every stream. */
 export interface SwarmDonePayload {
   worker: "swarm";
+  /** Monotonic per request, starting at 1. */
+  seq: number;
   ts: string;
   completed: WorkerId[];
   failed: WorkerId[];
+  summary: SwarmDoneSummary;
   mock?: true;
 }
 
 /** Names of the SSE events this route emits. */
 export type SwarmEventName =
   | "worker_status"
+  | "worker_started"
   | "streaming_url"
   | "worker_progress"
+  | "worker_sources"
+  | "worker_heartbeat"
+  | "worker_note"
   | "worker_complete"
   | "worker_error"
   | "swarm_done";
@@ -208,8 +264,12 @@ export type SwarmEventName =
 /** A complete server-sent event, pairing the event name with its payload. */
 export type SwarmEvent =
   | { event: "worker_status"; data: WorkerStatusPayload }
+  | { event: "worker_started"; data: WorkerStartedPayload }
   | { event: "streaming_url"; data: StreamingUrlPayload }
   | { event: "worker_progress"; data: WorkerProgressPayload }
+  | { event: "worker_sources"; data: WorkerSourcesPayload }
+  | { event: "worker_heartbeat"; data: WorkerHeartbeatPayload }
+  | { event: "worker_note"; data: WorkerNotePayload }
   | { event: "worker_complete"; data: WorkerCompletePayload }
   | { event: "worker_error"; data: WorkerErrorPayload }
   | { event: "swarm_done"; data: SwarmDonePayload };

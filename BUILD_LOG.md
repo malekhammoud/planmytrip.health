@@ -386,6 +386,29 @@ thresholds and Sun Life stability window remain VERIFY.
   explicit false label against the capture. The two browser-test rows were then removed; the
   production store keeps one consented, unlabeled trip and no training labels.
 
+### Step 14: full TinyFish telemetry and mock timeline
+
+- Every worker now sends `agent_config` with `cursor_style: "standard"`, `max_steps: 60`, and
+  `max_duration_seconds: 100`; `lib/swarmConfig.ts` owns the limits and the 120-second route
+  budget. `/api/travel-swarm` moved from `maxDuration = 360` to `120`.
+- Added a monotonic `seq` to every worker frame plus `worker_started`, `worker_sources`,
+  `worker_heartbeat`, and `worker_note`. Heartbeats and TF_API_RESULT no longer disappear at the
+  mapper; source rows are rebuilt defensively from a direct array, reading only string `url`
+  and `title` fields. Unknown upstream types are counted in `swarm_done.summary`.
+- Added one retry each for HTTP 400 `INVALID_INPUT` (drop `output_schema`) and `SITE_BLOCKED`
+  (switch to `browser_profile: "stealth"`), with calm `worker_note` copy. A second block becomes
+  one `site_blocked` error. Error codes now cover blocked sites, step limits, rate limits,
+  credits, invalid input, and cancellation.
+- Replaced the one-shot mock with a seeded 12-20 step timeline: irregular progress, 2-3 source
+  batches, heartbeats every 5 seconds, and staggered finishes at about 35, 48, and 62 seconds.
+  `SWARM_MOCK_SPEED` scales the clock and `SWARM_MOCK_FAIL` fails one worker with
+  `site_blocked`. `/mock-browser/<worker>` is a dev-only fake viewport that 404s in production.
+- Tests: 301 total. Added retry-path tests, mock timeline determinism, a 50x route ordering test,
+  source-shape defence, agent-config payload, and unknown-event counting.
+- Gate: typecheck, 301 tests against `planmytrip_test`, lint, production build pass.
+- Decision: the route cap is 120 seconds even though earlier live runs took longer. The upstream
+  limits stop the agent first, so the client never has to invent a terminal state.
+
 ## Next action
 
 Run a consented pilot cohort against production PostgreSQL, confirm capture and outcome rows

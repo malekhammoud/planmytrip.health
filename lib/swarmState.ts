@@ -9,7 +9,13 @@
  * lines are kept; preview URLs are https on an allowlisted host.
  */
 
-import type { SwarmErrorCode, SwarmFindings, WorkerId } from "@/lib/swarmTypes";
+import type {
+  SwarmErrorCode,
+  SwarmFindings,
+  SwarmSourceItem,
+  TinyfishApi,
+  WorkerId,
+} from "@/lib/swarmTypes";
 
 /** Lifecycle phase of one worker. `complete` and `error` are terminal. */
 export type WorkerPhase = "idle" | "queued" | "running" | "complete" | "error";
@@ -55,8 +61,32 @@ export interface SwarmState {
 export type SwarmAction =
   | { type: "run_started"; runToken: number; workers: readonly WorkerId[] }
   | { type: "worker_status"; worker: WorkerId; status: "queued" | "running"; mock?: true }
+  | {
+      type: "worker_started";
+      worker: WorkerId;
+      runId: string | null;
+      startedAt: string;
+      seq?: number;
+      mock?: true;
+    }
   | { type: "streaming_url"; worker: WorkerId; streamingUrl: string; mock?: true }
-  | { type: "worker_progress"; worker: WorkerId; purpose: string; mock?: true }
+  | {
+      type: "worker_progress";
+      worker: WorkerId;
+      purpose: string;
+      tinyfishApi?: TinyfishApi;
+      seq?: number;
+      mock?: true;
+    }
+  | {
+      type: "worker_sources";
+      worker: WorkerId;
+      items: readonly SwarmSourceItem[];
+      seq?: number;
+      mock?: true;
+    }
+  | { type: "worker_heartbeat"; worker: WorkerId; seq?: number; mock?: true }
+  | { type: "worker_note"; worker: WorkerId; message: string; seq?: number; mock?: true }
   | {
       type: "worker_complete";
       worker: WorkerId;
@@ -65,10 +95,24 @@ export type SwarmAction =
       retrievedAt: string;
       rawResult?: string;
       parseError?: string;
+      seq?: number;
       mock?: true;
     }
-  | { type: "worker_error"; worker: WorkerId; message: string; code?: SwarmErrorCode; mock?: true }
-  | { type: "swarm_done"; completed: readonly WorkerId[]; failed: readonly WorkerId[]; mock?: true }
+  | {
+      type: "worker_error";
+      worker: WorkerId;
+      message: string;
+      code?: SwarmErrorCode;
+      seq?: number;
+      mock?: true;
+    }
+  | {
+      type: "swarm_done";
+      completed: readonly WorkerId[];
+      failed: readonly WorkerId[];
+      seq?: number;
+      mock?: true;
+    }
   | { type: "stream_failed"; message: string; workers?: readonly WorkerId[] };
 
 /** Rank of the in-flight phases; idle is not ranked because it accepts no worker events. */
@@ -88,11 +132,12 @@ export function isLive(
 // run on 2026-11-21 returned https://ip-*.tetra-data.production.tinyfish.io/..., so both
 // provider domains are allowlisted. mock.invalid is the dev-only mock host.
 /**
- * True only for https preview URLs on mock.invalid or a *.unikraft.app / *.tinyfish.io
- * host. This keeps app-origin, javascript, data, http, and third-party frames out of the
- * live columns.
+ * True only for the dev-only same-origin mock browser path or an https preview URL on
+ * mock.invalid or a *.unikraft.app / *.tinyfish.io host. This keeps app-origin,
+ * javascript, data, http, and third-party frames out of the live columns.
  */
 export function isAllowedPreviewUrl(value: string): boolean {
+  if (/^\/mock-browser\/(?:advisory|pharmacy|coverage)$/.test(value)) return true;
   try {
     const url = new URL(value);
     if (url.protocol !== "https:") return false;

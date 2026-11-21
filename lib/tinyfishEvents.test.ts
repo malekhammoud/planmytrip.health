@@ -15,16 +15,30 @@ const NOW = "2026-11-21T12:00:00.000Z";
 function mapFixture(fixture: unknown, worker: WorkerId = "advisory") {
   const parsed = parseTinyfishEvent(JSON.stringify(fixture));
   if (parsed === null) throw new Error("fixture should parse as a TinyFish event");
-  return mapTinyfishEvent(parsed, { worker, now: () => NOW });
+  let seq = 0;
+  return mapTinyfishEvent(parsed, {
+    worker,
+    now: () => NOW,
+    nextSeq: () => {
+      seq += 1;
+      return seq;
+    },
+  });
 }
 
 describe("mapTinyfishEvent", () => {
-  it("maps STARTED to a running status with the worker and clock", () => {
+  it("maps STARTED to worker_started with the run id and clock", () => {
     expect(
       mapFixture({ type: "STARTED", run_id: "run_1", timestamp: NOW }),
     ).toEqual({
-      event: "worker_status",
-      data: { worker: "advisory", ts: NOW, status: "running" },
+      event: "worker_started",
+      data: {
+        worker: "advisory",
+        seq: 1,
+        ts: NOW,
+        runId: "run_1",
+        startedAt: NOW,
+      },
     });
   });
 
@@ -40,6 +54,7 @@ describe("mapTinyfishEvent", () => {
       event: "streaming_url",
       data: {
         worker: "advisory",
+        seq: 1,
         ts: NOW,
         streamingUrl: "https://preview.invalid/abc",
       },
@@ -49,11 +64,54 @@ describe("mapTinyfishEvent", () => {
         type: "PROGRESS",
         run_id: "run_1",
         purpose: "Checking notices",
+        tinyfish_api: "search",
         timestamp: NOW,
       }),
     ).toEqual({
       event: "worker_progress",
-      data: { worker: "advisory", ts: NOW, purpose: "Checking notices" },
+      data: {
+        worker: "advisory",
+        seq: 1,
+        ts: NOW,
+        purpose: "Checking notices",
+        tinyfishApi: "search",
+      },
+    });
+  });
+
+  it("maps heartbeats and reads only url and title from TF_API_RESULT", () => {
+    expect(mapFixture({ type: "HEARTBEAT", timestamp: NOW })).toEqual({
+      event: "worker_heartbeat",
+      data: { worker: "advisory", seq: 1, ts: NOW },
+    });
+    expect(
+      mapFixture({
+        type: "TF_API_RESULT",
+        tinyfish_api: "fetch",
+        result: [
+          { url: "https://travel.gc.ca/advisory", title: "Advisory", extra: 42 },
+          { url: 7, title: { nested: true } },
+          null,
+          "plain string",
+          { title: "No URL source" },
+        ],
+        timestamp: NOW,
+      }),
+    ).toEqual({
+      event: "worker_sources",
+      data: {
+        worker: "advisory",
+        seq: 1,
+        ts: NOW,
+        items: [
+          {
+            url: "https://travel.gc.ca/advisory",
+            title: "Advisory",
+            api: "fetch",
+          },
+          { title: "No URL source", api: "fetch" },
+        ],
+      },
     });
   });
 
@@ -79,15 +137,18 @@ describe("mapTinyfishEvent", () => {
       event: "streaming_url",
       data: {
         worker: "advisory",
+        seq: 1,
         ts: NOW,
         streamingUrl: "https://preview.invalid/run_1",
       },
     });
   });
 
-  it("ignores heartbeats, TF_API_RESULT, and unknown types", () => {
-    expect(mapFixture({ type: "HEARTBEAT", timestamp: NOW })).toBeNull();
+  it("ignores non-array TF_API_RESULT shapes and unknown types", () => {
     expect(mapFixture({ type: "TF_API_RESULT", result: {} })).toBeNull();
+    expect(
+      mapFixture({ type: "TF_API_RESULT", tinyfish_api: "search", result: "text" }),
+    ).toBeNull();
     expect(parseTinyfishEvent(JSON.stringify({ type: "FUTURE_EVENT" }))).toBeNull();
   });
 
@@ -111,6 +172,7 @@ describe("mapTinyfishEvent", () => {
     }
     expect(event.data).toEqual({
       worker: "advisory",
+      seq: 1,
       ts: NOW,
       findings: {
         destinationRiskLevel: result.destinationRiskLevel,
@@ -167,21 +229,41 @@ describe("mapTinyfishEvent", () => {
     });
   });
 
-  it("turns FAILED and CANCELLED into upstream_error", () => {
-    for (const status of ["FAILED", "CANCELLED"]) {
-      const event = mapFixture({
-        type: "COMPLETE",
-        run_id: "run_1",
-        status,
-        help_message: "Blocked by the site",
-      });
-      if (event === null || event.event !== "worker_error") {
-        throw new Error("expected worker_error");
-      }
-      expect(event.data.code).toBe("upstream_error");
-      expect(event.data.message.length).toBeGreaterThan(0);
-      expect(event.data.message.endsWith(".")).toBe(true);
+  it("maps FAILED and CANCELLED onto distinct error codes", () => {
+    const failed = mapFixture({
+      type: "COMPLETE",
+      run_id: "run_1",
+      status: "FAILED",
+      help_message: "Blocked by the site",
+    });
+    if (failed === null || failed.event !== "worker_error") {
+      throw new Error("expected worker_error");
     }
+    expect(failed.data.code).toBe("upstream_error");
+    expect(failed.data.message.length).toBeGreaterThan(0);
+    expect(failed.data.message.endsWith(".")).toBe(true);
+
+    const cancelled = mapFixture({
+      type: "COMPLETE",
+      run_id: "run_1",
+      status: "CANCELLED",
+    });
+    if (cancelled === null || cancelled.event !== "worker_error") {
+      throw new Error("expected worker_error");
+    }
+    expect(cancelled.data.code).toBe("cancelled");
+  });
+
+  it("classifies upstream error tokens for the retry and error UI", () => {
+    const siteBlocked = mapFixture({
+      type: "COMPLETE",
+      status: "FAILED",
+      error: "SITE_BLOCKED",
+    });
+    if (siteBlocked === null || siteBlocked.event !== "worker_error") {
+      throw new Error("expected worker_error");
+    }
+    expect(siteBlocked.data.code).toBe("site_blocked");
   });
 
   it("normalises missing, placeholder, and duplicate values", () => {
