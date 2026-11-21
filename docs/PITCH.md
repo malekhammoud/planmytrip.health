@@ -46,31 +46,32 @@ Pause after “33.” Do not perform the grief; state it.
 ### 0:56 — demo
 
 Tab B is the run started two minutes ago. Tab A is the run started twenty-five minutes earlier.
+The workspace is one page; scroll it, do not switch tabs.
 
-> This run is live. Seven agents: stays, tables, trails, culture, transit, care, and a lead
-> concierge. You’re watching them search.
+> This run is live. The mission band shows the stage, the elapsed time, and how many of the
+> seven agents have finished. Stays, tables, trails, culture, transit, care, and a lead
+> concierge.
 
-*(click Verification)*
+*(press End in tab B to reach live verification)*
 
 > Three real browsers, live. Canada’s advisory. Drugs.com. Sun Life. Not cached.
 
-*(switch to tab A, Plan)*
+*(switch to tab A, route stage)*
 
-> Same run, finished. Every place verified, sequenced by day.
+> Same run, finished. The route is ordered by day, with a Maps handoff.
 
-*(point at the day rows)*
+*(scroll to the safety envelope)*
 
-> Each day carries the agent’s estimate and the engine’s ceiling. The agent can suggest a day.
+> Each day carries the agent’s estimate and the engine’s caps. The agent can suggest a day.
 > It cannot lift the cap.
 
-*(click Verification)*
+*(copy the care card)*
+
+> One click: the days, the caps, the checkpoints.
+
+*(scroll to the verification findings)*
 
 > Every finding carries the page and the time we read it.
-
-*(click Pacing)*
-
-> The engine’s envelope. Same inputs, same caps. One click: the care card — the days, the caps,
-> the checkpoints.
 
 ### 2:04 — architecture
 
@@ -86,7 +87,7 @@ Tab B is the run started two minutes ago. Tab A is the run started twenty-five m
 ### 2:31 — impact
 
 > For people managing a condition, the caregiver at 2 a.m., the clinician who gets a summary.
-> Hours of tabs become twelve minutes. A guess becomes a citation.
+> Hours of tabs become seven minutes. A guess becomes a citation.
 
 ### 2:43 — close
 
@@ -99,13 +100,15 @@ Stop. Hold the slide. No “thank you.”
 ### Before the room
 
 1. Open tab A. Complete onboarding with the exact demo inputs. Press Build my plan at T−25.
-   Leave it on the Plan tab.
+   Before the pitch, scroll to the route stage.
 2. Open tab B. Complete onboarding with the same inputs at T−2. Press Build my plan. Leave it
-   on the Plan tab.
+   at the top of the workspace.
 3. Browser zoom 90%, window about 1600×1000, bookmarks bar hidden, notifications off.
-4. Confirm both runs are live: tab A should finish before the pitch; tab B should still show
-   the roster and activity log.
+4. Confirm tab A finished and is scrolled to the route; tab B is live at the top.
 5. Keep a recorded clean run in tab C and the PDF on the desktop.
+
+During the demo: tab B top → End (live verification) → tab A route → scroll to safety → copy
+the care card → scroll to verification findings.
 
 Never refresh either tab and never press Plan again during the pitch. Both remount the
 workspace and abort the running streams.
@@ -113,7 +116,7 @@ workspace and abort the running streams.
 ### Fallback ladder
 
 1. Both runs live: the script above.
-2. Tab B slow or stuck: talk over the roster; the queued agents are still evidence.
+2. Tab B slow or stuck: talk over the mission band and the agent deck; the live stages are still evidence.
 3. Tab A failed: use the recorded run and say “recorded live, unedited.”
 4. Network gone: PDF plus the recording. The deck never depends on the network.
 
@@ -133,7 +136,7 @@ number and the source line.
   in 2026. aarp.org/travel/travel-tips/travel-trends-survey-2026.
 - **0 of 5**: PlanMyTrip.health review of Google Travel, Tripadvisor, Expedia, Booking.com, and
   Kayak, November 2026.
-- **286 tests**: the repository gate at this commit.
+- **466 tests**: the repository gate at this commit.
 - **Calibration tiers and gates**: `docs/ML.md`; no real trip has contributed a label yet.
 
 ## Rubric check
@@ -146,7 +149,7 @@ number and the source line.
 | 4 Demo | 7 | 19 | `Live` | PASS. Stage cue and fallback. |
 | 5 Architecture | 8 | 7 | `not` | PASS. Inline SVG, 1 px boxes, 1.5 px connectors. |
 | 6 Comparison | 11 | 11 footnote | one `Yes` | PASS. Table excluded from the body budget. |
-| 7 Impact | 7 | 30 | `twelve` | PASS. Three bullets, no sub-bullets. |
+| 7 Impact | 7 | 30 | `seven` | PASS. Three bullets, no sub-bullets. |
 | 8 Close | 5 + 6 | 0 | URL | PASS. |
 | 9 Appendix | 10 | 13 + table | `1,000+` | PASS. Not presented in the three minutes. |
 

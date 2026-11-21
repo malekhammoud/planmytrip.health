@@ -620,6 +620,17 @@ thresholds and Sun Life stability window remain VERIFY.
 - Gate: typecheck, 345 passed with 16 PostgreSQL tests skipped because no `DATABASE_URL` is
   configured in this environment, lint, and a production build.
 
+### Pitch deck aligned with main (2026-11-21)
+
+- Fast-forwarded `feat/pitch-deck` to main; the deck already existed on main through the
+  `merge: add Paper and Ink pitch deck` commit.
+- Updated the demo slide for the one-page workspace: Mission, Route, Safety, Verification.
+  The architecture line adds PostgreSQL and the 466-test gate; impact now reads seven minutes,
+  the measured production run.
+- Rewrote the demo runbook to scroll the one page instead of switching tabs. The copy, problem
+  statistics, comparison, and close are unchanged.
+- Gate: typecheck, 466 tests (439 passed, 27 database tests skipped without `DATABASE_URL`),
+  lint, production build pass.
 
 ## Next action
 
