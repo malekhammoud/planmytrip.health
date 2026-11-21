@@ -98,6 +98,15 @@ const RULES: Rule[] = [
     pattern: /<img\b|<Image\b|\bnext\/image\b|\bbackground-image\b|\bbg-\[url\(/,
   },
   {
+    // Motion is a named vocabulary in globals.css; Tailwind's canned loops are banned.
+    name: "banned Tailwind animation",
+    pattern: /\banimate-(?:spin|ping|pulse|bounce)\b/,
+  },
+  {
+    name: "transition-all",
+    pattern: /\btransition-all\b/,
+  },
+  {
     name: "banned marketing copy",
     pattern:
       /\b(?:unlock|supercharge|seamless|revolutionize)\b|welcome to|lorem ipsum/i,
@@ -182,6 +191,9 @@ const BANNED_FIXTURES: ReadonlyArray<{
   { source: 'className="blur-sm"', rule: "gradient or blur effect" },
   { source: 'className="rounded-lg"', rule: "unsupported radius" },
   { source: 'className="rounded-full"', rule: "pill radius outside components/ui" },
+  { source: 'className="animate-ping"', rule: "banned Tailwind animation" },
+  { source: 'className="animate-pulse"', rule: "banned Tailwind animation" },
+  { source: 'className="transition-all"', rule: "transition-all" },
   { source: '<button type="button">', rule: "raw form control outside components/ui" },
   { source: 'const label = "Book now \u{1f389}";', rule: "emoji" },
   { source: 'const flag = "\u{1f1e8}\u{1f1e6}";', rule: "flag emoji" },
@@ -232,4 +244,25 @@ describe("design guard", () => {
       expect(ruleViolations(fixture.source, fixture.file)).toEqual([]);
     });
   }
+});
+
+describe("motion guard", () => {
+  it("defines the named motion classes and switches them off for reduced motion", () => {
+    const css = readFileSync(path.join(process.cwd(), "app/globals.css"), "utf8");
+    for (const name of [
+      "anim-fade",
+      "anim-rise",
+      "anim-arrive",
+      "anim-tick",
+      "anim-pulse-dot",
+      "anim-collapse",
+    ]) {
+      expect(css, `missing .${name}`).toContain(`.${name}`);
+    }
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)/);
+    const reduced = css.match(
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.anim-arrive[\s\S]*?\n\}/,
+    );
+    expect(reduced, "missing reduced-motion block for the motion vocabulary").not.toBeNull();
+  });
 });

@@ -5,7 +5,7 @@
  * retrieved time, and the raw JSON block with a clipboard copy action.
  */
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Button, DataRow } from "@/components/ui";
 import type { WorkerState } from "@/lib/swarmReducer";
 import {
@@ -167,7 +167,16 @@ function RawJson({ text, parseError }: { text: string; parseError: string | null
 }
 
 /** Findings, provenance, and the raw JSON toggle for one completed worker. */
-export function WorkerFindings({ worker, state }: { worker: WorkerId; state: WorkerState }) {
+export function WorkerFindings({
+  worker,
+  state,
+  reveal = false,
+}: {
+  worker: WorkerId;
+  state: WorkerState;
+  /** Staggers each row with a 60ms arrival when the mission control reveals it. */
+  reveal?: boolean;
+}) {
   if (state.findings === null) return null;
   const rawText =
     state.rawResult ??
@@ -183,11 +192,22 @@ export function WorkerFindings({ worker, state }: { worker: WorkerId; state: Wor
   return (
     <div className="mt-4">
       <dl>
-        {findingRows(worker, state.findings).map((row) => (
-          <DataRow key={row.label} label={row.label} layout="stacked">
-            {row.value}
-          </DataRow>
-        ))}
+        {findingRows(worker, state.findings).map((row, index) => {
+          const style = reveal
+            ? ({ animationDelay: `${index * 60}ms` } as CSSProperties)
+            : undefined;
+          return (
+            <div
+              key={row.label}
+              className={reveal ? "anim-arrive" : undefined}
+              style={style}
+            >
+              <DataRow label={row.label} layout="stacked">
+                {row.value}
+              </DataRow>
+            </div>
+          );
+        })}
       </dl>
       <div className="mt-3 flex flex-col gap-1">
         {state.sourceUrl === null || state.sourceUrl === "" ? (

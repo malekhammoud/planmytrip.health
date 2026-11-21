@@ -426,6 +426,35 @@ thresholds and Sun Life stability window remain VERIFY.
   sequences, source merging, staleness, and all caps; the batch queue is tested with fake
   timers.
 
+### Step 16: live mission control
+
+- Replaced the three-column report with `components/mission/`: a sticky status bar, three
+  tab tiles, one mounted 16:10 live view per worker, a 320px activity feed, a source ledger,
+  pre-run instruction rows, and findings. `PlanWorkspace` now owns `useSwarm` and passes its
+  state and actions down.
+- Auto-follow selects the worker with the newest progress unless the reader pins a tile;
+  arrow, Home, and End keys move the selection. The focused view carries the preview host,
+  LIVE marker, elapsed time, `step n of 60 max`, Fullscreen Expand, the current purpose, and
+  the tempo strip.
+- Completion shows "Run complete" for one second, follows the next active worker, and swaps
+  the iframe for a static "Stream ended" frame after 1.5s. All three focus views stay mounted,
+  so switching tiles never reloads a stream.
+- Added the typed activity feed with filters, typing only for a lone new line, two-second
+  settle, auto-scroll with a jump control, and a 300-line cap. Heartbeats never become lines.
+  Sources grow from TF_API_RESULT and search/fetch steps with deduplication; findings appear
+  only at COMPLETE with a 60ms stagger, provenance, and the raw JSON toggle.
+- Added `lib/swarmErrors.ts` for calm error copy, `PreRun` with the exact goal disclosure,
+  the stale-input caution, the mock caution, and the browser-title states.
+- Added the motion vocabulary `--ease`, `--dur-fast`, `--dur-base`, `--dur-slow` and
+  `.anim-fade`, `.anim-rise`, `.anim-arrive`, `.anim-tick`, `.anim-pulse-dot`,
+  `.anim-collapse`, all disabled under reduced motion with a static New label replacing the
+  arrival wash. The design guard now rejects `animate-spin|ping|pulse|bounce` and
+  `transition-all`, and checks the reduced-motion block.
+- Tests: 329 total. Added error copy and mission formatting tests; guard fixtures now cover the
+  banned animations and transition-all.
+- Verified in mock mode at 1280px and 375px: no horizontal overflow, real iframe content,
+  `(3 running)` and `Verified 3/3` titles, zero console errors, and no "Queued" text.
+
 ## Next action
 
 Run a consented pilot cohort against production PostgreSQL, confirm capture and outcome rows

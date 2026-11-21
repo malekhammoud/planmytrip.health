@@ -73,6 +73,8 @@ export interface UseSwarmResult {
   runInput: SwarmRunInput | null;
   /** Redeploys one worker only, using the snapshot, and leaves its siblings untouched. */
   retry: (worker: WorkerId) => void;
+  /** Redeploys all three workers with the same snapshot. */
+  rerun: () => void;
 }
 
 /**
@@ -211,6 +213,12 @@ export function useSwarm({
     [runToken, startWorkers],
   );
 
+  const rerun = useCallback((): void => {
+    const snapshot = runInputRef.current;
+    if (snapshot === null || snapshot.runToken !== runToken) return;
+    startWorkers(WORKER_IDS, snapshot);
+  }, [runToken, startWorkers]);
+
   const currentState =
     state.runToken === runToken
       ? state
@@ -230,5 +238,5 @@ export function useSwarm({
         }
       : null;
 
-  return { state: currentState, runInput, retry };
+  return { state: currentState, runInput, retry, rerun };
 }

@@ -78,7 +78,7 @@ export function Button({
       {loading ? (
         <span
           aria-hidden="true"
-          className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-solid border-current border-t-transparent"
+          className="status-pulse h-4 w-4 shrink-0 rounded-full border-2 border-solid border-current border-t-transparent"
         />
       ) : LeadingIcon ? (
         <LeadingIcon size={16} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />

@@ -22,6 +22,10 @@
   --caution: #8a5a00;
   --caution-bar: #d99a1b;
   --risk: #b42318;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 150ms;
+  --dur-base: 240ms;
+  --dur-slow: 400ms;
 }
 
 @theme inline {
@@ -703,6 +707,124 @@
 
 .trip-map-route {
   animation: map-route-flow 18s linear infinite;
+}
+
+/* ---------------------------------------------------------------------------
+ * Mission control motion vocabulary.
+ *
+ * These are the only motion classes new surfaces may use. Each animates a real
+ * event: a line arrived, a value changed, a heartbeat landed, a panel closed.
+ * Under reduced motion they are instant, and components show a static "New"
+ * label for four seconds instead of the arrival wash.
+ * ------------------------------------------------------------------------- */
+
+@keyframes anim-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes anim-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes anim-arrive-bg {
+  0% {
+    background-color: var(--accent-soft);
+  }
+
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes anim-tick-kf {
+  0% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes anim-pulse-dot-kf {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+
+@keyframes anim-collapse-kf {
+  from {
+    max-height: 240px;
+    opacity: 1;
+  }
+
+  to {
+    max-height: 0;
+    opacity: 0;
+  }
+}
+
+.anim-fade {
+  animation: anim-fade-in var(--dur-fast) var(--ease) both;
+}
+
+.anim-rise {
+  animation: anim-rise-in var(--dur-base) var(--ease) both;
+}
+
+.anim-arrive {
+  animation: anim-arrive-bg 1200ms var(--ease) both;
+}
+
+.anim-tick {
+  animation: anim-tick-kf var(--dur-base) var(--ease);
+}
+
+.anim-pulse-dot {
+  animation: anim-pulse-dot-kf 1.8s var(--ease) infinite;
+}
+
+.anim-collapse {
+  overflow: hidden;
+  animation: anim-collapse-kf var(--dur-slow) var(--ease) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade,
+  .anim-rise,
+  .anim-arrive,
+  .anim-tick,
+  .anim-pulse-dot,
+  .anim-collapse {
+    animation: none;
+  }
+
+  .anim-arrive {
+    background-color: transparent;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

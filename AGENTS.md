@@ -47,7 +47,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 13. One-page live workspace and agent warmup | [x] | `feat(ui): add live one-page planning workspace` |
 | 14. Full TinyFish telemetry | [x] | `feat(api): stream full TinyFish telemetry with limits and mock timeline` |
 | 15. Live swarm telemetry model | [x] | `feat(state): add live swarm telemetry model` |
-| 16. Mission control | [ ] | `feat(ui): add live mission control for agent swarm` |
+| 16. Mission control | [x] | `feat(ui): add live mission control for agent swarm` |
 | 17. Verification overlay | [ ] | `feat(engine): add tighten-only live verification overlay` |
 | 18. Animated plan changes | [ ] | `feat(ui): animate plan changes and live adjustments` |
 | 19. Mission control docs | [ ] | `docs(agents): document live mission control and telemetry` |
@@ -118,27 +118,28 @@ Every tracked source file, annotated; `package-lock.json` and generated files
 ```text
 app/  globals.css, layout.tsx, page.tsx, model/page.tsx, mock-browser/[worker]/, api/travel-swarm/route.ts, api/agent-plan/route.ts, api/trips/route.ts, api/trips/outcome/route.ts
 lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditionProfiles.ts, sunLifeRules.ts, healthScore.ts, itineraryBuilder.ts
-      swarm: swarmTypes.ts (wire contracts), swarmConfig.ts, swarmState.ts, swarmReducer.ts, swarmRunner.ts, swarmGoals.ts, swarmMock.ts, swarmTelemetry.ts, sse.ts, tinyfish.ts, tinyfishEvents.ts
+      swarm: swarmTypes.ts (wire contracts), swarmConfig.ts, swarmState.ts, swarmReducer.ts, swarmRunner.ts, swarmGoals.ts, swarmMock.ts, swarmTelemetry.ts, swarmErrors.ts, sse.ts, tinyfish.ts, tinyfishEvents.ts
       agent: agentTypes.ts (wire contracts), agentRequest.ts, agentProfiles.ts, agentPrompts.ts, agentConfig.ts, agentClient.ts, agentWarmup.ts, agentRunner.ts, agentSession.ts, agentParse.ts, agentPlanParse.ts, agentFallback.ts, agentGeocode.ts, agentEvents.ts, agentMock.ts, plannerReducer.ts
       data: types.ts (versioned contract), dose.ts, tripDossier.ts, capture.ts, validation.ts
       db: postgres.ts (pg pool + schema), trips.ts (async repository)
       model: types.ts, math.ts, features.ts, logistic.ts, calibration.ts, train.ts, predict.ts, artifact.ts, model.json
       output: describeTrip.ts, pacingStrip.ts, careCard.ts
-hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, swarmBatch.ts, useNow.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
-components/  Onboarding.tsx, PlanWorkspace.tsx, MissionBand.tsx, PlanPanel.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, TripMap.tsx, AgentSwarmMonitor.tsx, ItineraryBoard.tsx, PacingStrip.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx, WorkerLivePanel.tsx
+hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, swarmBatch.ts, useNow.ts, useReducedMotion.ts, usePhaseAnnouncement.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
+components/  Onboarding.tsx, PlanWorkspace.tsx, MissionBand.tsx, PlanPanel.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
+components/mission/  MissionControl.tsx, StatusBar.tsx, FocusView.tsx, WorkerTile.tsx, ActivityFeed.tsx, TempoStrip.tsx, SourcesList.tsx, FindingsReveal.tsx, PreRun.tsx, ConnectionStatus.tsx, Elapsed.tsx, missionMeta.ts
 components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Field.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
 scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts
 data/  synthetic-trips.jsonl
 docs/  ML.md, MODEL_CARD.md
 tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
-module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts
+module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts
 root  package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, instrumentation.ts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
 ```
 
 Data flow: `Onboarding` collects a `TripConfig`; the page normalizes it, increments
 `deployNonce`, and reveals `PlanWorkspace`. The page memoizes `buildHealthTripPlan` and passes
 the engine plan to the workspace. `PlanWorkspace` calls `useAgentPlan`, which POSTs
-`/api/agent-plan`; `AgentSwarmMonitor` POSTs `/api/travel-swarm` with the same token. Planner
+`/api/agent-plan`; `useSwarm` POSTs `/api/travel-swarm` with the same token. Planner
 events flow through `plannerFrames`/`plannerReducer` into the mission band, seven-agent deck,
 planning signal, route stage, and map; TinyFish events flow through
 `useSwarm`/`swarmReducer` into live verification. The engine plan feeds the safety envelope
@@ -306,7 +307,7 @@ graph; `AgentRoster` shows each agent's phase, role, and newest message or activ
 `AgentActivityFeed` turns the bounded log into a bar graph plus a five-line ticker. `PlanPanel`
 shows the finished concierge plan, a designed route-forming skeleton with an animated dashed
 route, or a calm retry. The safety envelope carries `CareCardButton` and `ItineraryBoard`; live
-verification carries `AgentSwarmMonitor`. Everything is mounted for the whole page, so neither
+verification carries `MissionControl`. Everything is mounted for the whole page, so neither
 stream aborts while the reader scrolls. `TripMap` receives `visible` and calls `invalidateSize`
 when the page returns; a hidden page-level workspace also passes `visible=false`.
 
@@ -318,13 +319,46 @@ are 24/40px; the footer sits 64px/96px below. The onboarding split is `1fr / 420
 gap at 1024+; the workspace summary wraps its actions below the trip sentence. The page fits
 375px without horizontal scroll, and controls stay at least 44px tall.
 
-### Agent swarm monitor
+### Live verification mission control
 
-`AgentSwarmMonitor` receives destination, condition, medication, and `runToken` (0 before the
-first plan run); token 0 shows the empty state and never fetches. A new token with a destination
-resets all workers, snapshots input, and starts; Retry reuses that snapshot with one worker.
-It shows "Last run: destination, condition, medication" and warns "Inputs changed since this
-run. Plan again to verify." when inputs differ.
+`PlanWorkspace` owns `useSwarm` and passes `state`, `runInput`, `retry`, and `rerun` to
+`MissionControl`. The mission control is one mounted surface: a sticky status bar, the
+pre-run instruction rows, three worker tiles, one hero live view per worker, the activity
+feed, the source ledger, and findings. Nothing is conditionally unmounted while a run is
+live, so all three hidden preview iframes keep their streams.
+
+The status bar is 48px and sticky inside the verification section. It reads the running
+count, elapsed time, and `steps, sources, findings`; a finished run reads "Verification
+complete" with a Re-run action. Its visually hidden `aria-live="polite"` line announces only
+started, finished, and failed phase changes, at most once every three seconds.
+`components/mission/Elapsed.tsx` owns the clock and is the only component that re-renders on
+it. The browser title is `(n running) PlanMyTrip.health` while live,
+`Verified n/3 - PlanMyTrip.health` when settled, and the plain title otherwise.
+
+Worker tiles are a `role="tablist"` with arrow, Home, and End keys and a 2px ink top rule on
+the selected tile. Focus follows the worker with the newest progress unless the reader pins a
+tile; the line reads "Following activity" or "Pinned to <name>" with an Unpin action. The
+focused `FocusView` is a 16:10 surface frame with a 32px chrome bar: phase glyph, worker,
+preview host, a pulsing LIVE marker, elapsed time, `step n of 60 max`, and an Expand action
+using the Fullscreen API. Beneath it the "Now" line crossfades on a real purpose change and
+the tempo strip draws five-second buckets from accepted steps. Completion shows "Run complete"
+for one second, auto-follows the next active worker, and replaces the iframe with a static
+"Stream ended" frame after 1.5s.
+
+`ActivityFeed` is a 320px internal scroller with All, Advisory, Pharmacy, and Coverage filters.
+Lines carry `+MM:SS`, a worker tag, and the real purpose. The newest line types at about 40
+characters per second only when fewer than three lines arrived together; older lines settle to
+muted after two seconds. The feed auto-scrolls only while the reader is at the bottom, then
+offers "Jump to latest (n)". Heartbeats never become lines; the merged feed is capped at 300.
+`SourcesList` grows from `worker_sources` and search/fetch steps, deduplicates by URL or title,
+and links each row with `noopener noreferrer`. `FindingsReveal` shows typed DataRow lists only
+after COMPLETE, with a 60ms row stagger, provenance, retrieved time, and the raw JSON toggle.
+`lib/swarmErrors.ts` maps every error code to calm copy and a retryable flag.
+
+`PreRun` lists the three target hosts, what each will check, and a disclosure with the exact
+goal string. `MissionControl` also shows the mock caution, a stale-inputs caution with Re-run,
+and a dimmed findings state. Every visible change is backed by an accepted event; there are no
+percentages, ETAs, or partial findings.
 
 Worker state machine (pure `lib/swarmReducer.ts`):
 
@@ -354,11 +388,10 @@ so one run fits the route budget; `/api/travel-swarm` declares `maxDuration = 12
 stores completed and failed lists. Any `mock: true` payload shows the "Mock data" caution
 Callout; a full run clears it.
 
-A live frame is 16:10 on surface, 1px hairline-strong, 4px radius, with a 28px bar: accent
-pulse dot, LIVE, and preview host (hidden below 1280px). Preparing uses a muted dot and
-PREPARING. The iframe sets `referrerPolicy="no-referrer"`, `loading="lazy"`, and
-`sandbox="allow-scripts allow-same-origin"`. Completion shows findings, source link,
-retrieved time, and a raw JSON toggle.
+The frame sets `referrerPolicy="no-referrer"` and
+`sandbox="allow-scripts allow-same-origin"`. Preparing shows a static explanation, never a
+skeleton of fake activity. A completed worker's iframe stays mounted for 1.5 seconds after its
+last event, then unmounts; none of the three hidden frames is recreated by switching tiles.
 
 ### KPI strip and paced itinerary
 
@@ -492,13 +525,27 @@ never use Tailwind `text-sm`, `text-xl`, and so on.
 Layout: `.page-container` is max 1200px with 24/40px gutters; `.measure` caps a line at 65ch.
 Spacing is multiples of 4px; section gaps are 96px desktop, 64px mobile. Radius 4px for
 frames, code, and callouts, 6px for buttons. Hairlines and whitespace only, never shadows.
-Focus is a 2px accent outline; motion is an 8px, 240ms day-row rise with a 40ms stagger, and
-150ms color transitions, all off under reduced motion.
+Focus is a 2px accent outline.
+
+Motion uses three tokens, `--ease` (cubic-bezier(0.2, 0.8, 0.2, 1)), `--dur-fast` (150ms),
+`--dur-base` (240ms), and `--dur-slow` (400ms), and only the named classes below. Under
+`prefers-reduced-motion` every class is instant; arrival surfaces also show a static `New`
+t-label for four seconds so the information is not lost.
+
+| Class | Role |
+| --- | --- |
+| `.anim-fade` | Opacity only, fast. A changed line or a "Now" purpose. |
+| `.anim-rise` | 8px rise plus fade, base. A newly mounted row or panel. |
+| `.anim-arrive` | Accent-soft wash fading over 1200ms. A source or finding that just arrived. |
+| `.anim-tick` | Short opacity pulse. One real heartbeat. |
+| `.anim-pulse-dot` | Slow scale and opacity loop. A running indicator only. |
+| `.anim-collapse` | Height and opacity, slow. A panel that is leaving. |
 
 Banned: gradients, blur, glow, shadows, emoji, flags, stock imagery, illustrations, purple,
 centered heroes, feature-card grids, pill badges, marketing words (unlock, supercharge,
 seamless, revolutionize, welcome to), lorem ipsum, default Tailwind palette colors, default
-Tailwind text sizes, raw hex in components.
+Tailwind text sizes, raw hex in components, Tailwind `animate-spin|ping|pulse|bounce`, and
+`transition-all`.
 
 ### Accessibility and copy
 
@@ -516,9 +563,11 @@ or emoji; sentences stay under 20 words. Numbers carry units. `healthSafetyScore
 `components/**/*.tsx`. It fails with `file:line` on default palette variants, raw white/black,
 hex/rgb/hsl and arbitrary colors, default and arbitrary text sizes, unapproved weights, shadows
 except `shadow-none`, gradients and blur, radii outside `none`/`frame`/`control`, pill radii
-outside `components/ui`, raw form controls outside `components/ui`, emoji, flags, images, and
-banned marketing copy. `design-guard-ignore` exempts a line. Nineteen banned and four allowed
-fixtures prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.5:1 or better.
+outside `components/ui`, raw form controls outside `components/ui`, Tailwind
+`animate-spin|ping|pulse|bounce`, `transition-all`, emoji, flags, images, and banned marketing
+copy. A separate motion guard requires all six named motion classes and a reduced-motion block
+that switches them off. `design-guard-ignore` exempts a line. Twenty-two banned and four
+allowed fixtures prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.5:1 or better.
 
 ## 8. Medical safety rules
 
@@ -664,7 +713,7 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 318 tests.
+`npm test` runs Vitest once in a Node environment. The suite has 329 tests.
 
 - `tests/design-guard.test.ts` and `tests/contrast.test.ts` guard styles and 13 WCAG AA token
   pairs; `tests/smoke.test.ts` covers the five conditions.

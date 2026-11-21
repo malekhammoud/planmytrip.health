@@ -1,13 +1,14 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { AgentSwarmMonitor } from "@/components/AgentSwarmMonitor";
 import { AgentTeamPanel } from "@/components/AgentTeamPanel";
 import { MissionBand } from "@/components/MissionBand";
 import { CareCardButton, ItineraryBoard } from "@/components/ItineraryBoard";
+import { MissionControl } from "@/components/mission/MissionControl";
 import { PlanPanel } from "@/components/PlanPanel";
 import { Button, Callout, SectionHeader, type CalloutTone } from "@/components/ui";
 import { useAgentPlan } from "@/hooks/useAgentPlan";
+import { useSwarm } from "@/hooks/useSwarm";
 import type { HealthTripPlan, SunLifeSeverity } from "@/lib/healthTripEngine";
 import { describeTrip } from "@/lib/describeTrip";
 import {
@@ -66,6 +67,16 @@ export function PlanWorkspace({
     installId,
     captureConsent: trip.captureConsent,
     hasSunLifeTravelCoverage: trip.hasSunLifeTravelCoverage,
+    runToken,
+  });
+
+  const swarm = useSwarm({
+    destination: trip.destination,
+    condition: trip.condition,
+    medication: trip.medication,
+    runId,
+    installId,
+    captureConsent: trip.captureConsent,
     runToken,
   });
 
@@ -187,14 +198,14 @@ export function PlanWorkspace({
           emergency coverage. Their sessions run while this page stays open.
         </p>
         <div className="mt-6">
-          <AgentSwarmMonitor
+          <MissionControl
+            state={swarm.state}
+            runInput={swarm.runInput}
             destination={trip.destination}
             condition={trip.condition}
             medication={trip.medication}
-            runId={runId}
-            installId={installId}
-            captureConsent={trip.captureConsent}
-            runToken={runToken}
+            onRetry={swarm.retry}
+            onRerun={swarm.rerun}
           />
         </div>
       </section>
