@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Onboarding } from "@/components/Onboarding";
 import { PlanWorkspace } from "@/components/PlanWorkspace";
 import { buildHealthTripPlan, type HealthTripPlan } from "@/lib/healthTripEngine";
@@ -55,10 +56,33 @@ function SiteFooter() {
           Planning aid only. Not medical advice. Confirm with your clinician and insurer
           before you travel.
         </p>
-        <SisterProductLink className="flex sm:hidden" />
+        <div className="flex flex-wrap items-center gap-4">
+          <Link
+            href="/model"
+            className="t-small inline-flex min-h-11 items-center text-muted transition-colors duration-150 hover:text-ink hover:underline"
+          >
+            Model card
+          </Link>
+          <SisterProductLink className="flex sm:hidden" />
+        </div>
       </div>
     </footer>
   );
+}
+
+/**
+ * Reads or creates the anonymous install id. The lazy state initializer keeps this out
+ * of an effect; the value is never rendered, so server and client markup stay identical.
+ */
+function readInstallId(): string {
+  if (typeof window === "undefined") return "";
+  const key = "planmytrip.installId";
+  let existing = window.localStorage.getItem(key);
+  if (existing === null || existing.length < 8) {
+    existing = crypto.randomUUID();
+    window.localStorage.setItem(key, existing);
+  }
+  return existing;
 }
 
 /**
@@ -71,6 +95,8 @@ export default function Home() {
   const [view, setView] = useState<"onboarding" | "workspace">("onboarding");
   const [trip, setTrip] = useState<TripConfig | null>(null);
   const [deployNonce, setDeployNonce] = useState(0);
+  const [installId] = useState(readInstallId);
+  const [runId, setRunId] = useState("");
 
   const plan = useMemo<HealthTripPlan | null>(() => {
     if (trip === null) return null;
@@ -85,8 +111,14 @@ export default function Home() {
 
   function handleBuild(config: TripConfig): void {
     setTrip(config);
+    setRunId(crypto.randomUUID());
     setDeployNonce((nonce) => nonce + 1);
     setView("workspace");
+  }
+
+  function handleReplan(): void {
+    setRunId(crypto.randomUUID());
+    setDeployNonce((nonce) => nonce + 1);
   }
 
   return (
@@ -109,9 +141,11 @@ export default function Home() {
               trip={trip}
               plan={plan}
               runToken={deployNonce}
+              runId={runId}
+              installId={installId}
               visible={view === "workspace"}
               onEditTrip={() => setView("onboarding")}
-              onReplan={() => setDeployNonce((nonce) => nonce + 1)}
+              onReplan={handleReplan}
             />
           </div>
         ) : null}

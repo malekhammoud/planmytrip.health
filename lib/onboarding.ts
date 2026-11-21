@@ -24,6 +24,7 @@ export const DEFAULT_TRIP: TripConfig = {
   interests: "",
   budget: "balanced",
   hasSunLifeTravelCoverage: false,
+  captureConsent: false,
 };
 
 function clampText(value: string, max: number): string {
@@ -45,5 +46,6 @@ export function normalizeTripConfig(config: TripConfig): TripConfig {
     interests: clampText(config.interests, INTERESTS_MAX),
     budget: config.budget,
     hasSunLifeTravelCoverage: config.hasSunLifeTravelCoverage,
+    captureConsent: config.captureConsent,
   };
 }

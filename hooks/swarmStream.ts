@@ -33,6 +33,12 @@ export interface SwarmRequestInput {
   condition: Condition;
   /** Medication name; never a dose. */
   medication: string;
+  /** Opaque browser run id shared with the planner capture. */
+  runId: string;
+  /** Anonymous install id. */
+  installId: string;
+  /** Explicit capture opt-in. */
+  captureConsent: boolean;
   /** Workers this request covers. */
   workers: readonly WorkerId[];
   /** Monotonic id, so a retry supersedes older frames for the same worker. */
@@ -96,6 +102,9 @@ export function streamSwarmRequest(input: SwarmRequestInput): void {
           destination: input.destination,
           condition: input.condition,
           medication: input.medication,
+          runId: input.runId,
+          installId: input.installId,
+          captureConsent: input.captureConsent,
           workers,
         }),
         signal: controller.signal,

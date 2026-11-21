@@ -17,6 +17,12 @@ export interface AgentSwarmMonitorProps {
   condition: Condition;
   /** Medication name; the workers never report doses. */
   medication: string;
+  /** Opaque browser run id shared with the planner capture. */
+  runId: string;
+  /** Anonymous install id. */
+  installId: string;
+  /** Explicit opt-in for saving verification findings. */
+  captureConsent: boolean;
   /** 0 before the first Deploy; each Deploy increments it. */
   runToken: number;
 }
@@ -149,12 +155,18 @@ export function AgentSwarmMonitor({
   destination,
   condition,
   medication,
+  runId,
+  installId,
+  captureConsent,
   runToken,
 }: AgentSwarmMonitorProps) {
   const { state, runInput, retry } = useSwarm({
     destination,
     condition,
     medication,
+    runId,
+    installId,
+    captureConsent,
     runToken,
   });
   const hasDestination = destination.trim().length > 0;

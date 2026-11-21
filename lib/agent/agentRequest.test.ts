@@ -19,6 +19,8 @@ describe("parsePlannerRequest", () => {
       medication: "albuterol",
       interests: "quiet food and short walks",
       budget: "balanced",
+      captureConsent: false,
+      hasSunLifeTravelCoverage: false,
     });
   });
 

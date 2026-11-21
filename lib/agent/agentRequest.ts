@@ -7,6 +7,7 @@
  */
 
 import { TRIP_DAYS_MAX, TRIP_DAYS_MIN } from "@/lib/healthTripTypes";
+import { parseInstallId, parseRunId } from "@/lib/data/validation";
 import { isCondition } from "@/lib/types";
 import { BUDGET_LEVELS, type BudgetLevel, type PlannerRequest } from "./agentTypes";
 
@@ -54,6 +55,20 @@ export function parsePlannerRequest(value: unknown): PlannerRequest | null {
   if (interests === null) return null;
   const budget = body.budget === undefined ? "balanced" : body.budget;
   if (!isBudgetLevel(budget)) return null;
+  if (body.captureConsent !== undefined && typeof body.captureConsent !== "boolean") {
+    return null;
+  }
+  if (
+    body.hasSunLifeTravelCoverage !== undefined &&
+    typeof body.hasSunLifeTravelCoverage !== "boolean"
+  ) {
+    return null;
+  }
+  const runId = body.runId === undefined ? undefined : parseRunId(body.runId);
+  if (runId === null) return null;
+  const installId =
+    body.installId === undefined ? undefined : parseInstallId(body.installId);
+  if (installId === null) return null;
   return {
     destination,
     days: body.days,
@@ -61,5 +76,9 @@ export function parsePlannerRequest(value: unknown): PlannerRequest | null {
     medication,
     interests,
     budget,
+    ...(runId === undefined ? {} : { runId }),
+    ...(installId === undefined ? {} : { installId }),
+    captureConsent: body.captureConsent === true,
+    hasSunLifeTravelCoverage: body.hasSunLifeTravelCoverage === true,
   };
 }

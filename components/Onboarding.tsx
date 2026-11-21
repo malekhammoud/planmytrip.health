@@ -321,6 +321,19 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
                     onChange={(checked) => update("hasSunLifeTravelCoverage", checked)}
                   />
 
+                  <div className="flex flex-col gap-2">
+                    <Checkbox
+                      id="onboarding-capture"
+                      label="Save this trip anonymously to improve pacing estimates"
+                      checked={config.captureConsent}
+                      onChange={(checked) => update("captureConsent", checked)}
+                    />
+                    <p className="t-small text-muted">
+                      No name, email, or account. You can record the outcome after your
+                      trip, and that is what calibrates future estimates.
+                    </p>
+                  </div>
+
                   <Callout tone={ALERT_TONES[alert.severity]} title={alert.title}>
                     <div className="flex flex-col gap-1">
                       {alert.messages.map((message) => (

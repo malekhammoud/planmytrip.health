@@ -32,6 +32,20 @@
   capped at ten places, and labelled approximate. Leaflet renders grayscale OSM tiles with
   numbered, category-shaped markers and a text key. Both providers are licence dependencies
   recorded in the VERIFY register.
+- **PostgreSQL, not SQLite:** the capture and model-run store is a `pg` pool with JSONB
+  columns and an idempotent schema. Production, dev, and test use separate `DATABASE_URL`
+  databases; `npm run db:init` applies the schema. No database file or binary demo is
+  committed, and the SSE routes await their pending captures before closing.
+- **Computed dose, not self-report:** the concierge's `stepEstimate` is an agent claim. The
+  training row is computed from block kind, duration, exertion, and verified hike elevation, so
+  live and fallback plans yield comparable doses. An empty day is unsafe, not zero.
+- **Calibration, not a new predictor:** the engine's modeled risk is the prior log-odds; the
+  model learns the residual. A zero-coefficient artifact is exactly the engine, and a synthetic
+  artifact can never drive a live plan.
+- **Consent before data:** capture is opt-in on the health step; the only id is a random
+  localStorage install id; an unanswered follow-up is not a negative label.
+- **Scripts with `tsx`:** `tsx` is a dev dependency for the synthetic and training CLIs. It
+  resolves TypeScript and path aliases without a build step.
 
 ## Blockers
 
@@ -292,3 +306,53 @@ None.
 Monitor pharmacy consistency in production; if empty findings recur, retry the worker or
 revisit the drugs.com goal. Then check the live iframe and clipboard behavior. The clinical
 thresholds and Sun Life stability window remain VERIFY.
+### Step 12: ML data loop and calibrated flare model
+
+- Added the versioned data contract (`lib/data/types.ts`), a single dose model for engine and
+  concierge plans (`lib/data/dose.ts`), the dossier builder (`lib/data/tripDossier.ts`), bounded
+  id validation, and server-side capture orchestration. The concierge's `stepEstimate` is kept
+  only as an agent estimate; every training row uses the computed block dose.
+- Added PostgreSQL storage with a parameterized `pg` pool, JSONB columns, and an idempotent
+  schema: `trip_captures` for dossiers and labels, `model_runs` for artifacts. Capture is async
+  and its pending write is awaited before the SSE stream closes. The planner route writes on
+  `plan_ready`; the swarm route writes on `swarm_done`; `POST /api/trips/outcome` records the
+  explicit label; `GET /api/trips` lists one install's trips. Capture requires opt-in consent
+  plus run and install ids; mock runs require `PLANMYTRIP_CAPTURE_MOCK=1`. `npm run db:init`
+  applies the schema.
+- Added the residual calibration model: engine score as the prior offset, penalized logistic
+  regression with Laplace covariance, isotonic PAVA calibration, grouped-by-traveler folds,
+  Brier/log-loss/ECE/AUROC/slope metrics, evidence tiers, and a model page at `/model`. A
+  synthetic artifact is labelled synthetic and is never used for a live plan.
+- Added a deterministic synthetic cohort (`scripts/synthetic.ts`, 900 trips, 21.7% flares) and
+  the training CLI (`scripts/train-model.ts`). The cohort JSONL is committed for reproducibility;
+  the script seeds PostgreSQL only when `DATABASE_URL` is set. Training records a `model_runs`
+  row when the database is configured. The SQLite demo database was removed.
+- Added the onboarding consent checkbox, a random localStorage install id, and the post-trip
+  outcome panel on the Plan tab. No accounts, cookies, email, or free text are stored.
+- Tests: 42 new (287 total). Dose and empty-day invariants, dossier and outcome parsing,
+  isotonic monotonicity, IRLS coefficient recovery, grouped training and tiers, PostgreSQL
+  upsert/outcome/export, outcome and trip-log routes, planner capture, swarm capture, and the
+  updated request contract. Database tests use `planmytrip_test` and skip when `DATABASE_URL`
+  is absent; Vitest runs files sequentially to avoid truncation races.
+- Synthetic artifact metrics: Brier 0.1600 vs engine 0.1674, ECE 0.0121, AUROC 0.6620,
+  calibration slope 0.9550. The point is calibration and pipeline, not a headline AUC.
+- Verified against PostgreSQL: `planmytrip`, `planmytrip_dev`, and `planmytrip_test` were
+  created with separate URLs; the schema applied to all three. The dev cohort seeded 900
+  dossiers, 900 explicit outcomes, and 195 flares; training recorded the
+  `synthetic-27d2afaf` model run. A direct prediction returned tier `synthetic`,
+  pFlare 0.2702, interval 0.2187-0.3521 for the sample trip.
+- Added `data:export` and source-aware training. A production browser run with capture consent
+  saved one dossier with 2 dose days, 6 research rows, and 3 TinyFish findings; the post-trip
+  outcome saved as flare=true, mild, no care. `exportTrainingRows()` returned that labeled row
+  with the engine offset. The production database now has 1 trip and 1 outcome; its
+  `model_runs` table is intentionally empty until a real artifact is trained.
+- Gate: typecheck, 287 tests against `planmytrip_test`, lint, production build pass.
+- Unverified: real cohort size, responder-bias correction, privacy review, database backups
+  and retention, and any live use of a learned cap.
+
+## Next action
+
+Run a consented pilot cohort against production PostgreSQL, confirm capture and outcome rows
+arrive, and replace the synthetic artifact only after the pooled tier is reached. Monitor
+pharmacy consistency and check the live iframe and clipboard behavior. The clinical thresholds
+and Sun Life stability window remain VERIFY.

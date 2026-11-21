@@ -33,6 +33,10 @@ export interface PlanWorkspaceProps {
   trip: TripConfig;
   plan: HealthTripPlan;
   runToken: number;
+  /** Opaque browser run id shared by both agent requests and the capture route. */
+  runId: string;
+  /** Anonymous install id scoped to this browser. */
+  installId: string;
   /** False while onboarding covers the workspace; keeps the map sized correctly. */
   visible: boolean;
   onEditTrip: () => void;
@@ -69,6 +73,8 @@ export function PlanWorkspace({
   trip,
   plan,
   runToken,
+  runId,
+  installId,
   visible,
   onEditTrip,
   onReplan,
@@ -81,6 +87,10 @@ export function PlanWorkspace({
     medication: trip.medication,
     interests: trip.interests,
     budget: trip.budget,
+    runId,
+    installId,
+    captureConsent: trip.captureConsent,
+    hasSunLifeTravelCoverage: trip.hasSunLifeTravelCoverage,
     runToken,
   });
   const completed = completedCount(state.agents);
@@ -142,6 +152,7 @@ export function PlanWorkspace({
           state={state}
           runInput={runInput}
           visible={visible && active === "plan"}
+          capture={{ runId, installId, consent: trip.captureConsent }}
           onRetry={retry}
         />
       </div>
@@ -207,6 +218,9 @@ export function PlanWorkspace({
             destination={trip.destination}
             condition={trip.condition}
             medication={trip.medication}
+            runId={runId}
+            installId={installId}
+            captureConsent={trip.captureConsent}
             runToken={runToken}
           />
         </div>

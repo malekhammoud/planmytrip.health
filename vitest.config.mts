@@ -13,5 +13,7 @@ export default defineConfig({
     environment: "node",
     include: ["**/*.test.ts"],
     exclude: ["node_modules/**", ".next/**"],
+    // Database tests share one Postgres schema and truncate it between cases.
+    fileParallelism: false,
   },
 });

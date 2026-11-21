@@ -122,11 +122,21 @@ export interface PlannerRequest {
   medication: string;
   interests: string;
   budget: BudgetLevel;
+  /** Opaque browser-generated id that joins the planner and swarm captures. */
+  runId?: string;
+  /** Anonymous install id for the local trip log. */
+  installId?: string;
+  /** Explicit opt-in for saving the trip dossier. */
+  captureConsent?: boolean;
+  /** Coverage answer used to build the captured engine plan. */
+  hasSunLifeTravelCoverage?: boolean;
 }
 
 /** Complete trip configuration owned by the onboarding screen. */
 export interface TripConfig extends PlannerRequest {
   hasSunLifeTravelCoverage: boolean;
+  /** Explicit opt-in shown on the health step. */
+  captureConsent: boolean;
 }
 
 /** Category used by map markers and pick lists. */

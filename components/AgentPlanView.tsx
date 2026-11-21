@@ -3,8 +3,10 @@
 import { AgentPicks } from "@/components/AgentPicks";
 import { AgentPlanDays } from "@/components/AgentPlanDays";
 import { TripMap } from "@/components/TripMap";
+import { TripOutcomePanel } from "@/components/TripOutcomePanel";
 import { Callout } from "@/components/ui";
 import { BUDGET_LABELS, type AgentTripPlan } from "@/lib/agent/agentTypes";
+import type { TripCaptureContext } from "@/lib/data/types";
 
 function money(plan: AgentTripPlan): string {
   if (plan.budget.estimatedTotal === null) return "Estimate not available";
@@ -24,9 +26,11 @@ function generated(ts: string): string {
 export function AgentPlanView({
   plan,
   visible = true,
+  capture,
 }: {
   plan: AgentTripPlan;
   visible?: boolean;
+  capture?: TripCaptureContext;
 }) {
   const outside = plan.days.filter((day) => !day.withinCaps);
   return (
@@ -143,6 +147,7 @@ export function AgentPlanView({
           </ul>
         </section>
       ) : null}
+      {capture !== undefined ? <TripOutcomePanel capture={capture} /> : null}
     </div>
   );
 }

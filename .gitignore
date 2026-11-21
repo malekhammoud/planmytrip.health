@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# exported real training data; never commit traveler outcomes
+/data/training-rows.jsonl
