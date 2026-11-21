@@ -1,33 +1,220 @@
-export default function Home() {
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { ConstraintSidebar } from "@/components/ConstraintSidebar";
+import { SectionHeader, Skeleton } from "@/components/ui";
+import { describeTrip } from "@/lib/describeTrip";
+import {
+  buildHealthTripPlan,
+  checkSunLifeCoverage,
+  DEFAULT_MEDICATION_BY_CONDITION,
+  type HealthTripPlan,
+} from "@/lib/healthTripEngine";
+import type { Condition } from "@/lib/types";
+
+const SISTER_PRODUCT_URL = "https://ismytripsafe.com";
+
+/**
+ * The sister-product link. It is plain text, lives in the header from 640px up,
+ * and moves to the footer below that. The 44px minimum height keeps the tap
+ * target comfortable without turning the link into a pill.
+ */
+function SisterProductLink({ className }: { className: string }) {
   return (
-    <div className="page-container flex min-h-dvh flex-col pt-10 md:pt-16">
-      <header className="flex flex-wrap items-baseline justify-between gap-4 border-b border-hairline pb-5">
-        <p className="t-heading">
+    <a
+      href={SISTER_PRODUCT_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`t-small min-h-11 items-center text-muted transition-colors duration-150 hover:text-ink hover:underline ${className}`}
+    >
+      Sister product to IsMyTripSafe.com
+    </a>
+  );
+}
+
+/** Sticky 64px letterhead: wordmark left, sister-product link right from 640px. */
+function SiteHeader() {
+  return (
+    <header className="sticky top-0 z-30 h-16 border-b border-hairline bg-paper">
+      <div className="page-container flex h-full items-center justify-between gap-6">
+        <p className="t-wordmark text-ink">
           PlanMyTrip
           <span className="t-data text-accent">.health</span>
         </p>
-        <p className="t-label text-muted">Planning aid</p>
-      </header>
+        <SisterProductLink className="hidden sm:inline-flex" />
+      </div>
+    </header>
+  );
+}
 
-      <main className="flex-1 pt-16 md:pt-24">
-        <section aria-labelledby="baseline-heading">
-          <p className="t-label text-muted">Health-first travel planning</p>
-          <h1 id="baseline-heading" className="t-display mt-4">
-            A travel plan paced to your health.
-          </h1>
-          <p className="t-body mt-6 text-muted">
-            This is a pacing and risk-verification tool for people travelling with a
-            medical condition. The full planner is under construction.
-          </p>
-        </section>
-      </main>
-
-      <footer className="mt-16 border-t border-hairline py-6 md:mt-24">
+/**
+ * Closing notice. Below 640px the sister-product link lives here; from 640px up
+ * the header carries it instead. The 96px desktop / 64px mobile top margin is the
+ * section gap above the footer.
+ */
+function SiteFooter() {
+  return (
+    <footer className="mt-16 border-t border-hairline md:mt-24">
+      <div className="page-container flex flex-col gap-3 py-6 sm:flex-row sm:items-baseline sm:justify-between">
         <p className="t-small measure text-muted">
           Planning aid only. Not medical advice. Confirm with your clinician and insurer
           before you travel.
         </p>
-      </footer>
+        <SisterProductLink className="flex sm:hidden" />
+      </div>
+    </footer>
+  );
+}
+
+/**
+ * PlanMyTrip.health home page. It owns every planner input and composes the rail,
+ * the headline, and the two result sections. The engine runs only when a
+ * destination is present; the Sun Life alert is always derived so the rail stays
+ * live while the destination field is empty.
+ */
+export default function Home() {
+  const [destination, setDestination] = useState("Tokyo, Japan");
+  const [days, setDays] = useState(4);
+  const [condition, setCondition] = useState<Condition>("asthma_respiratory");
+  const [medication, setMedication] = useState(
+    DEFAULT_MEDICATION_BY_CONDITION.asthma_respiratory,
+  );
+  const [medicationTouched, setMedicationTouched] = useState(false);
+  const [hasSunLifeTravelCoverage, setHasSunLifeTravelCoverage] = useState(false);
+  const [deployNonce, setDeployNonce] = useState(0);
+  const [railOpen, setRailOpen] = useState(true);
+
+  // A closed mobile panel must not hide the rail after a resize to desktop,
+  // where its summary is hidden. Force it open whenever 1024px is matched.
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    const sync = () => {
+      if (media.matches) setRailOpen(true);
+    };
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  const plan = useMemo<HealthTripPlan | null>(() => {
+    if (destination.trim().length === 0) return null;
+    return buildHealthTripPlan({
+      destination,
+      days,
+      condition,
+      medication,
+      hasSunLifeTravelCoverage,
+    });
+  }, [destination, days, condition, medication, hasSunLifeTravelCoverage]);
+
+  const sunLifeAlert = useMemo(
+    () =>
+      plan ? plan.sunLifeAlert : checkSunLifeCoverage(days, hasSunLifeTravelCoverage),
+    [plan, days, hasSunLifeTravelCoverage],
+  );
+
+  const headline = describeTrip({ destination, days, condition });
+
+  /**
+   * A condition change seeds the generic medication name only while the user has
+   * not edited the field. Once touched, the typed value survives every change.
+   */
+  function handleConditionChange(next: Condition) {
+    setCondition(next);
+    if (!medicationTouched) {
+      setMedication(DEFAULT_MEDICATION_BY_CONDITION[next]);
+    }
+  }
+
+  function handleMedicationChange(next: string) {
+    setMedication(next);
+    setMedicationTouched(true);
+  }
+
+  function handleDeploy() {
+    setDeployNonce((nonce) => nonce + 1);
+  }
+
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <SiteHeader />
+
+      <main className="flex-1">
+        <div className="page-container pt-16 md:pt-24 lg:pt-6">
+          <div className="lg:grid lg:grid-cols-[320px_1px_minmax(0,1fr)] lg:gap-16">
+            <aside className="mb-16 border-b border-hairline pb-10 md:mb-24 lg:sticky lg:top-[88px] lg:mb-0 lg:max-h-[calc(100vh_-_112px)] lg:self-start lg:overflow-y-auto lg:border-b-0 lg:px-1 lg:pb-0">
+              <details
+                open={railOpen}
+                onToggle={(event) => setRailOpen(event.currentTarget.open)}
+              >
+                <summary className="mb-6 min-h-11 cursor-pointer break-words t-body text-ink [overflow-wrap:anywhere] lg:hidden">
+                  {headline}
+                </summary>
+                <div className="lg:block">
+                  {/* The rail owns no state; page state flows in and changes flow out. */}
+                  <ConstraintSidebar
+                    destination={destination}
+                    days={days}
+                    condition={condition}
+                    medication={medication}
+                    hasSunLifeTravelCoverage={hasSunLifeTravelCoverage}
+                    sunLifeAlert={sunLifeAlert}
+                    onDestinationChange={setDestination}
+                    onDaysChange={setDays}
+                    onConditionChange={handleConditionChange}
+                    onMedicationChange={handleMedicationChange}
+                    onCoverageChange={setHasSunLifeTravelCoverage}
+                    onDeploy={handleDeploy}
+                  />
+                </div>
+              </details>
+            </aside>
+
+            <div aria-hidden="true" className="hidden bg-hairline lg:block" />
+
+            <div className="min-w-0">
+              <h1 className="t-display measure break-words">{headline}</h1>
+              <p className="t-body mt-6 text-muted">
+                Conservative planning limits. Not medical advice.
+              </p>
+
+              <section aria-labelledby="pacing-heading">
+                <SectionHeader id="pacing-heading" index="01" title="Pacing" />
+                {/* STEP 7 MOUNT: replace this placeholder with the paced itinerary built from `plan`. */}
+                <div className="flex flex-col gap-4">
+                  <Skeleton width="35%" height={24} />
+                  <Skeleton height={64} />
+                  <Skeleton height={64} />
+                </div>
+                <p className="t-small mt-4 text-muted">
+                  A day-by-day paced itinerary appears here.
+                </p>
+              </section>
+
+              <section aria-labelledby="verification-heading">
+                <SectionHeader
+                  id="verification-heading"
+                  index="02"
+                  title="Verification"
+                />
+                {/* STEP 6 MOUNT: deployNonce increments on Deploy; the swarm monitor reads it here. */}
+                <div id="agent-swarm-mount" data-deploy-nonce={deployNonce} />
+                <div className="flex flex-col gap-4">
+                  <Skeleton width="35%" height={24} />
+                  <Skeleton height={64} />
+                  <Skeleton height={64} />
+                  <Skeleton height={64} />
+                </div>
+                <p className="t-small mt-4 text-muted">
+                  Three independent agent checks appear here after deploy.
+                </p>
+              </section>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <SiteFooter />
     </div>
   );
 }

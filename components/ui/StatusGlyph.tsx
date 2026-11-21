@@ -1,5 +1,4 @@
 import { Check, CircleAlert } from "lucide-react";
-import styles from "./StatusGlyph.module.css";
 
 /** The five agent and record states shown by {@link StatusGlyph}. */
 export type StatusGlyphState = "queued" | "running" | "done" | "error" | "notfound";
@@ -23,7 +22,7 @@ export function StatusGlyph({ state, label }: StatusGlyphProps) {
         {state === "queued" ? (
           <span className="block h-4 w-4 rounded-full border border-solid border-muted" />
         ) : state === "running" ? (
-          <span className={`block h-2 w-2 rounded-full bg-accent ${styles.pulse}`} />
+          <span className="status-pulse block h-2 w-2 rounded-full bg-accent" />
         ) : state === "done" ? (
           <span className="flex h-4 w-4 items-center justify-center rounded-full bg-ink text-paper">
             <Check size={10} strokeWidth={3} />

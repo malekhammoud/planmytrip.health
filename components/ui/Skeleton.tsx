@@ -1,4 +1,3 @@
-import styles from "./Skeleton.module.css";
 
 /** Props for {@link Skeleton}. */
 export interface SkeletonProps {
@@ -17,7 +16,7 @@ export function Skeleton({ width = "100%", height = 16 }: SkeletonProps) {
   return (
     <div
       aria-hidden="true"
-      className={`${styles.skeleton} rounded-frame bg-sunken`}
+      className="skeleton-pulse rounded-frame bg-sunken"
       style={{ width, height }}
     />
   );

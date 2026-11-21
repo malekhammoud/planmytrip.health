@@ -38,15 +38,15 @@ means the code, tests, and this file agree at that commit.
 | 2. Design system primitives | [x] | `feat(ui): add design system primitives` |
 | 3. Biological pacing engine | [x] | `feat(engine): add biological pacing and itinerary engine` |
 | 4. TinyFish 3-worker SSE route | [x] | `feat(api): add parallel 3-worker TinyFish SSE swarm` |
-| 5. Header, constraint rail, page layout | [ ] Not built yet | `feat(ui): add header and biological constraint sidebar` |
+| 5. Header, constraint rail, page layout | [x] | `feat(ui): add header and biological constraint sidebar` |
 | 6. Live agent swarm monitor | [ ] Not built yet | `feat(ui): add live TinyFish agent iframes and findings cards` |
 | 7. KPI strip and paced itinerary | [ ] Not built yet | `feat(ui): add safety KPIs, paced itinerary cards, and care card export` |
 | 8. Documentation and identity audit | [ ] Not built yet | `docs(agents): finalize AGENTS.md for future coding agents` |
 
-Current state: the placeholder home page, the Paper and Ink tokens and type classes, the
-shared condition vocabulary, the `components/ui` primitives, the pure pacing engine, and
-the 3-worker TinyFish SSE route with mock mode. The rail, page composition, agent monitor,
-and itinerary are not built yet.
+Current state: the full page shell with letterhead, footer, constraint rail, headline,
+and two designed result sections; the Paper and Ink primitives, pacing engine, and
+3-worker TinyFish SSE route are in place. The agent monitor and paced itinerary are the
+remaining surfaces.
 
 ## 3. Commands
 
@@ -99,9 +99,12 @@ Built now:
 app/
   globals.css        Paper and Ink tokens, theme mapping, type classes, base styles
   layout.tsx         Fontsource imports, metadata, html lang, body tokens
-  page.tsx           Minimal placeholder home page; replaced in Step 5
+  page.tsx           Client home page: planner state, memoized plan, letterhead,
+                     footer, rail, headline, Pacing/Verification mounts
   api/travel-swarm/route.ts  Body validation, guarded SSE stream, runSwarm call
 lib/
+  describeTrip.ts             Pure headline sentence builder
+  describeTrip.test.ts        Exact sentence, trimming, empty fallback
   sse.ts                      Pure buffering SSE parser (createSseParser)
   tinyfish.ts                 TinyFish fetch client; re-exports the parser
   tinyfishEvents.ts           Upstream TinyFish event to SwarmEvent mapping
@@ -125,14 +128,16 @@ lib/
   healthTripEngine.test.ts    Condition/day matrix, caps, recovery, determinism
   healthTripEngineRules.test.ts  Sun Life, validation, docs, module boundaries
 components/
+  ConstraintSidebar.tsx  Stateless rail: labeled fields, live Sun Life Callout,
+                         Deploy action, empty-destination guard
   ui/                Paper and Ink primitives, all named exports from
                      components/ui/index.ts: Button (sm, md, and Deploy-only lg),
                      Field, TextInput, Select, Slider, Checkbox, StatusGlyph,
                      SectionHeader, Metric, Callout, DataRow, Skeleton. Pure helpers:
                      sliderFillPercent (sliderFill.ts) and metricBarWidths
                      (metricBars.ts), unit-tested in components/ui/*.test.ts.
-                     Slider, Skeleton, and StatusGlyph use CSS modules with token
-                     variables only, for native pseudo-elements and pulse.
+                     Slider, Skeleton, and StatusGlyph use the global classes
+                     .slider-range, .skeleton-pulse, and .status-pulse in globals.css.
 tests/
   healthTripFixtures.ts  Shared engine test input and helpers
   design-guard.test.ts   Source scan for banned styles, controls, and copy
@@ -141,16 +146,16 @@ tests/
 vitest.config.mts    Node test environment and the @/ alias
 ```
 
-Not built yet: the rail and page composition (Step 5), the swarm monitor (Step 6), and
-the KPI strip and itinerary board (Step 7).
+Not built yet: the swarm monitor (Step 6) and the KPI strip and itinerary board (Step 7).
 
 Data flow:
 
 ```text
 page.tsx state (destination, days, condition, medication, coverage)
-  -> healthTripEngine (pure, useMemo) -> KPI strip + pacing itinerary
-  -> Deploy -> POST /api/travel-swarm -> three TinyFish SSE runs
+  -> healthTripEngine (pure, useMemo) -> plan and Sun Life alert
+  -> Deploy increments deployNonce -> Step 6 monitor POSTs /api/travel-swarm
   -> worker events -> useSwarm reducer -> AgentSwarmMonitor
+  -> plan -> Step 7 KPI strip + pacing itinerary
 ```
 
 The itinerary renders from the engine alone, independent of agent results.
@@ -206,6 +211,32 @@ and a `CONDITION_CHECKPOINTS` entry; update this table and the VERIFY register; 
 engine test files. The exhaustive `Record<Condition, ...>` types make
 `npx tsc --noEmit` fail until every entry exists.
 
+### Home page and constraint rail
+
+`app/page.tsx` is a client component. It owns every planner input and memoizes
+`buildHealthTripPlan` only while the destination is non-empty; with an empty destination
+it derives the alert with `checkSunLifeCoverage(days, hasSunLifeTravelCoverage)` so the
+rail stays live. `lib/describeTrip.ts` builds the headline from the trimmed destination,
+trip length, and `CONDITION_LABELS`. Deploy increments `deployNonce`; the Verification
+section renders an `#agent-swarm-mount` carrying it for Step 6. The Pacing placeholder is
+marked `STEP 7 MOUNT`; the Verification placeholder is marked `STEP 6 MOUNT`.
+
+Page state: `destination` ("Tokyo, Japan"), `days` (4; slider 2-7), `condition`
+("asthma_respiratory"), `medication` (`DEFAULT_MEDICATION_BY_CONDITION`), `medicationTouched`
+(false), `hasSunLifeTravelCoverage` (false), `deployNonce` (0). `ConstraintSidebar` is
+stateless: it receives the values, the alert, and change callbacks plus `onDeploy`, and
+owns no state. A condition change writes the new generic medication default only while
+`medicationTouched` is false; editing the medication field sets it, so typed values
+survive condition changes.
+
+Breakpoints: below 1024 the rail is a native `<details open>` panel above the main
+column, with the trip sentence as its summary. At 1024 and up the layout is
+`320px / 1px / fluid` with 64px gaps; the rail is sticky at `top: 88px`, scrolls
+independently, and is at most `calc(100vh - 112px)` tall. The sister-product link is in
+the header from 640px up and in the footer below 640. Gutters are 24px, 40px from 768px;
+section gaps are 64px mobile and 96px from 768px. The footer sits 64px/96px below the
+content and carries the planning-aid notice.
+
 ## 6. Key decisions
 
 - **Next.js 16.4.6, React 19.3.0, Tailwind CSS 4.3.3.** Tailwind v4 is configured in
@@ -235,10 +266,12 @@ engine test files. The exhaustive `Record<Condition, ...>` types make
 - **Primitive-only UI.** Later steps compose `components/ui` and never restyle a raw
   control. The guard permits raw form controls only inside `components/ui`. Button `lg`
   (48px) exists solely for the Step 5 Deploy action, whose spec requires 48px. Slider,
-  Skeleton, and StatusGlyph use small CSS modules for native pseudo-elements and
-  keyframes; modules use only `var(--token)` values and no raw colors, and the design
-  guard does not scan them, so they need manual review. The Metric tooltip uses inline
-  utilities and state because it must be dismissible and hoverable.
+  Skeleton, and StatusGlyph use global classes in `app/globals.css` (`.slider-range`,
+  `.skeleton-pulse`, `.status-pulse`), because the Tailwind Turbopack loader returns
+  empty class-name exports for CSS modules in this setup. A CSS-module first pass
+  produced `class="undefined"` and a native slider; the global classes fixed it. The
+  Metric tooltip uses inline utilities and state because it must be dismissible and
+  hoverable.
 
 ## 7. Conventions
 
@@ -274,6 +307,7 @@ and so on.
 | --- | --- |
 | `.t-display` | Instrument Serif 400, 56/60 desktop, 36/40 mobile. Page headline only. |
 | `.t-title` | Instrument Serif 400, 32/36 desktop, 26/30 mobile. Section titles. |
+| `.t-wordmark` | Instrument Serif 400, 26/30 at every viewport. Header wordmark. |
 | `.t-metric` | Instrument Serif 400, 72/72 desktop, 56/56 mobile, tabular numerals. |
 | `.t-heading` | Hanken Grotesk 600, 17/24. |
 | `.t-body` | Hanken Grotesk 400, 15/24, max measure 65ch. |
@@ -401,9 +435,10 @@ development. Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The current suite has 145 tests:
+`npm test` runs Vitest once in a Node environment. The current suite has 149 tests:
 
 - `tests/design-guard.test.ts`: token, type, control, emoji, and copy guard.
+- `lib/describeTrip.test.ts`: exact headline, trimming, empty fallback, label reuse.
 - `tests/contrast.test.ts`: WCAG AA contrast for the token pairs.
 - `tests/smoke.test.ts`: the five conditions and the label map.
 - `components/ui/sliderFill.test.ts` and `metricBars.test.ts`: primitive geometry.
@@ -423,17 +458,18 @@ rather than exempting lines.
 
 ## 12. Known limitations and open questions
 
-- Only the baseline, `components/ui` primitives, pacing engine, and swarm route exist:
-  no rail, agent monitor, itinerary, care card, or full page.
+- The page shell, rail, engine, and swarm route exist; the live monitor and paced
+  itinerary are not wired yet.
 - The Sun Life stability window is unknown and stored as `null`; no placeholder number
   is shown. Confirm it with the plan administrator.
 - No live TinyFish run or real key has been exercised. Event handling is verified
   against docs-shaped fixtures and mocked fetch; streaming URLs may expire after a run.
 - The route tolerates unknown events, stringified `result` values, and partial payloads.
-- The current home page is a placeholder and will be replaced in Step 5.
 - The user-owned `README.md` is intentionally untouched; this file is the working guide.
 - Light theme only. Tokens are structured so a dark theme could be added later.
 - Destination strings are labels only. The engine does not invent venues or geography.
+- The mobile `<details>` summary repeats the trip sentence above the headline; this is
+  the Step 5 layout contract, not a second headline.
 
 ## 13. How to work here
 

@@ -1,4 +1,3 @@
-import styles from "./Slider.module.css";
 import { sliderFillPercent } from "./sliderFill";
 
 /** Props for {@link Slider}. */
@@ -19,6 +18,10 @@ export interface SliderProps {
   step?: number;
   /** Optional id, for example from Field. */
   id?: string;
+  /** Supporting hint or error ids supplied by Field. */
+  ariaDescribedBy?: string;
+  /** True when the bound Field is showing an error. */
+  ariaInvalid?: boolean;
 }
 
 /**
@@ -35,6 +38,8 @@ export function Slider({
   ariaValueText,
   step = 1,
   id,
+  ariaDescribedBy,
+  ariaInvalid,
 }: SliderProps) {
   const fill = sliderFillPercent(value, min, max);
   const ticks: number[] = [];
@@ -62,8 +67,10 @@ export function Slider({
           value={value}
           aria-label={ariaLabel}
           aria-valuetext={ariaValueText}
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={ariaInvalid}
           onChange={(event) => onChange(Number(event.currentTarget.value))}
-          className={`${styles.range} relative z-10 w-full`}
+          className="slider-range relative z-10 w-full"
         />
       </div>
       <div aria-hidden="true" className="mx-2.5 mt-2 flex justify-between">

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+
 /*
  * Paper and Ink tokens. These are the only colors in the product.
  * They live in :root so a future dark theme can remap them without
@@ -123,6 +124,15 @@
     letter-spacing: -0.01em;
   }
 
+  /* The header wordmark: 26px at every viewport. */
+  .t-wordmark {
+    font-family: var(--font-serif);
+    font-size: 26px;
+    font-weight: 400;
+    line-height: 30px;
+    letter-spacing: -0.01em;
+  }
+
   .t-metric {
     font-family: var(--font-serif);
     font-size: 56px;
@@ -202,6 +212,110 @@
     font-weight: 400;
     line-height: 16px;
     font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Native range styling; a global class because the app's Tailwind loader owns CSS. */
+.slider-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider-range:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.slider-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.slider-range::-webkit-slider-runnable-track {
+  height: 2px;
+  border: 0;
+  background: transparent;
+}
+
+.slider-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: content-box;
+  width: 16px;
+  height: 16px;
+  margin-top: -9px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--ink);
+  cursor: grab;
+}
+
+.slider-range:active::-webkit-slider-thumb {
+  cursor: grabbing;
+}
+
+.slider-range::-moz-range-track {
+  height: 2px;
+  border: 0;
+  background: transparent;
+}
+
+.slider-range::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--ink);
+  cursor: grab;
+}
+
+.slider-range:active::-moz-range-thumb {
+  cursor: grabbing;
+}
+
+/* Slow skeleton pulse, static under reduced motion. */
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.skeleton-pulse {
+  animation: skeleton-pulse 2.4s ease-in-out infinite;
+}
+
+/* Gentle running-status pulse, static under reduced motion. */
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.status-pulse {
+  animation: status-pulse 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-pulse,
+  .status-pulse {
+    animation: none;
   }
 }
 

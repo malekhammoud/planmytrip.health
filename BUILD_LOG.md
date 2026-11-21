@@ -86,7 +86,30 @@ None.
 - Gate: typecheck, 145 tests, lint, and production build pass.
 - Unverified: no live TinyFish run or real key; streaming URL expiry and proxy behavior.
 
+### Step 5: header, constraint rail, page layout
+
+- Added the client home page, sticky letterhead, footer, 320px constraint rail with
+  sticky/scroll behavior, mobile `<details>` panel, headline from describeTrip, live
+  Sun Life Callout, Deploy action, and designed Pacing/Verification mounts.
+- Added `describeTrip` and four tests; page state is fully owned by page.tsx, and the
+  medication default updates only until the field is edited.
+- Fixed a first-dev-pass CSS bug: the Turbopack Tailwind loader made CSS-module exports
+  empty (`class="undefined"`, native slider). Moved Slider/Skeleton/StatusGlyph styles
+  into global token classes in globals.css and restored the all-CSS loader rule.
+- Visual check: headless Chrome at 375, 768, and 1280; no horizontal scroll, rail
+  sticky at 88px, footer and link present; dev server returned 200. Removed screenshots.
+- Review: one major and four minor defects fixed. The uncontrolled mobile `<details>`
+  could hide the desktop rail after resize; it is now controlled and forced open at
+  1024px (CDP test: collapse at 768, resize to 1024, panel open and 320px wide). Focus
+  rings got 4px rail padding, permanent `aria-busy` was removed, the summary wraps long
+  destinations, and Slider now forwards Field ARIA bindings.
+- Gate: typecheck, 149 tests, lint, and production build pass. Next.js dev typegen added
+  a `.next/dev/dev/types` include to tsconfig; kept.
+- Unverified: hydrated interaction beyond the rail resize check; the Deploy button
+  increments a nonce only until Step 6.
+
 ## Next action
 
-Review and commit Step 4 (`feat(api): add parallel 3-worker TinyFish SSE swarm`). Then
-build Step 5 (header, rail, page layout) alone, review it, wire Steps 6 and 7 next.
+Review and commit Step 5 (`feat(ui): add header and biological constraint sidebar`).
+Then build Steps 6 and 7 in parallel, wire both into app/page.tsx, run the gate, and
+commit in step order.
