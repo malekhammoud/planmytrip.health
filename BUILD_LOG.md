@@ -298,9 +298,24 @@ None.
 - Unverified: real trip labels, responder-bias correction, privacy review, production
   Postgres/rate limiting, and any live use of a learned cap.
 
+### Pitch deck (2026-11-21)
+
+- Added a static 1920×1080 Paper and Ink deck at `public/pitch/`, served at `/pitch` by a
+  rewrite in `next.config.ts`. Eight presented slides plus a data-moat appendix: cover,
+  problem, solution, demo cue, architecture, comparison, impact, close, and appendix.
+- The deck uses the product tokens and type classes, local Instrument Serif, Hanken Grotesk,
+  and IBM Plex Mono woff2 files, an inline SVG architecture diagram, and one personal
+  photograph (`basil.jpg`), used with the family's consent and the only raster asset.
+- Added `docs/PITCH.md` with the 2:55 script, the tab-by-tab demo runbook and fallback ladder,
+  sources, the 0-of-5 planner audit, and a rubric check.
+- Gate: typecheck, 286 tests, lint, production build pass. `/pitch` and all assets return 200
+  from the production build.
+- Unverified: the live presentation with two staggered runs; the 0-of-5 audit screenshots.
+
 ## Next action
 
 Run the first consented pilot cohort and replace the synthetic artifact with real outcomes.
 Add condition intercepts after 50 labeled trips per condition, then test cap tightening inside
 the engine ceiling. In parallel, run the full 7-of-7 live concierge pass and the full three-worker
-TinyFish pass. The clinical thresholds and Sun Life stability window remain VERIFY.
+TinyFish pass. Before the pitch, rehearse the two staggered demo runs and complete the 0-of-5
+planner audit. The clinical thresholds and Sun Life stability window remain VERIFY.

@@ -1,0 +1,525 @@
+/*
+ * PlanMyTrip.health pitch deck — Paper and Ink.
+ * Fixed 1920x1080 stage, scaled to the viewport by deck.js.
+ * Tokens and type classes are the only visual vocabulary.
+ */
+
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("/pitch/fonts/instrument-serif-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Hanken Grotesk";
+  src: url("/pitch/fonts/hanken-grotesk-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("/pitch/fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("/pitch/fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --paper: #f6f5f1;
+  --surface: #ffffff;
+  --sunken: #eceae3;
+  --ink: #12151c;
+  --muted: #565c66;
+  --hairline: #dedbd2;
+  --hairline-strong: #b9b5a9;
+  --accent: #1f3ad6;
+  --accent-soft: #e4e9fc;
+  --on-accent: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--ink);
+}
+
+body {
+  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---------- Type classes ---------- */
+
+.display {
+  margin: 0;
+  font-family: "Instrument Serif", Georgia, serif;
+  font-weight: 400;
+  font-size: 120px;
+  line-height: 112px;
+  letter-spacing: -0.02em;
+}
+
+.title {
+  margin: 0;
+  max-width: 1560px;
+  font-family: "Instrument Serif", Georgia, serif;
+  font-weight: 400;
+  font-size: 72px;
+  line-height: 80px;
+}
+
+.metric {
+  margin: 0;
+  font-family: "Instrument Serif", Georgia, serif;
+  font-weight: 400;
+  font-size: 240px;
+  line-height: 220px;
+  font-variant-numeric: tabular-nums;
+}
+
+.body {
+  margin: 0;
+  max-width: 1100px;
+  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 36px;
+  line-height: 52px;
+}
+
+.small {
+  margin: 0;
+  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 28px;
+  line-height: 40px;
+  color: var(--muted);
+}
+
+.label {
+  margin: 0;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-weight: 500;
+  font-size: 22px;
+  line-height: 30px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.accent {
+  color: var(--accent);
+}
+
+/* ---------- Stage ---------- */
+
+.stage-wrap {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--ink);
+}
+
+.stage {
+  position: absolute;
+  top: calc(50% - 540px);
+  left: calc(50% - 960px);
+  width: 1920px;
+  height: 1080px;
+  background: var(--paper);
+  color: var(--ink);
+  transform-origin: center center;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  padding: 96px 120px;
+  background: var(--paper);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* ---------- Shared furniture ---------- */
+
+.head {
+  position: relative;
+}
+
+.rule-ink {
+  height: 1px;
+  background: var(--ink);
+}
+
+.head .title {
+  margin-top: 24px;
+}
+
+.content {
+  position: absolute;
+  top: 340px;
+  right: 120px;
+  bottom: 150px;
+  left: 120px;
+}
+
+.foot {
+  position: absolute;
+  right: 120px;
+  bottom: 44px;
+  left: 120px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.sources {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.closing {
+  margin-top: 72px;
+}
+
+/* ---------- 01 Cover ---------- */
+
+.cover {
+  padding: 0;
+}
+
+.cover-copy {
+  position: absolute;
+  top: 250px;
+  left: 120px;
+  width: 963px;
+}
+
+.cover .display {
+  font-size: 120px;
+}
+
+.dates {
+  margin-top: 28px;
+}
+
+.cover-line {
+  max-width: 960px;
+  margin-top: 64px;
+}
+
+.cover-photo {
+  position: absolute;
+  top: 250px;
+  left: 1266px;
+  width: 534px;
+  margin: 0;
+}
+
+.cover-photo img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ---------- 02 Problem ---------- */
+
+.problem {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  column-gap: 40px;
+  align-content: start;
+}
+
+.metric-col {
+  grid-column: 1 / span 6;
+}
+
+.metric-caption {
+  max-width: 620px;
+  margin-top: 24px;
+}
+
+.facts {
+  grid-column: 7 / span 6;
+}
+
+.fact {
+  padding: 22px 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.fact .small {
+  color: var(--ink);
+}
+
+.fact strong {
+  font-weight: 600;
+}
+
+.problem .sources {
+  grid-column: 1 / -1;
+  margin-top: 80px;
+}
+
+/* ---------- 03 / 04 Rows ---------- */
+
+.rows {
+  margin: 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 103px 246px 1fr;
+  column-gap: 40px;
+  align-items: baseline;
+  padding: 34px 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.row .num {
+  color: var(--muted);
+}
+
+.rows-tight .row {
+  padding: 28px 0;
+}
+
+.row .row-label {
+  color: var(--ink);
+}
+
+.row .row-label.accent {
+  color: var(--accent);
+}
+
+.row-text {
+  max-width: 1000px;
+}
+
+/* ---------- 05 Architecture ---------- */
+
+.arch-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.arch-line {
+  margin-top: 64px;
+}
+
+.stack {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+/* ---------- 06 Comparison ---------- */
+
+.compare {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.compare th,
+.compare td {
+  padding: 16px 0;
+  text-align: left;
+  vertical-align: baseline;
+  font-weight: 400;
+}
+
+.compare thead th {
+  padding-top: 18px;
+  border-top: 1px solid var(--ink);
+}
+
+.compare tbody th,
+.compare tbody td {
+  border-top: 1px solid var(--hairline);
+}
+
+.compare .rowhead {
+  width: 420px;
+}
+
+.compare thead th:not(.rowhead) {
+  width: 315px;
+}
+
+.compare thead .us {
+  color: var(--ink);
+}
+
+.compare .cell {
+  color: var(--muted);
+}
+
+.compare .cell.accent {
+  color: var(--accent);
+}
+
+.compare-note {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+
+/* ---------- 07 Impact ---------- */
+
+.list-label {
+  margin: 0;
+}
+
+.plain-list {
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plain-list li {
+  padding: 30px 0;
+  border-top: 1px solid var(--hairline);
+  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  font-size: 36px;
+  line-height: 52px;
+}
+
+/* ---------- 08 Close ---------- */
+
+.close-rule {
+  position: absolute;
+  top: 96px;
+  right: 120px;
+  left: 120px;
+}
+
+.close-block {
+  position: absolute;
+  top: 160px;
+  right: 120px;
+  left: 120px;
+}
+
+.close-sub {
+  max-width: 1500px;
+  margin-top: 56px;
+}
+
+.close-url {
+  position: absolute;
+  bottom: 220px;
+  left: 120px;
+}
+
+/* ---------- 09 Appendix ---------- */
+
+.moat {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.moat th,
+.moat td {
+  padding: 18px 24px 18px 0;
+  text-align: left;
+  vertical-align: top;
+  font-weight: 400;
+}
+
+.moat thead th {
+  padding-top: 18px;
+  border-top: 1px solid var(--ink);
+}
+
+.moat tbody th,
+.moat tbody td {
+  border-top: 1px solid var(--hairline);
+}
+
+.moat .rowhead {
+  width: 220px;
+}
+
+.moat-line {
+  margin-top: 64px;
+}
+
+/* ---------- Motion and print ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .slide {
+    transition: none;
+  }
+}
+
+@media print {
+  html,
+  body {
+    background: var(--paper);
+  }
+
+  .stage-wrap {
+    position: static;
+    display: block;
+    overflow: visible;
+  }
+
+  .stage {
+    position: static;
+    top: auto;
+    left: auto;
+    width: 1920px;
+    height: auto;
+    transform: none !important;
+  }
+
+  .slide {
+    position: relative;
+    inset: auto;
+    width: 1920px;
+    height: 1080px;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    page-break-after: always;
+  }
+
+  .slide:last-child {
+    page-break-after: auto;
+  }
+}
+
+@page {
+  size: 13.333in 7.5in;
+  margin: 0;
+}

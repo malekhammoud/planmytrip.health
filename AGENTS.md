@@ -107,6 +107,7 @@ lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditi
 hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
 components/  Onboarding.tsx, PlanWorkspace.tsx, PlanPanel.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, TripMap.tsx, AgentSwarmMonitor.tsx, ItineraryBoard.tsx, PacingStrip.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx, WorkerLivePanel.tsx
 components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Field.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TabBar.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths), tabOrder.ts (nextTabIndex)
+public/pitch/  index.html, deck.css, deck.js, basil.jpg, fonts/
 scripts/  synthetic.ts, train-model.ts
 data/  synthetic-trips.jsonl, demo/planmytrip.db
 docs/  ML.md, MODEL_CARD.md
@@ -326,6 +327,17 @@ text in `lib/careCard.ts`). With no days it prints `No itinerary days are availa
 uses `navigator.clipboard.writeText` with a two-second "Copied" label and a live status
 announcement; on failure a read-only textarea shows the text. That fallback is the only raw
 control outside `components/ui` and carries a `design-guard-ignore` comment.
+
+### Pitch deck
+
+`public/pitch/` is a static 1920×1080 Paper and Ink deck served at `/pitch` by a rewrite in
+`next.config.ts`. It is presentation-only: not an app route, not covered by the design guard,
+and it adds no application code. It has nine slides (eight presented, one appendix), local
+woff2 fonts under `public/pitch/fonts`, an inline SVG architecture diagram, and one raster
+asset, `basil.jpg`, a personal photograph used with the family's consent. Arrow keys advance,
+`F` toggles fullscreen, `Home` / `End` jump, and the page prints to PDF. `docs/PITCH.md` holds
+the three-minute script, demo runbook, sources, and rubric check. Edit the deck as HTML, CSS,
+and vanilla JavaScript; do not rebuild it in React.
 
 ## 6. Key decisions
 
