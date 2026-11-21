@@ -6,14 +6,19 @@ the current step and decisions. Update this file in the same commit as any chang
 ## 1. What this is
 
 PlanMyTrip.health is a health-first travel planner for patients and caregivers, often
-anxious, on a phone or laptop. It does three jobs: a team of OpenCode specialists plans the
-trip, the biological engine turns condition limits into a paced safety envelope, and three
-parallel TinyFish browser agents verify live travel risk while the user watches.
+anxious, on a phone or laptop. It does four jobs: a team of OpenCode specialists plans the
+trip, the biological engine turns condition limits into a paced safety envelope, three
+parallel TinyFish browser agents verify live travel risk while the user watches, and a
+consented outcome loop calibrates the pacing estimate against what actually happened.
 
 It is a planning aid, never medical advice: a well-typeset clinical chart crossed with a Swiss
 timetable, typographic and ruled with hairlines. The pacing strip and the numbered route map
 are the signature elements. The concierge plans venues and sequence; the engine owns the
 physiological ceiling. See section 7.
+
+The data loop is part of the product, not analytics: one consented dossier per run, one
+explicit outcome per trip, and a versioned calibration artifact. The computed dose is the
+asset; an agent's self-reported step count never enters a training row. See `docs/ML.md`.
 
 Sister product [IsMyTripSafe.com](https://ismytripsafe.com) is photo-led (hero photography,
 destination grid, flag emoji, score cards, stoplight metaphor, search-first landing). This
@@ -37,6 +42,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 8. Documentation and identity audit | [x] | `docs(agents): finalize AGENTS.md for future coding agents` |
 | 9. Agentic concierge and trip map | [x] | `feat(planner): add OpenCode concierge team and trip map` |
 | 10. Onboarding and tabbed workspace | [x] | `feat(ui): add onboarding flow and tabbed trip workspace` |
+| 11. ML data loop and calibrated model | [x] | `feat(ml): add trip outcome data loop and calibrated flare model` |
 
 ## 3. Commands
 
@@ -49,6 +55,9 @@ npm run typecheck           # tsc --noEmit
 npm test                    # vitest run, never watch
 npm run lint                # eslint
 npm run build               # next build
+npm run data:synthetic      # deterministic demo cohort -> JSONL + demo SQLite
+npm run model:train         # JSONL -> lib/model/model.json + docs/MODEL_CARD.md
+npm run model:demo          # both data:synthetic and model:train
 npm run typecheck && npm test && npm run lint && npm run build   # full gate
 ```
 
@@ -72,6 +81,8 @@ discovers or starts the local one. Use `AGENT_MOCK=1` when no service or model s
 | `NOMINATIM_USER_AGENT` | Server only, geocoder | Defaults to `PlanMyTrip.health/0.1 (travel planning; contact@planmytrip.health)`. |
 | `NEXT_PUBLIC_MAP_TILE_URL` | Browser, `components/TripMap.tsx` | Defaults to public OpenStreetMap tiles; production should use a licensed tile endpoint. |
 | `NEXT_PUBLIC_MAP_ATTRIBUTION` | Browser, `components/TripMap.tsx` | Defaults to the OpenStreetMap attribution. |
+| `PLANMYTRIP_DB_PATH` | Server only, `lib/db/sqlite.ts` | Defaults to `data/planmytrip.db`; `:memory:` is allowed in tests. |
+| `PLANMYTRIP_CAPTURE_MOCK` | Server only, capture paths | Only when `1`; allows mock planner and swarm runs to be stored for tests. Never enable in production. |
 | `NODE_ENV` | Next.js, mock guards | Next sets it; production disables both mock modes. |
 
 `.env.example` is committed; `.env*` is ignored except it. Never read, print, or commit a real
@@ -85,17 +96,23 @@ Every tracked source file, annotated; `package-lock.json` and generated files
 (`next-env.d.ts`, `.next`, `tsconfig.tsbuildinfo`) are omitted by category.
 
 ```text
-app/  globals.css, layout.tsx, page.tsx, api/travel-swarm/route.ts, api/agent-plan/route.ts
+app/  globals.css, layout.tsx, page.tsx, model/page.tsx, api/travel-swarm/route.ts, api/agent-plan/route.ts, api/trips/route.ts, api/trips/outcome/route.ts
 lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditionProfiles.ts, sunLifeRules.ts, healthScore.ts, itineraryBuilder.ts
       swarm: swarmTypes.ts (wire contracts), swarmState.ts, swarmReducer.ts, swarmRunner.ts, swarmGoals.ts, swarmMock.ts, sse.ts, tinyfish.ts, tinyfishEvents.ts
       agent: agentTypes.ts (wire contracts), agentRequest.ts, agentProfiles.ts, agentPrompts.ts, agentConfig.ts, agentClient.ts, agentRunner.ts, agentSession.ts, agentParse.ts, agentPlanParse.ts, agentFallback.ts, agentGeocode.ts, agentEvents.ts, agentMock.ts, plannerReducer.ts
+      data: types.ts (versioned contract), dose.ts, tripDossier.ts, capture.ts, validation.ts
+      db: sqlite.ts (node:sqlite), trips.ts
+      model: types.ts, math.ts, features.ts, logistic.ts, calibration.ts, train.ts, predict.ts, artifact.ts, model.json
       output: describeTrip.ts, pacingStrip.ts, careCard.ts
 hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
-components/  Onboarding.tsx, PlanWorkspace.tsx, PlanPanel.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, TripMap.tsx, AgentSwarmMonitor.tsx, ItineraryBoard.tsx, PacingStrip.tsx, WorkerFindings.tsx, WorkerLivePanel.tsx
+components/  Onboarding.tsx, PlanWorkspace.tsx, PlanPanel.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, TripMap.tsx, AgentSwarmMonitor.tsx, ItineraryBoard.tsx, PacingStrip.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx, WorkerLivePanel.tsx
 components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Field.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TabBar.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths), tabOrder.ts (nextTabIndex)
-tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, agent-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
-module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts, tabOrder.test.ts; hooks/: swarmFrames.test.ts, plannerFrames.test.ts
-root  package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
+scripts/  synthetic.ts, train-model.ts
+data/  synthetic-trips.jsonl, demo/planmytrip.db
+docs/  ML.md, MODEL_CARD.md
+tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
+module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts, tabOrder.test.ts; hooks/: swarmFrames.test.ts, plannerFrames.test.ts
+root  package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md, types/node-sqlite.d.ts
 ```
 
 Data flow: `Onboarding` collects a `TripConfig`; the page normalizes it, increments
@@ -106,6 +123,11 @@ events flow through `plannerFrames`/`plannerReducer` into the roster, live log, 
 tab; TinyFish events flow through `useSwarm`/`swarmReducer` into the Verification tab. The
 engine plan feeds Pacing and supplies every concierge day with its step and walking ceiling.
 The engine and the safety envelope render independently of both agent teams.
+
+The page also owns a random install id and a per-run id; both agent POSTs carry them. On
+`plan_ready` the planner route rebuilds the engine plan server-side and writes a consented
+dossier; on `swarm_done` the swarm route writes bounded findings. The Plan tab posts one
+explicit outcome. A missing outcome is excluded from training, never read as a negative.
 
 ### Agentic concierge
 
@@ -152,6 +174,46 @@ full seven-agent roster and log. All four panels stay mounted so both streams co
 user changes tabs; inactive panels use `hidden`. `AgentPlanView` labels every day with agent
 estimate, modeled ceiling, recovery minutes, and the engine checkpoint; a day above its ceiling
 shows a caution and the Pacing limit wins.
+
+### Data loop and calibration model
+
+Capture is opt-in on the onboarding health step. `app/page.tsx` owns a random install id
+(localStorage, never a cookie) and a per-run `runId`; both agent POSTs carry them.
+`useAgentPlan`/`useSwarm` pass them through, and `parsePlannerRequest`/`isSwarmRequestBody`
+validate them. The planner route rebuilds the engine plan server-side on `plan_ready` and
+writes a `TripDossier`; the swarm route writes bounded findings on `swarm_done`. The Plan tab
+renders `TripOutcomePanel`, which posts one explicit outcome to `/api/trips/outcome`.
+`GET /api/trips?installId=` lists only that install's trips.
+
+`lib/data/dose.ts` is the single dose model. It maps concierge block kinds to exertion, raises
+hike exertion from verified distance, elevation, and difficulty, counts walking kinds only,
+and uses the engine's `stepsPerExertionMinute` and `kmPerStep`. The concierge's `stepEstimate`
+is shown as an agent estimate and is never a training label. An empty day is unsafe; a rest
+day with a real recovery block may legitimately carry zero steps.
+
+`lib/model/` is a calibration layer, not a new predictor. The engine's modeled risk becomes
+the prior log-odds, the model learns the residual, and isotonic PAVA fixes the scale:
+
+```text
+offset = logit(clamp((100 - healthSafetyScore) / 100, 0.01, 0.99))
+η      = offset + β0 + β1·peakExposure + β2·recoveryCoverage + β3·tripLength
+p      = isotonic(σ(η))
+```
+
+`lib/model/logistic.ts` is dependency-free IRLS with Gaussian priors and a Laplace
+covariance; `calibration.ts` owns PAVA and the metrics; `train.ts` groups folds by `userId`;
+`predict.ts` returns the probability, a 90% interval, the sample size, and a tier. With zero
+labels `β = 0`, so the model is exactly the engine.
+
+Tiers are `engine` (fewer than 50 labels), `synthetic` (demo artifact, never live), `pooled`
+(at least 50 real labels), and `condition` (at least 200 labels for that condition). A
+synthetic artifact is visible on `/model` but cannot change a live plan. When real data
+arrives, the learned model may only tighten a cap, never widen it above the profile ceiling.
+
+`scripts/synthetic.ts` generates the deterministic demo cohort and
+`data/demo/planmytrip.db`; `scripts/train-model.ts` writes `lib/model/model.json` and
+`docs/MODEL_CARD.md`. The operational database is `data/planmytrip.db` and is gitignored.
+See `docs/ML.md` for the full contract, schema, metrics, consent rules, and scale-up ladder.
 
 ### Biological pacing engine
 
@@ -291,6 +353,19 @@ control outside `components/ui` and carries a `design-guard-ignore` comment.
 - **Map without photography:** Leaflet renders grayscale OSM tiles and numbered, token-coloured
   markers. There are no stock images, flags, or decorative illustrations. Tile and geocode
   providers are licence dependencies, not app assets.
+- **SQLite, not Postgres:** Node 26 ships `node:sqlite`, so capture needs no native dependency
+  and no server. The operational file is `data/planmytrip.db` (gitignored); a synthetic demo
+  is committed at `data/demo/planmytrip.db` for inspection.
+- **Computed dose, not self-report:** the concierge's `stepEstimate` is an agent claim. Every
+  training row is computed from block kind, duration, exertion, and verified hike elevation,
+  so live and fallback plans yield comparable doses. An empty day is unsafe, not zero.
+- **Calibration, not a new predictor:** the engine's modeled risk is the prior log-odds; the
+  model learns the residual. A zero-coefficient artifact is exactly the engine, and a
+  synthetic artifact can never drive a live plan.
+- **Consent before data:** capture is opt-in on the health step; the only id is a random
+  localStorage install id; an unanswered follow-up is not a negative label.
+- **Scripts with `tsx`:** `tsx` is a dev dependency for the synthetic and training CLIs. It
+  resolves TypeScript and path aliases without a build step.
 - **Primitive-only UI:** compose `components/ui`; raw form controls live only there. Button
   `lg` (48px) exists for the onboarding primary action and the workspace build action.
 - **Two screens, one session:** onboarding and workspace are view states, not routes, so a
@@ -398,6 +473,9 @@ fixtures prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.5:1 or b
   pre-existing stability window) live in one `SUN_LIFE_RULES` constant in
   `lib/sunLifeRules.ts`, marked `// VERIFY against current group policy`. The window is
   `null` and unconfirmed. The alert says "Verify with your plan administrator".
+- The calibration model is a planning-aid estimate. Show "Modeled estimate" until a
+  real-data artifact reaches the pooled tier; never present synthetic output as clinical
+  evidence. The model may only tighten a cap, never widen it above the profile ceiling.
 - Never suggest doses or medication changes. Medication information is limited to generic
   and brand names, customs, and carry rules. The concierge prompts forbid telling the traveler
   to take or use a medication; copy refers to the clinician's plan.
@@ -411,7 +489,7 @@ fixtures prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.5:1 or b
 
 ## 9. VERIFY register
 
-Regenerate with `grep -rn "VERIFY:" app lib components`; there are 10 entries.
+Regenerate with `grep -rn "VERIFY:" app lib components`; there are 14 entries.
 
 | File | What to verify |
 | --- | --- |
@@ -425,6 +503,10 @@ Regenerate with `grep -rn "VERIFY:" app lib components`; there are 10 entries.
 | `lib/swarmState.ts` (preview allowlist) | Docs list `*.unikraft.app`; a live production run on 2026-11-21 returned `*.tetra-data.production.tinyfish.io`, so both provider domains are allowlisted. Recheck if TinyFish introduces another host family. |
 | `lib/agent/agentGeocode.ts` (Nominatim) | Public Nominatim allows one request per second and requires an identifying User-Agent. Confirm the production geocoder's licence, quota, and attribution. |
 | `components/TripMap.tsx` (tiles) | Confirm the production tile licence, attribution text, and request volume. Public OSM tiles are not a high-volume production endpoint. |
+| `lib/data/dose.ts` (block exertion) | The block-kind to exertion mapping and hike thresholds (8 km, 350 m, hard/strenuous) are product assumptions, not clinical thresholds. Have a clinician confirm the walking contribution of visits, transit, and care blocks. |
+| `lib/data/dose.ts` (recovery) | Recovery coverage counts only `rest` blocks. Confirm that meals, stay, and unplanned pauses should not count as recovery. |
+| `lib/model/model.json` (artifact) | The committed artifact is trained on synthetic trips. Never use it for a live plan. Replace it only with an artifact whose `source` is `outcomes` and whose tier is `pooled` or `condition`. |
+| `docs/MODEL_CARD.md` (metrics) | Regenerate after every training run; confirm Brier, ECE, AUROC, and the calibration slope match `lib/model/model.json`. |
 
 ## 10. External integrations
 
@@ -506,7 +588,7 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 245 tests.
+`npm test` runs Vitest once in a Node environment. The suite has 286 tests.
 
 - `tests/design-guard.test.ts` and `tests/contrast.test.ts` guard styles and 13 WCAG AA token
   pairs; `tests/smoke.test.ts` covers the five conditions.
@@ -527,6 +609,13 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 - `tests/agent-route.test.ts` runs the whole mock planner route through real SSE: roster, seven
   agent starts, activity, plan_ready, mock flags, map coordinates, planner_done last, and 400s
   for bad bodies. No OpenCode service or model call is made.
+- `lib/data/*.test.ts`, `lib/db/trips.test.ts`, and `lib/model/*.test.ts` cover computed dose,
+  empty and over-cap days, hike exertion, dossier and outcome parsing, isotonic monotonicity,
+  coefficient recovery, grouped folds, tiers, SQLite upserts, outcome scoping, and training
+  export.
+- `tests/agent-capture.test.ts`, `tests/swarm-capture.test.ts`, and `tests/outcome-route.test.ts`
+  run the real mock routes against a temporary SQLite file: consent gating, computed dose,
+  swarm stub creation, explicit label storage, wrong-install 404, and trip-log scoping.
 
 Add pure-function tests beside the module or under `tests/`, named `*.test.ts`; Vitest includes
 `**/*.test.ts`. No component-test libraries. Mock fetch in route and SSE tests; never call the
@@ -562,15 +651,24 @@ exempting lines.
 - The concierge plan is rendered from the current SSE run only. There is no account, payment,
   booking, or rate limiting yet; those are product work beyond this step.
 - Consent and privacy: the destination, condition, medication name, and preferences are sent
-  to the configured OpenCode model provider; place queries go to Nominatim. Add explicit
-  consent, retention, and privacy copy before charging users.
+  to the configured OpenCode model provider; place queries go to Nominatim. Capture is opt-in
+  and the only identity is a random localStorage install id. A retention policy, deletion path,
+  and full privacy review are still required before charging users.
+- The committed `lib/model/model.json` is trained on synthetic trips. No real outcome has
+  contributed a label; never present it as clinical evidence or use it for a live plan.
+- Responder bias and negative-label capture are unproven. A missing follow-up is excluded, not
+  treated as a non-flare; a real pilot must measure who answers and who does not.
+- There is no authentication or rate limiting. SQLite is single-node and fine for a pilot; a
+  production deployment needs a supervised database, backups, and access control.
+- The learned model does not change live caps yet. When it does, it may only tighten inside the
+  engine ceiling; widening requires clinical review.
 - Agent copy is model-generated and varies. The engine caps, over-cap caution, source links,
   "approximate location" label, and fallback route are the guardrails; do not remove them.
 - The user-owned `README.md` is untouched; this guide is the working file. Light theme only;
   tokens allow a dark theme later.
 - The engine invents no venues or geography. The concierge only selects from verified research.
-- Screen state is in memory only: a reload returns to onboarding and ends both streams. There is
-  no route for a shared or saved plan yet.
+- The plan view renders from the current SSE run; the consented dossier is saved, but there is
+  no route to reload or share a saved plan yet.
 - The old rail and `ConstraintSidebar` were removed. The onboarding draft is the only input
   surface; do not reintroduce a permanent sidebar without revisiting the split-screen layout.
 
@@ -579,7 +677,8 @@ exempting lines.
 1. Read this file, then `BUILD_LOG.md`.
 2. Run `git log --oneline`, `git status`, and `git diff`; never discard uncommitted work.
 3. Find the first unchecked step in section 2 and continue there.
-4. Work in dependency order; no scope creep into pages, auth, databases, analytics, or libraries.
+4. Work in dependency order; no scope creep into pages, auth, payments, or analytics. The
+   consented SQLite capture store and the calibration model are in scope for step 11.
 5. Run the full gate; update this file in the same commit as any change it describes.
 6. Commit the exact message, push to `origin`, append to `BUILD_LOG.md`, and set its "Next action".
 7. Stuck: three attempts, then change approach once, then log the error under Blockers. Never loop.

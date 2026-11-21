@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "data:synthetic": "tsx scripts/synthetic.ts",
+    "model:train": "tsx scripts/train-model.ts",
+    "model:demo": "npm run data:synthetic && npm run model:train"
   },
   "dependencies": {
     "@fontsource-variable/hanken-grotesk": "^5.3.0",
@@ -30,6 +33,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
     "tailwindcss": "4.3.3",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^4.1.12"
   }

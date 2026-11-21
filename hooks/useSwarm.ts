@@ -32,6 +32,12 @@ export interface UseSwarmInput {
   condition: Condition;
   /** Medication name; workers never report doses. */
   medication: string;
+  /** Opaque browser run id shared with the planner capture. */
+  runId: string;
+  /** Anonymous install id. */
+  installId: string;
+  /** Explicit opt-in for saving verification findings. */
+  captureConsent: boolean;
   /** 0 before the first Deploy; each Deploy increments it. */
   runToken: number;
 }
@@ -44,6 +50,12 @@ export interface SwarmRunInput {
   condition: Condition;
   /** Trimmed medication name; never a dose. */
   medication: string;
+  /** Opaque run id shared with the capture row. */
+  runId: string;
+  /** Anonymous install id. */
+  installId: string;
+  /** Explicit capture opt-in. */
+  captureConsent: boolean;
 }
 
 /** Stored snapshot plus the Deploy token it belongs to, for display gating. */
@@ -69,6 +81,9 @@ export function useSwarm({
   destination,
   condition,
   medication,
+  runId,
+  installId,
+  captureConsent,
   runToken,
 }: UseSwarmInput): UseSwarmResult {
   const [state, dispatch] = useReducer(swarmReducer, createSwarmState());
@@ -111,6 +126,9 @@ export function useSwarm({
         destination: input.destination,
         condition: input.condition,
         medication: input.medication,
+        runId: input.runId,
+        installId: input.installId,
+        captureConsent: input.captureConsent,
         workers,
         requestId,
         latestRequest: latestRequestRef.current,
@@ -147,6 +165,9 @@ export function useSwarm({
           destination: destination.trim(),
           condition,
           medication: medication.trim(),
+          runId,
+          installId,
+          captureConsent,
         };
         runInputRef.current = snapshot;
         setStoredInput(snapshot);
@@ -163,7 +184,17 @@ export function useSwarm({
         startedTokenRef.current = 0;
       }, 0);
     };
-  }, [abortAll, condition, destination, medication, runToken, startWorkers]);
+  }, [
+    abortAll,
+    captureConsent,
+    condition,
+    destination,
+    installId,
+    medication,
+    runId,
+    runToken,
+    startWorkers,
+  ]);
 
   const retry = useCallback(
     (worker: WorkerId): void => {
@@ -187,6 +218,9 @@ export function useSwarm({
           destination: storedInput.destination,
           condition: storedInput.condition,
           medication: storedInput.medication,
+          runId: storedInput.runId,
+          installId: storedInput.installId,
+          captureConsent: storedInput.captureConsent,
         }
       : null;
 

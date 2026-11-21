@@ -32,6 +32,19 @@
   capped at ten places, and labelled approximate. Leaflet renders grayscale OSM tiles with
   numbered, category-shaped markers and a text key. Both providers are licence dependencies
   recorded in the VERIFY register.
+- **SQLite, not Postgres:** Node 26 ships `node:sqlite`, so the capture store needs no native
+  dependency and no server. The operational file is `data/planmytrip.db` (gitignored); a small
+  synthetic demo is committed at `data/demo/planmytrip.db` for inspection.
+- **Computed dose, not self-report:** the concierge's `stepEstimate` is an agent claim. The
+  training row is computed from block kind, duration, exertion, and verified hike elevation, so
+  live and fallback plans yield comparable doses. An empty day is unsafe, not zero.
+- **Calibration, not a new predictor:** the engine's modeled risk is the prior log-odds; the
+  model learns the residual. A zero-coefficient artifact is exactly the engine, and a synthetic
+  artifact can never drive a live plan.
+- **Consent before data:** capture is opt-in on the health step; the only id is a random
+  localStorage install id; an unanswered follow-up is not a negative label.
+- **Scripts with `tsx`:** `tsx` is a dev dependency for the synthetic and training CLIs. It
+  resolves TypeScript and path aliases without a build step.
 
 ## Blockers
 
@@ -253,9 +266,41 @@ None.
 - Unverified: live 7-of-7 agent run with the hardened parser and geocode fallback; production
   deployment of the new screens.
 
+### Step 11: ML data loop and calibrated flare model
+
+- Added the versioned data contract (`lib/data/types.ts`), a single dose model for engine and
+  concierge plans (`lib/data/dose.ts`), the dossier builder (`lib/data/tripDossier.ts`), bounded
+  id validation, and server-side capture orchestration. The concierge's `stepEstimate` is kept
+  only as an agent estimate; every training row uses the computed block dose.
+- Added SQLite storage with Node's built-in `node:sqlite` (no native dependency):
+  `trip_captures` for dossiers and labels, `model_runs` for artifacts. The planner route writes
+  on `plan_ready`; the swarm route writes on `swarm_done`; `POST /api/trips/outcome` records the
+  explicit label; `GET /api/trips` lists one install's trips. Capture requires opt-in consent
+  plus run and install ids; mock runs require `PLANMYTRIP_CAPTURE_MOCK=1`.
+- Added the residual calibration model: engine score as the prior offset, penalized logistic
+  regression with Laplace covariance, isotonic PAVA calibration, grouped-by-traveler folds,
+  Brier/log-loss/ECE/AUROC/slope metrics, evidence tiers, and a model page at `/model`. A
+  synthetic artifact is labelled synthetic and is never used for a live plan.
+- Added a deterministic synthetic cohort (`scripts/synthetic.ts`, 900 trips, 21.7% flares) and
+  the training CLI (`scripts/train-model.ts`). The committed demo database is
+  `data/demo/planmytrip.db`; the operational database is gitignored and defaults to
+  `data/planmytrip.db`. The cohort JSONL is committed for reproducibility.
+- Added the onboarding consent checkbox, a random localStorage install id, and the post-trip
+  outcome panel on the Plan tab. No accounts, cookies, email, or free text are stored.
+- Tests: 41 new (286 total). Dose and empty-day invariants, dossier and outcome parsing,
+  isotonic monotonicity, IRLS coefficient recovery, grouped training and tiers, SQLite
+  upsert/outcome/export, outcome and trip-log routes, planner capture, swarm capture, and the
+  updated request contract.
+- Synthetic artifact metrics: Brier 0.1600 vs engine 0.1674, ECE 0.0121, AUROC 0.6620,
+  calibration slope 0.9550. The point is calibration and pipeline, not a headline AUC.
+- Gate: typecheck, 286 tests, lint, production build pass. No live model or real outcome has
+  been exercised; the demo cohort is synthetic.
+- Unverified: real trip labels, responder-bias correction, privacy review, production
+  Postgres/rate limiting, and any live use of a learned cap.
+
 ## Next action
 
-Run a full 7-of-7 live concierge pass with the hardened JSON parser and geocode fallback;
-confirm stay, transit, and care parse, a geocoded marker appears, and the map renders. Then run
-the full three-worker TinyFish pass and confirm the live iframe preview and clipboard behavior.
-The clinical thresholds and Sun Life stability window remain VERIFY.
+Run the first consented pilot cohort and replace the synthetic artifact with real outcomes.
+Add condition intercepts after 50 labeled trips per condition, then test cap tightening inside
+the engine ceiling. In parallel, run the full 7-of-7 live concierge pass and the full three-worker
+TinyFish pass. The clinical thresholds and Sun Life stability window remain VERIFY.

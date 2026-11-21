@@ -10,6 +10,7 @@ import {
   BUDGET_LABELS,
   type PlannerAgentId,
 } from "@/lib/agent/agentTypes";
+import type { TripCaptureContext } from "@/lib/data/types";
 import type { PlannerAgentState } from "@/lib/agent/plannerReducer";
 import { CONDITION_LABELS } from "@/lib/types";
 
@@ -18,6 +19,7 @@ export interface PlanPanelProps {
   state: PlannerState;
   runInput: AgentPlanRunInput | null;
   visible: boolean;
+  capture: TripCaptureContext;
   onRetry: () => void;
 }
 
@@ -45,6 +47,7 @@ export function PlanPanel({
   state,
   runInput,
   visible,
+  capture,
   onRetry,
 }: PlanPanelProps) {
   const mockNote = state.mock ? (
@@ -59,7 +62,7 @@ export function PlanPanel({
     return (
       <div>
         {mockNote}
-        <AgentPlanView plan={state.plan} visible={visible} />
+        <AgentPlanView plan={state.plan} visible={visible} capture={capture} />
       </div>
     );
   }

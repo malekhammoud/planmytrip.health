@@ -40,3 +40,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local trip database; the committed synthetic demo lives in data/demo
+/data/*.db
+/data/*.db-wal
+/data/*.db-shm
+/data/demo/*.db-wal
+/data/demo/*.db-shm

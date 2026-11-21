@@ -10,6 +10,7 @@
  */
 
 import { isCondition, type Condition } from "@/lib/types";
+import { parseInstallId, parseRunId } from "@/lib/data/validation";
 
 /** The three research workers, in stable display order. */
 export const WORKER_IDS = ["advisory", "pharmacy", "coverage"] as const;
@@ -28,6 +29,12 @@ export interface SwarmRequestBody {
   condition: Condition;
   medication: string;
   workers?: WorkerId[];
+  /** Opaque browser run id shared with the planner capture. */
+  runId?: string;
+  /** Anonymous install id. */
+  installId?: string;
+  /** Explicit opt-in for saving verification findings. */
+  captureConsent?: boolean;
 }
 
 /**
@@ -40,6 +47,13 @@ export function isSwarmRequestBody(value: unknown): value is SwarmRequestBody {
   if (typeof body.destination !== "string" || body.destination.trim() === "") return false;
   if (!isCondition(body.condition)) return false;
   if (typeof body.medication !== "string") return false;
+  if (body.runId !== undefined && parseRunId(body.runId) === null) return false;
+  if (body.installId !== undefined && parseInstallId(body.installId) === null) {
+    return false;
+  }
+  if (body.captureConsent !== undefined && typeof body.captureConsent !== "boolean") {
+    return false;
+  }
   if (body.workers === undefined) return true;
   return (
     Array.isArray(body.workers) &&

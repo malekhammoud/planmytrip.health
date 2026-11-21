@@ -11,6 +11,8 @@
  */
 
 import { KEEP_ALIVE_MS, runSwarm, type SwarmRunContext } from "@/lib/swarmRunner";
+import { captureSwarmFindings } from "@/lib/data/capture";
+import type { WorkerFindingSummary } from "@/lib/data/types";
 import {
   encodeSwarmEvent,
   isSwarmRequestBody,
@@ -50,6 +52,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const workers = resolveWorkers(body.workers);
+  const runBody = body;
   const input: SwarmRunContext["input"] = {
     destination: body.destination.trim(),
     condition: body.condition,
@@ -63,6 +66,7 @@ export async function POST(request: Request): Promise<Response> {
   let closed = false;
   let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null;
   let keepAlive: ReturnType<typeof setInterval> | null = null;
+  const findings: WorkerFindingSummary[] = [];
 
   const stopKeepAlive = (): void => {
     if (keepAlive !== null) {
@@ -72,6 +76,35 @@ export async function POST(request: Request): Promise<Response> {
   };
 
   const emit = (event: SwarmEvent): void => {
+    if (event.event === "worker_complete") {
+      findings.push({
+        worker: event.data.worker,
+        ok: true,
+        sourceUrl: event.data.sourceUrl,
+        retrievedAt: event.data.retrievedAt,
+        summary: JSON.stringify(event.data.findings).slice(0, 800),
+      });
+    }
+    if (event.event === "worker_error") {
+      findings.push({
+        worker: event.data.worker,
+        ok: false,
+        sourceUrl: null,
+        retrievedAt: null,
+        summary: event.data.message.slice(0, 400),
+      });
+    }
+    if (event.event === "swarm_done" && (!mock || process.env.PLANMYTRIP_CAPTURE_MOCK === "1")) {
+      try {
+        captureSwarmFindings({
+          request: runBody,
+          findings,
+          now: event.data.ts,
+        });
+      } catch {
+        // Capture is best-effort; the verification stream must still close cleanly.
+      }
+    }
     if (closed || controllerRef === null || abort.signal.aborted) return;
     try {
       controllerRef.enqueue(encoder.encode(encodeSwarmEvent(event)));

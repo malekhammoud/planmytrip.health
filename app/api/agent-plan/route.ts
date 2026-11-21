@@ -10,6 +10,8 @@
 
 import { runPlanner } from "@/lib/agent/agentRunner";
 import { parsePlannerRequest } from "@/lib/agent/agentRequest";
+import { capturePlannerRun } from "@/lib/data/capture";
+import type { AgentResultSummary } from "@/lib/data/types";
 import {
   encodePlannerEvent,
   PLANNER_AGENT_IDS,
@@ -57,6 +59,7 @@ export async function POST(request: Request): Promise<Response> {
   let closed = false;
   let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null;
   let keepAlive: ReturnType<typeof setInterval> | null = null;
+  const research: AgentResultSummary[] = [];
 
   const stopKeepAlive = (): void => {
     if (keepAlive !== null) {
@@ -66,6 +69,25 @@ export async function POST(request: Request): Promise<Response> {
   };
 
   const emit = (event: PlannerEvent): void => {
+    if (event.event === "agent_result" && event.data.agentId !== "concierge") {
+      research.push({
+        agentId: event.data.agentId,
+        ok: event.data.ok,
+        summary: event.data.summary.slice(0, 400),
+      });
+    }
+    if (event.event === "plan_ready") {
+      try {
+        capturePlannerRun({
+          request: plannerRequest,
+          plan: event.data.plan,
+          research,
+          now: event.data.ts,
+        });
+      } catch {
+        // Capture is best-effort; the live plan must still render.
+      }
+    }
     if (closed || controllerRef === null || abort.signal.aborted) return;
     try {
       controllerRef.enqueue(encoder.encode(encodePlannerEvent(event)));

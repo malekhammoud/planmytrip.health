@@ -1,0 +1,257 @@
+/**
+ * Trains the calibration artifact from a labeled JSONL cohort.
+ *
+ * Inputs: --input, --out, --card, --db, --folds, --features.
+ * Outputs: lib/model/model.json, docs/MODEL_CARD.md, and a model_runs row.
+ * Invariants: the data hash is recorded; a synthetic artifact is labelled synthetic; the
+ * script refuses to train on fewer than 20 rows or a single class.
+ */
+
+import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { isCondition } from "../lib/types";
+import type { TrainingRow, TripFeatures } from "../lib/data/types";
+import { ENGINE_VERSION } from "../lib/data/types";
+import { closeDatabase } from "../lib/db/sqlite";
+import { recordModelRun } from "../lib/db/trips";
+import { trainModel } from "../lib/model/train";
+import {
+  V0_FEATURES,
+  V1_FEATURES,
+  type FeatureName,
+  type ModelArtifact,
+} from "../lib/model/types";
+
+function option(name: string, fallback: string): string {
+  const index = process.argv.indexOf(name);
+  if (index < 0) return fallback;
+  return process.argv[index + 1] ?? fallback;
+}
+
+function integerOption(name: string, fallback: number): number {
+  const value = Number.parseInt(option(name, String(fallback)), 10);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function features(value: unknown): TripFeatures | null {
+  if (!isRecord(value)) return null;
+  const numbers = ["peakExposure", "recoveryCoverage", "tripLength"] as const;
+  for (const key of numbers) {
+    if (typeof value[key] !== "number" || !Number.isFinite(value[key])) return null;
+  }
+  return value as unknown as TripFeatures;
+}
+
+function parseRow(value: unknown): TrainingRow | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.runId !== "string" || typeof value.userId !== "string") return null;
+  if (!isCondition(value.condition)) return null;
+  if (typeof value.offset !== "number" || !Number.isFinite(value.offset)) return null;
+  if (value.label !== 0 && value.label !== 1) return null;
+  if (typeof value.days !== "number" || !Number.isFinite(value.days)) return null;
+  const parsedFeatures = features(value.features);
+  if (parsedFeatures === null) return null;
+  return {
+    runId: value.runId,
+    userId: value.userId,
+    condition: value.condition,
+    features: parsedFeatures,
+    offset: value.offset,
+    label: value.label,
+    days: value.days,
+  };
+}
+
+function percent(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function number(value: number, digits = 3): string {
+  return value.toFixed(digits);
+}
+
+function coefficient(artifact: ModelArtifact, name: string): number {
+  if (name === "intercept") return artifact.coefficients.intercept;
+  return artifact.coefficients[name as FeatureName] ?? 0;
+}
+
+function modelCard(artifact: ModelArtifact): string {
+  const coefficientRows = ["intercept", ...artifact.featureNames]
+    .map((name) => `| \`${name}\` | ${number(coefficient(artifact, name))} |`)
+    .join("\n");
+  const conditionRows = Object.entries(artifact.training.byCondition)
+    .map(([condition, counts]) => `| ${condition} | ${counts.n} | ${counts.events} |`)
+    .join("\n");
+  const calibrationStep = Math.max(
+    1,
+    Math.ceil(artifact.calibration.length / 10),
+  );
+  const calibrationRows = artifact.calibration
+    .filter(
+      (_, index) =>
+        index === 0 ||
+        index === artifact.calibration.length - 1 ||
+        index % calibrationStep === 0,
+    )
+    .map((point) => `| ${number(point.x)} | ${number(point.y)} |`)
+    .join("\n");
+  return `# Model card: flare calibration
+
+- **Version:** \`${artifact.modelVersion}\`
+- **Trained:** ${artifact.trainedAt}
+- **Source:** ${artifact.source}
+- **Engine version:** ${artifact.engineVersion}
+- **Data hash:** \`${artifact.training.dataHash}\`
+
+## What this is
+
+A calibration layer on top of the deterministic pacing engine. It estimates the
+probability that a traveler reports a flare during the trip or within seven days after.
+The engine's modeled risk is the prior log-odds; the model learns the residual.
+
+**This artifact was trained on synthetic trips. It is a pipeline demonstration, not
+clinical evidence, and it is never used to change a live safety cap.**
+
+## Intended use
+
+- Validate the training, calibration, and evaluation pipeline.
+- Show how coefficients and reliability change as labeled trips arrive.
+- Provide an auditable artifact for a future real-data retrain.
+
+## Not intended for
+
+- Diagnosis, treatment, medication changes, or individual medical advice.
+- Clinical validation claims.
+- Relaxing an engine cap. The learned model may only tighten, never widen, the
+  deterministic envelope; in this build it does not change caps at all.
+
+## Data
+
+| Item | Value |
+| --- | --- |
+| Labeled trips | ${artifact.training.n} |
+| Flares | ${artifact.training.events} (${percent(artifact.training.events / Math.max(1, artifact.training.n))}) |
+| Mean engine offset | ${number(artifact.training.meanOffset)} |
+
+| Condition | Trips | Flares |
+| --- | --- | --- |
+${conditionRows}
+
+## Features and coefficients
+
+Features are standardized with the stored mean and standard deviation. A coefficient is
+the change in log-odds for one standard deviation, holding the engine offset fixed.
+
+| Feature | Coefficient |
+| --- | --- |
+${coefficientRows}
+
+## Out-of-fold performance
+
+| Metric | Value |
+| --- | --- |
+| Brier score | ${number(artifact.metrics.brier, 4)} |
+| Engine-only Brier | ${number(artifact.metrics.baselineBrier, 4)} |
+| Log loss | ${number(artifact.metrics.logLoss, 4)} |
+| Expected calibration error | ${number(artifact.metrics.ece, 4)} |
+| AUROC | ${number(artifact.metrics.auroc, 4)} |
+| Calibration slope | ${number(artifact.metrics.calibrationSlope, 4)} |
+
+Folds are grouped by \`userId\`, so one synthetic traveler never appears in both training
+and validation. The isotonic map is fit on the out-of-fold predictions, so the reported
+Brier score is slightly optimistic.
+
+## Isotonic calibration
+
+| Raw probability | Calibrated probability |
+| --- | --- |
+${calibrationRows}
+
+The map is flat at zero below the lowest observed event rate, then rises with the
+predicted probability. A calibrated zero means the synthetic cohort produced no flares
+in that band, not that a real trip is impossible.
+
+## Limitations
+
+- Synthetic dose-response, synthetic adherence, and synthetic outcomes.
+- No real trip has contributed a label.
+- Self-reported flares are noisy; a real cohort needs explicit negatives and a
+  responder-bias check.
+- Coefficients are predictive, not causal.
+- The model is pooled across conditions in v0. Condition intercepts wait for at least
+  50 labeled trips per condition.
+- Recalibrate after any engine version change.
+
+## Retraining
+
+\`\`\`bash
+npm run data:synthetic
+npm run model:train
+\`\`\`
+
+Real outcomes export from SQLite with \`exportTrainingRows()\` in \`lib/db/trips.ts\`.
+The artifact is versioned; a new engine version requires a new artifact.
+`;
+}
+
+function main(): void {
+  const input = resolve(option("--input", "data/synthetic-trips.jsonl"));
+  const output = resolve(option("--out", "lib/model/model.json"));
+  const card = resolve(option("--card", "docs/MODEL_CARD.md"));
+  const db = resolve(option("--db", "data/demo/planmytrip.db"));
+  const folds = integerOption("--folds", 5);
+  const featureSet = option("--features", "v0");
+  const featureNames: FeatureName[] =
+    featureSet === "v1" ? [...V1_FEATURES] : [...V0_FEATURES];
+
+  const raw = readFileSync(input, "utf8");
+  const rows = raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .flatMap((line) => {
+      try {
+        const parsed = parseRow(JSON.parse(line));
+        return parsed === null ? [] : [parsed];
+      } catch {
+        return [];
+      }
+    });
+  if (rows.length === 0) throw new Error(`no valid training rows in ${input}`);
+
+  const dataHash = createHash("sha256").update(raw).digest("hex");
+  const artifact = trainModel(rows, {
+    featureNames,
+    folds,
+    source: "synthetic",
+    modelVersion: `synthetic-${dataHash.slice(0, 8)}`,
+    trainedAt: new Date().toISOString(),
+    engineVersion: ENGINE_VERSION,
+    dataHash,
+  });
+
+  mkdirSync(dirname(output), { recursive: true });
+  writeFileSync(output, `${JSON.stringify(artifact, null, 2)}\n`);
+  mkdirSync(dirname(card), { recursive: true });
+  writeFileSync(card, modelCard(artifact));
+
+  process.env.PLANMYTRIP_DB_PATH = db;
+  recordModelRun(artifact);
+  closeDatabase();
+
+  console.log(`model: ${artifact.modelVersion}`);
+  console.log(`rows: ${artifact.training.n} events: ${artifact.training.events}`);
+  console.log(
+    `brier: ${number(artifact.metrics.brier, 4)} (engine ${number(artifact.metrics.baselineBrier, 4)})`,
+  );
+  console.log(`ece: ${number(artifact.metrics.ece, 4)} auroc: ${number(artifact.metrics.auroc, 4)}`);
+  console.log(`wrote: ${output}`);
+  console.log(`card: ${card}`);
+}
+
+main();
