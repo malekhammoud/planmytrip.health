@@ -52,6 +52,8 @@ and this file agree at that commit. Only the orchestrator commits.
 | 18. Animated plan changes | [x] | `feat(ui): animate plan changes and live adjustments` |
 | 19. Mission control docs | [x] | `docs(agents): document live mission control and telemetry` |
 | 20. Production readiness and nested calibration | [x] | `fix(ml): harden calibration and capture integrity` |
+| 21. Transport-aware route and Maps handoff | [x] | `feat(route): add transport-aware route optimization and Google Maps handoff` |
+| 22. Paper and Ink pitch deck | [x] | `feat(pitch): add Paper and Ink pitch deck at /pitch` |
 
 ## 3. Commands
 
@@ -121,21 +123,23 @@ app/  globals.css, layout.tsx, page.tsx, model/page.tsx, mock-browser/[worker]/,
 lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditionProfiles.ts, sunLifeRules.ts, healthScore.ts, itineraryBuilder.ts
       swarm: swarmTypes.ts (wire contracts), swarmConfig.ts, swarmState.ts, swarmReducer.ts, swarmRunner.ts, swarmGoals.ts, swarmMock.ts, swarmTelemetry.ts, swarmErrors.ts, sse.ts, tinyfish.ts, tinyfishEvents.ts
       agent: agentTypes.ts (wire contracts), agentRequest.ts, agentProfiles.ts, agentPrompts.ts, agentConfig.ts, agentClient.ts, agentWarmup.ts, agentRunner.ts, agentSession.ts, agentParse.ts, agentPlanParse.ts, agentFallback.ts, agentGeocode.ts, agentEvents.ts, agentMock.ts, plannerReducer.ts
+      route: routeTypes.ts (wire contracts), geometry.ts, legs.ts, optimizer.ts, routeStops.ts, routeDay.ts, routePlan.ts, mapsLink.ts
       data: types.ts (versioned contract), dose.ts, tripDossier.ts, capture.ts, validation.ts
       db: postgres.ts (pg pool + schema), trips.ts (async repository)
       model: types.ts, math.ts, features.ts, logistic.ts, calibration.ts, train.ts, predict.ts, artifact.ts, model.json
       output: describeTrip.ts, pacingStrip.ts, careCard.ts, planMotion.ts
       verification: verificationOverlay.ts
+      route: routeTypes.ts (wire contracts), geometry.ts, legs.ts, optimizer.ts, routeStops.ts, routeDay.ts, routePlan.ts, mapsLink.ts
 hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, swarmBatch.ts, useNow.ts, useReducedMotion.ts, usePhaseAnnouncement.ts, usePlanMotion.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
-components/  Onboarding.tsx, PlanWorkspace.tsx, MissionBand.tsx, PlanPanel.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, VerificationAdjustments.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
+components/  Onboarding.tsx, PlanWorkspace.tsx, MissionBand.tsx, PlanPanel.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, RoutePanel.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, VerificationAdjustments.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
 components/mission/  MissionControl.tsx, StatusBar.tsx, FocusView.tsx, WorkerTile.tsx, ActivityFeed.tsx, TempoStrip.tsx, SourcesList.tsx, FindingsReveal.tsx, PreRun.tsx, ConnectionStatus.tsx, Elapsed.tsx, missionMeta.ts
-components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Field.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
+components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Field.tsx, LinkButton.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
 public/pitch/  index.html, deck.css, deck.js, basil.jpg, fonts/
 scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts
 data/  synthetic-trips.jsonl
-docs/  ML.md, MODEL_CARD.md, PITCH.md
+docs/  ML.md, MODEL_CARD.md, PITCH.md, ROUTE.md
 tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, model-artifact.test.ts, data-loop.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
-module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, planMotion.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmTypes.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: artifact.test.ts, calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts
+module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, planMotion.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmTypes.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/route/: geometry.test.ts, legs.test.ts, optimizer.test.ts, routePlan.test.ts, mapsLink.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: artifact.test.ts, calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts
 root  package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, instrumentation.ts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
 ```
 
@@ -147,7 +151,8 @@ events flow through `plannerFrames`/`plannerReducer` into the mission band, seve
 planning signal, route stage, and map; TinyFish events flow through
 `useSwarm`/`swarmReducer` into live verification. The engine plan feeds the safety envelope
 and supplies every concierge day with its step and walking ceiling. The engine and the safety
-envelope render independently of both agent teams.
+envelope render independently of both agent teams. The finished plan is also projected into a
+travel route in `AgentPlanView`; the route is derived from the plan and never writes back.
 
 The page also owns a random install id and a per-run id; both agent POSTs carry them. On
 `plan_ready` the planner route rebuilds the engine plan server-side and writes a consented
@@ -211,6 +216,27 @@ route skeleton instead of an empty box. Every surface stays mounted for the whol
 streams continue while the reader scrolls. `AgentPlanView` labels every day with agent estimate,
 modeled ceiling, recovery minutes, and the engine checkpoint; a day above its ceiling shows a
 caution and the safety limit wins.
+
+### Travel route and Maps handoff
+
+`lib/route/` turns the finished plan into an ordered route. The transport question sits on
+onboarding step 01 (`walk`, `transit`, `car`, or `mixed`) beside an optional free-text origin;
+both travel in `PlannerRequest` and the planner prompt. The route is a pure projection computed
+in `AgentPlanView` with `useMemo`, so it never changes the plan, the computed dose, or the
+captured dossier.
+
+Each day's place-bearing blocks become stops; a place needs both coordinates. Meals and stay
+check-ins are pinned to their slots, and the day's own base is not repeated as a stop. The
+remaining stops are ordered by nearest neighbour from the base, then 2-opt, then Or-opt, with
+strict-improvement and deterministic tie-breaks (`lib/route/optimizer.ts`). Each leg resolves
+to walk, transit, or car from the chosen transport; a demanding day (a hike, or 70% of its
+walking ceiling) avoids walking above 0.6 km when the mode allows. Totals, over-cap cautions,
+and adjacent demanding-day cautions come from the legs, never from the agent's step estimate.
+
+`RoutePanel` builds one Google Maps URL per day (base to stops and back, at most nine
+waypoints) plus an arrival link from the origin to the base coordinates. `travelmode` is the
+day's dominant leg mode. Links open in a new tab and the copy says the stops are sent to
+Google. `docs/ROUTE.md` records the algorithm, complexity, and limits.
 
 ### Data loop and calibration model
 
@@ -531,6 +557,11 @@ and vanilla JavaScript; do not rebuild it in React.
   reset the page and streams on a new build.
 - **One page keeps streams alive:** every live surface is mounted for the whole workspace.
   Do not bring back conditional tab panels or unmount verification while the plan forms.
+- **Route is derived, not re-planned:** `lib/route/` projects the finished plan into an order
+  and a Maps link. It may reorder stops inside a day and pin meals, but it never moves a place
+  to another day, so the plan, the dose, and the dossier stay identical. Transport changes
+  movement and time, never a condition ceiling. Cross-day rebalancing needs its own
+  capture-aware step.
 - **Warm at server start:** `instrumentation.ts` starts the memoized OpenCode runtime warmup so
   the first trip does not pay service, workspace, and agent-registration latency. A failed
   warmup is never cached and never blocks readiness.
@@ -672,7 +703,7 @@ allowed fixtures prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.
 
 ## 9. VERIFY register
 
-Regenerate with `grep -rn "VERIFY:" app lib components`; there are 19 entries.
+Regenerate with `grep -rn "VERIFY:" app lib components`; there are 21 entries.
 
 | File | What to verify |
 | --- | --- |
@@ -693,6 +724,8 @@ Regenerate with `grep -rn "VERIFY:" app lib components`; there are 19 entries.
 | `components/TripMap.tsx` (tiles) | Confirm the production tile licence, attribution text, and request volume. Public OSM tiles are not a high-volume production endpoint. |
 | `lib/data/dose.ts` (block exertion) | The block-kind to exertion mapping and hike thresholds (8 km, 350 m, hard/strenuous) are product assumptions, not clinical thresholds. Have a clinician confirm the walking contribution of visits, transit, and care blocks. |
 | `lib/data/dose.ts` (recovery) | Recovery coverage counts only `rest` blocks. Confirm that meals, stay, and unplanned pauses should not count as recovery. |
+| `lib/route/legs.ts` (speeds) | 4.5 km/h walking, 18 km/h urban transit, 32 km/h driving, and the access and parking overheads are product assumptions. Confirm them for the destinations this product serves. |
+| `lib/route/mapsLink.ts` (Maps URLs) | Nine waypoints and the `walking`/`transit`/`driving` values against Google's Maps URLs reference; confirm the terms permit this deep-link handoff. |
 | `lib/model/model.json` (artifact) | The committed artifact is trained on synthetic trips. Never use it for a live plan. Replace it only with an artifact whose `source` is `outcomes` and whose tier is `pooled` or `condition`. |
 | `docs/MODEL_CARD.md` (metrics) | Regenerate after every training run; confirm Brier, ECE, AUROC, and the calibration slope match `lib/model/model.json`. |
 
@@ -791,7 +824,8 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 340 tests.
+`npm test` runs Vitest once in a Node environment. The suite has 466 tests. Database-backed
+files skip when `DATABASE_URL` is absent.
 
 - `tests/design-guard.test.ts` and `tests/contrast.test.ts` guard styles and 13 WCAG AA token
   pairs; `tests/smoke.test.ts` covers the five conditions.
@@ -816,6 +850,9 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
   geocoding, planner reducer transitions and phase messages, and the warmup memo and retry.
   `hooks/plannerFrames.test.ts` covers the SSE frame guard. `tests/instrumentation.test.ts`
   proves the warmup starts only on the Node runtime and never during a production build.
+- `lib/route/*.test.ts` covers great-circle distance, per-mode leg choice, the deterministic
+  nearest-neighbour, 2-opt, and Or-opt pipeline, pinned meals, base skipping, walking caps,
+  adjacent demanding days, waypoint truncation, and the exact Maps URL shape.
 - `tests/agent-route.test.ts` runs the whole mock planner route through real SSE: roster, seven
   agent starts, immediate phase messages, activity, plan_ready, mock flags, map coordinates,
   planner_done last, and 400s for bad bodies. No OpenCode service or model call is made.
@@ -914,6 +951,17 @@ exempting lines.
   that depends on real labels.
 - The old rail and `ConstraintSidebar` were removed. The onboarding draft is the only input
   surface; do not reintroduce a permanent sidebar without revisiting the split-screen layout.
+- Route times are modeled from assumed speeds, not live transit schedules, traffic, elevation,
+  or opening hours. The Google Maps link is where the reader sees real times.
+- The Maps handoff sends at most nine waypoints per day. A longer day links its first nine
+  stops and shows a caution.
+- Cross-day pacing rebalancing is not implemented. The concierge prompt forbids two demanding
+  days in a row, the route removes avoidable walking on a demanding day, and the panel raises a
+  caution when the pattern still appears.
+- Transport and origin are not stored in the trip dossier. The route is recomputed from the
+  plan on each render, so the dose loop is unaffected.
+- A trip with several hotels anchors each day at the stay its own blocks reference, then at the
+  first mapped stay. Luggage transfer between hotels is not modeled.
 
 ## 13. How to work here
 

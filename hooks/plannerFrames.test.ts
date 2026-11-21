@@ -11,6 +11,8 @@ import type { PlannerRequest } from "@/lib/agent/agentTypes";
 
 const request: PlannerRequest = {
   destination: "Tokyo, Japan",
+  origin: "",
+  transport: "mixed",
   days: 4,
   condition: "asthma_respiratory",
   medication: "albuterol",

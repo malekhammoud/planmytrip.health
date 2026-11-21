@@ -5,6 +5,8 @@ import type { PlannerCapInput, PlannerRequest, SpecialistAgentId } from "./agent
 
 const request: PlannerRequest = {
   destination: "Lisbon, Portugal",
+  origin: "",
+  transport: "mixed",
   days: 4,
   condition: "chronic_fatigue_pots",
   medication: "fludrocortisone",

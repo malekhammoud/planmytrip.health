@@ -145,6 +145,7 @@ function asPlanBlock(value: unknown, lookup: PlaceLookup): PlannerDayBlock {
   const place =
     (placeName === null ? null : lookup.byName.get(placeKey(placeName)) ?? null) ??
     (placeId === null ? null : lookup.byId.get(placeId) ?? null);
+
   return {
     time: asText(record.time, 40) ?? "",
     kind: asBlockKind(record.kind),
@@ -165,6 +166,7 @@ function asPlanDay(
   index: number,
   caps: readonly PlannerCapInput[],
   lookup: PlaceLookup,
+
 ): PlannerDay {
   const record = isRecord(value) ? value : {};
   const day = dayNumberOf(record, index + 1);
@@ -281,6 +283,7 @@ export function buildConciergePlan(
   const places = drafts.map((draft, index) => finalizePlace(draft, index, null));
   const placeByKey = new Map(places.map((place) => [placeKey(place.name), place]));
   const lookup: PlaceLookup = {
+
     byName: placeByKey,
     byId: new Map(places.map((place) => [place.id, place])),
   };
@@ -293,6 +296,7 @@ export function buildConciergePlan(
   for (let index = 0; index < request.days; index += 1) {
     const raw = rawDays[index];
     built.push(asPlanDay(raw, index, caps, lookup));
+
   }
   // The agent estimate is display copy. The computed dose is the safety check: a long
   // block can exceed the engine ceiling even when the estimate looks low.
@@ -333,6 +337,7 @@ export function normalizeWirePlan(value: unknown): AgentTripPlan | null {
   const lookup: PlaceLookup = {
     byName: new Map(places.map((place) => [placeKey(place.name), place])),
     byId,
+
   };
   const caps: PlannerCapInput[] = Array.isArray(value.days)
     ? value.days.map((day, index) => {
@@ -352,6 +357,7 @@ export function normalizeWirePlan(value: unknown): AgentTripPlan | null {
           .slice(0, 7),
         places,
       )
+
     : [];
   const summary = asText(value.summary, 1200);
   if (summary === null || days.length === 0) return null;

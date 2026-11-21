@@ -9,6 +9,8 @@ import type {
 
 const request: PlannerRequest = {
   destination: "Lisbon, Portugal",
+  origin: "",
+  transport: "mixed",
   days: 4,
   condition: "asthma_respiratory",
   medication: "albuterol",
@@ -335,6 +337,7 @@ describe("normalizeWirePlan", () => {
     ];
     const wire = normalizeWirePlan(payload);
     expect(wire?.days[1]?.withinCaps).toBe(false);
+
   });
 
   it("rejects a payload without a summary or days", () => {

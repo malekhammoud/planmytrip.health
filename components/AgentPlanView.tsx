@@ -1,12 +1,16 @@
 "use client";
 
+import { useMemo } from "react";
 import { AgentPicks } from "@/components/AgentPicks";
 import { AgentPlanDays } from "@/components/AgentPlanDays";
+import { RoutePanel } from "@/components/RoutePanel";
 import { TripMap } from "@/components/TripMap";
 import { TripOutcomePanel } from "@/components/TripOutcomePanel";
 import { Callout } from "@/components/ui";
 import { BUDGET_LABELS, type AgentTripPlan } from "@/lib/agent/agentTypes";
 import type { TripCaptureContext } from "@/lib/data/types";
+import { buildTripRoute } from "@/lib/route/routePlan";
+import type { TransportMode } from "@/lib/types";
 
 function money(plan: AgentTripPlan): string {
   if (plan.budget.estimatedTotal === null) return "Estimate not available";
@@ -22,17 +26,33 @@ function generated(ts: string): string {
   return `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
 
-/** Finished concierge plan: summary, map, day plan, picks, safety, and sources. */
+/** Finished concierge plan: summary, map, route, day plan, picks, safety, and sources. */
 export function AgentPlanView({
   plan,
   visible = true,
   capture,
+  origin = "",
+  transport = "mixed",
 }: {
   plan: AgentTripPlan;
   visible?: boolean;
   capture?: TripCaptureContext;
+  /** Free-text starting point for the arrival link. */
+  origin?: string;
+  /** Travel method used to order stops and choose leg modes. */
+  transport?: TransportMode;
 }) {
   const outside = plan.days.filter((day) => !day.withinCaps);
+  const route = useMemo(
+    () =>
+      buildTripRoute({
+        days: plan.days,
+        places: plan.places,
+        transport,
+        origin,
+      }),
+    [plan, transport, origin],
+  );
   return (
     <div>
       {plan.degraded ? (
@@ -67,8 +87,10 @@ export function AgentPlanView({
       ) : null}
 
       <div className="mt-8">
-        <TripMap places={plan.places} days={plan.days} visible={visible} />
+        <TripMap places={plan.places} days={plan.days} route={route} visible={visible} />
       </div>
+
+      <RoutePanel route={route} />
 
       <section className="mt-12" aria-labelledby="concierge-days">
         <h3 id="concierge-days" className="t-title text-ink">

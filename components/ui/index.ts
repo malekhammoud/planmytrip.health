@@ -19,6 +19,9 @@ export type { DataRowProps } from "./DataRow";
 export { Field } from "./Field";
 export type { FieldControlProps, FieldProps } from "./Field";
 
+export { LinkButton } from "./LinkButton";
+export type { LinkButtonProps, LinkButtonSize, LinkButtonVariant } from "./LinkButton";
+
 export { Metric } from "./Metric";
 export type { MetricCompare, MetricProps } from "./Metric";
 export { metricBarWidths } from "./metricBars";

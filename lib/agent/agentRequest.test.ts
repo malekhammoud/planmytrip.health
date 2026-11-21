@@ -14,19 +14,37 @@ describe("parsePlannerRequest", () => {
   it("normalises a valid request", () => {
     expect(parsePlannerRequest(valid)).toEqual({
       destination: "Lisbon, Portugal",
+      origin: "",
       days: 4,
       condition: "asthma_respiratory",
       medication: "albuterol",
       interests: "quiet food and short walks",
       budget: "balanced",
+      transport: "mixed",
       captureConsent: false,
       hasSunLifeTravelCoverage: false,
     });
   });
 
+  it("normalises the origin and keeps an explicit transport", () => {
+    expect(
+      parsePlannerRequest({
+        ...valid,
+        origin: "  Toronto,  ON ",
+        transport: "walk",
+      }),
+    ).toMatchObject({ origin: "Toronto, ON", transport: "walk" });
+  });
+
   it("defaults a missing budget to balanced", () => {
     expect(parsePlannerRequest({ ...valid, budget: undefined })).toMatchObject({
       budget: "balanced",
+    });
+  });
+
+  it("defaults a missing transport to mixed", () => {
+    expect(parsePlannerRequest({ ...valid, transport: undefined })).toMatchObject({
+      transport: "mixed",
     });
   });
 
@@ -44,6 +62,9 @@ describe("parsePlannerRequest", () => {
     ["condition", { ...valid, condition: "unknown" }],
     ["medication", { ...valid, medication: 3 }],
     ["interests long", { ...valid, interests: "x".repeat(241) }],
+    ["origin long", { ...valid, origin: "x".repeat(121) }],
+    ["origin type", { ...valid, origin: 7 }],
+    ["transport", { ...valid, transport: "hovercraft" }],
     ["budget", { ...valid, budget: "luxury" }],
     ["non-object", "Lisbon"],
     ["array", []],

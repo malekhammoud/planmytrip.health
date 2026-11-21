@@ -28,6 +28,10 @@ import {
   CONDITION_LABELS,
   CONDITIONS,
   isCondition,
+  isTransportMode,
+  TRANSPORT_HINTS,
+  TRANSPORT_LABELS,
+  TRANSPORT_MODES,
   type Condition,
 } from "@/lib/types";
 
@@ -192,6 +196,25 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
                     )}
                   </Field>
 
+                  <Field
+                    id="onboarding-origin"
+                    label="Starting from"
+                    hint="Optional. Home city or airport."
+                  >
+                    {(control) => (
+                      <TextInput
+                        {...control}
+                        value={config.origin}
+                        onChange={(event) =>
+                          update("origin", event.currentTarget.value)
+                        }
+                        autoComplete="off"
+                        maxLength={120}
+                        placeholder="City, country"
+                      />
+                    )}
+                  </Field>
+
                   <Field id="onboarding-days" label="Duration">
                     {(control) => (
                       <Slider
@@ -232,6 +255,28 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
                       </Select>
                     )}
                   </Field>
+
+                  <Field id="onboarding-transport" label="Getting around">
+                    {(control) => (
+                      <Select
+                        {...control}
+                        value={config.transport}
+                        onChange={(event) => {
+                          const next = event.currentTarget.value;
+                          if (isTransportMode(next)) update("transport", next);
+                        }}
+                      >
+                        {TRANSPORT_MODES.map((value) => (
+                          <option key={value} value={value}>
+                            {TRANSPORT_LABELS[value]}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                  </Field>
+                  <p className="t-small -mt-4 text-muted">
+                    {TRANSPORT_HINTS[config.transport]}
+                  </p>
 
                   <Field
                     id="onboarding-interests"
@@ -352,6 +397,7 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
                       })}
                     </p>
                     <p className="t-data mt-2 text-muted">
+                      {TRANSPORT_LABELS[config.transport]} ·{" "}
                       {BUDGET_LABELS[config.budget]} ·{" "}
                       {config.interests || "No extra preferences"} ·{" "}
                       {config.hasSunLifeTravelCoverage

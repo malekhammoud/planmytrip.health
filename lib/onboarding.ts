@@ -12,17 +12,20 @@ import { TRIP_DAYS_MAX, TRIP_DAYS_MIN } from "@/lib/healthTripTypes";
 import type { TripConfig } from "@/lib/agent/agentTypes";
 
 const DESTINATION_MAX = 120;
+const ORIGIN_MAX = 120;
 const MEDICATION_MAX = 120;
 const INTERESTS_MAX = 240;
 
 /** The empty draft shown to a first-time visitor. */
 export const DEFAULT_TRIP: TripConfig = {
   destination: "",
+  origin: "",
   days: 4,
   condition: "asthma_respiratory",
   medication: DEFAULT_MEDICATION_BY_CONDITION.asthma_respiratory,
   interests: "",
   budget: "balanced",
+  transport: "mixed",
   hasSunLifeTravelCoverage: false,
   captureConsent: false,
 };
@@ -40,11 +43,13 @@ export function canContinueTripStep(config: TripConfig): boolean {
 export function normalizeTripConfig(config: TripConfig): TripConfig {
   return {
     destination: clampText(config.destination, DESTINATION_MAX),
+    origin: clampText(config.origin, ORIGIN_MAX),
     days: Math.max(TRIP_DAYS_MIN, Math.min(TRIP_DAYS_MAX, Math.round(config.days))),
     condition: config.condition,
     medication: clampText(config.medication, MEDICATION_MAX),
     interests: clampText(config.interests, INTERESTS_MAX),
     budget: config.budget,
+    transport: config.transport,
     hasSunLifeTravelCoverage: config.hasSunLifeTravelCoverage,
     captureConsent: config.captureConsent,
   };

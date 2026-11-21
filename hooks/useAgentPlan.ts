@@ -22,16 +22,18 @@ import type {
   BudgetLevel,
   PlannerRequest,
 } from "@/lib/agent/agentTypes";
-import type { Condition } from "@/lib/types";
+import type { Condition, TransportMode } from "@/lib/types";
 
 /** Page-owned planner inputs. */
 export interface UseAgentPlanInput {
   destination: string;
+  origin: string;
   days: number;
   condition: Condition;
   medication: string;
   interests: string;
   budget: BudgetLevel;
+  transport: TransportMode;
   /** Opaque browser run id; joins the planner and swarm capture rows. */
   runId: string;
   /** Anonymous install id, or empty before the page effect runs. */
@@ -47,11 +49,13 @@ export interface UseAgentPlanInput {
 /** Snapshot used by retry and the changed-inputs warning. */
 export interface AgentPlanRunInput {
   destination: string;
+  origin: string;
   days: number;
   condition: Condition;
   medication: string;
   interests: string;
   budget: BudgetLevel;
+  transport: TransportMode;
 }
 
 interface StoredRunInput extends AgentPlanRunInput {
@@ -75,11 +79,13 @@ export interface UseAgentPlanResult {
  */
 export function useAgentPlan({
   destination,
+  origin,
   days,
   condition,
   medication,
   interests,
   budget,
+  transport,
   runId,
   installId,
   captureConsent,
@@ -139,11 +145,13 @@ export function useAgentPlan({
         const snapshot: StoredRunInput = {
           runToken,
           destination: trimmed,
+          origin: origin.trim(),
           days,
           condition,
           medication: medication.trim(),
           interests: interests.trim(),
           budget,
+          transport,
           runId,
           installId,
           captureConsent,
@@ -153,11 +161,13 @@ export function useAgentPlan({
         setStoredInput(snapshot);
         start({
           destination: snapshot.destination,
+          origin: snapshot.origin,
           days: snapshot.days,
           condition: snapshot.condition,
           medication: snapshot.medication,
           interests: snapshot.interests,
           budget: snapshot.budget,
+          transport: snapshot.transport,
           runId: snapshot.runId,
           installId: snapshot.installId,
           captureConsent: snapshot.captureConsent,
@@ -184,9 +194,11 @@ export function useAgentPlan({
     installId,
     interests,
     medication,
+    origin,
     runId,
     runToken,
     start,
+    transport,
   ]);
 
   const retry = useCallback((): void => {
@@ -195,11 +207,13 @@ export function useAgentPlan({
     abortAll();
     start({
       destination: snapshot.destination,
+      origin: snapshot.origin,
       days: snapshot.days,
       condition: snapshot.condition,
       medication: snapshot.medication,
       interests: snapshot.interests,
       budget: snapshot.budget,
+      transport: snapshot.transport,
       runId: snapshot.runId,
       installId: snapshot.installId,
       captureConsent: snapshot.captureConsent,
@@ -218,11 +232,13 @@ export function useAgentPlan({
     storedInput !== null && storedInput.runToken === runToken
       ? {
           destination: storedInput.destination,
+          origin: storedInput.origin,
           days: storedInput.days,
           condition: storedInput.condition,
           medication: storedInput.medication,
           interests: storedInput.interests,
           budget: storedInput.budget,
+          transport: storedInput.transport,
         }
       : null;
 

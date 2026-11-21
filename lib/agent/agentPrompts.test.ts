@@ -5,6 +5,8 @@ import type { PlannerRequest } from "./agentTypes";
 
 const request: PlannerRequest = {
   destination: "Lisbon, Portugal",
+  origin: "",
+  transport: "mixed",
   days: 4,
   condition: "pregnancy_second_trimester",
   medication: "prenatal vitamins",
@@ -33,6 +35,16 @@ describe("agent prompts", () => {
     expect(prompt).toContain("emergencyNumber");
   });
 
+  it("carries the starting point and the travel method", () => {
+    const prompt = buildSpecialistPrompt("transit", {
+      ...request,
+      origin: "Toronto, ON",
+      transport: "walk",
+    });
+    expect(prompt).toContain("Starting from: Toronto, ON.");
+    expect(prompt).toContain("Getting around: Walking.");
+  });
+
   it("builds a synthesis prompt from research and caps", () => {
     const prompt = buildConciergePrompt(
       request,
@@ -43,6 +55,7 @@ describe("agent prompts", () => {
     expect(prompt).toContain("Hotel A");
     expect(prompt).toContain("2250");
     expect(prompt).toContain("Insert a rest day after any hike day");
+    expect(prompt).toContain("Never place two demanding days back to back");
     expect(prompt).toContain('"selectedStays"');
   });
 
