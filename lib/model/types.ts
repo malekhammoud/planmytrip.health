@@ -9,6 +9,13 @@
 import type { Condition } from "../types";
 import type { TripFeatures } from "../data/types";
 
+/**
+ * Training/evaluation pipeline version. Bump when the fitting or evaluation semantics
+ * change even if the JSON shape does not, so metrics from two procedures can never be
+ * compared as if they came from one.
+ */
+export const MODEL_PIPELINE_VERSION = 2 as const;
+
 /** Features the v0 calibration uses. Three parameters is deliberate at small n. */
 export const V0_FEATURES = [
   "peakExposure",
@@ -64,6 +71,8 @@ export interface CalibrationPoint {
 /** A trained, versioned artifact. The runtime is a dot product, not a service. */
 export interface ModelArtifact {
   schemaVersion: 1;
+  /** Training/evaluation procedure that produced this artifact. */
+  pipelineVersion: typeof MODEL_PIPELINE_VERSION;
   modelVersion: string;
   trainedAt: string;
   engineVersion: string;

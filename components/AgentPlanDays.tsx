@@ -85,7 +85,7 @@ function DayRow({ day, index }: { day: PlannerDay; index: number }) {
           <CapLine day={day} />
           {!day.withinCaps ? (
             <p className="t-small mt-3 text-risk">
-              This estimate exceeds the modeled ceiling. Follow the Pacing limits.
+              This day is above its modeled ceiling. Follow the Pacing limits.
             </p>
           ) : null}
           {day.blocks.length > 0 ? (

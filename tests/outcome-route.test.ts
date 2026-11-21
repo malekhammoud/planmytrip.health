@@ -135,6 +135,19 @@ describeDb("trip outcome routes", () => {
     expect(body.trips[0]?.flare).toBe(true);
   });
 
+  it("accepts the install id from a header so it stays out of URLs", async () => {
+    const response = await getTrips(
+      new Request("http://localhost:3000/api/trips", {
+        headers: { "x-install-id": installId },
+      }),
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      trips: Array<{ runId: string }>;
+    };
+    expect(body.trips.some((trip) => trip.runId === runId)).toBe(true);
+  });
+
   it("rejects a missing install id", async () => {
     const response = await getTrips(
       new Request("http://localhost:3000/api/trips"),

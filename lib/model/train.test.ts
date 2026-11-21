@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { TrainingRow, TripFeatures } from "../data/types";
 import { engineOffset } from "./features";
 import { predictFromArtifact, riskCurve, tierFor } from "./predict";
-import { trainModel } from "./train";
-import { V0_FEATURES, type ModelArtifact } from "./types";
+import { foldIndexFor, trainModel } from "./train";
+import {
+  MODEL_PIPELINE_VERSION,
+  V0_FEATURES,
+  type ModelArtifact,
+} from "./types";
 import type { Condition } from "../types";
 
 function mulberry32(seed: number): () => number {
@@ -82,16 +86,191 @@ describe("trainModel", () => {
   it("produces a finite artifact with an improving Brier score", () => {
     const trained = artifact();
     expect(trained.featureNames).toEqual([...V0_FEATURES]);
+    expect(trained.pipelineVersion).toBe(MODEL_PIPELINE_VERSION);
     expect(trained.training.n).toBe(600);
     expect(trained.training.events).toBeGreaterThan(2);
     expect(Number.isFinite(trained.metrics.brier)).toBe(true);
     expect(Number.isFinite(trained.metrics.baselineBrier)).toBe(true);
     expect(trained.metrics.brier).toBeLessThan(trained.metrics.baselineBrier);
+    expect(trained.metrics.ece).toBeLessThan(0.05);
     expect(trained.calibration.length).toBeGreaterThan(0);
     for (let index = 1; index < trained.calibration.length; index += 1) {
       expect(trained.calibration[index].y).toBeGreaterThanOrEqual(
         trained.calibration[index - 1].y,
       );
+    }
+    for (const value of Object.values(trained.coefficients)) {
+      expect(Number.isFinite(value)).toBe(true);
+    }
+  });
+
+  it("is deterministic for the same cohort and options", () => {
+    const first = artifact();
+    const second = artifact();
+    expect(second.coefficients).toEqual(first.coefficients);
+    expect(second.calibration).toEqual(first.calibration);
+    expect(second.metrics).toEqual(first.metrics);
+  });
+
+  it("refuses a cohort that is too small or has one class", () => {
+    const base = syntheticRows(30);
+    expect(() =>
+      trainModel(base.slice(0, 10), {
+        featureNames: [...V0_FEATURES],
+        folds: 5,
+        source: "synthetic",
+        modelVersion: "small",
+        trainedAt: "2026-11-21T00:00:00.000Z",
+        engineVersion: "1",
+        dataHash: "x",
+      }),
+    ).toThrow(/at least 20/);
+
+    const oneClass = base.map((row) => ({ ...row, label: 0 as const }));
+    expect(() =>
+      trainModel(oneClass, {
+        featureNames: [...V0_FEATURES],
+        folds: 5,
+        source: "synthetic",
+        modelVersion: "one-class",
+        trainedAt: "2026-11-21T00:00:00.000Z",
+        engineVersion: "1",
+        dataHash: "x",
+      }),
+    ).toThrow(/flares/);
+
+    expect(() =>
+      trainModel(base, {
+        featureNames: [...V0_FEATURES],
+        folds: 1,
+        source: "synthetic",
+        modelVersion: "one-fold",
+        trainedAt: "2026-11-21T00:00:00.000Z",
+        engineVersion: "1",
+        dataHash: "x",
+      }),
+    ).toThrow(/two folds/);
+  });
+
+  it("rejects non-finite features and offsets", () => {
+    const base = syntheticRows(30);
+    const badFeature = { ...base[0], features: { ...base[0].features, peakExposure: Number.NaN } };
+    expect(() =>
+      trainModel([badFeature, ...base.slice(1)], {
+        featureNames: [...V0_FEATURES],
+        folds: 5,
+        source: "synthetic",
+        modelVersion: "bad-feature",
+        trainedAt: "2026-11-21T00:00:00.000Z",
+        engineVersion: "1",
+        dataHash: "x",
+      }),
+    ).toThrow(/finite/);
+
+    const badOffset = { ...base[0], offset: Number.POSITIVE_INFINITY };
+    expect(() =>
+      trainModel([badOffset, ...base.slice(1)], {
+        featureNames: [...V0_FEATURES],
+        folds: 5,
+        source: "synthetic",
+        modelVersion: "bad-offset",
+        trainedAt: "2026-11-21T00:00:00.000Z",
+        engineVersion: "1",
+        dataHash: "x",
+      }),
+    ).toThrow(/finite/);
+  });
+
+  it("rejects duplicate features and non-positive priors", () => {
+    const base = syntheticRows(30);
+    expect(() =>
+      trainModel(base, {
+        featureNames: ["peakExposure", "peakExposure"],
+        folds: 5,
+        source: "synthetic",
+        modelVersion: "duplicate",
+        trainedAt: "2026-11-21T00:00:00.000Z",
+        engineVersion: "1",
+        dataHash: "x",
+      }),
+    ).toThrow(/unique/);
+    expect(() =>
+      trainModel(base, {
+        featureNames: [...V0_FEATURES],
+        folds: 5,
+        source: "synthetic",
+        modelVersion: "bad-prior",
+        trainedAt: "2026-11-21T00:00:00.000Z",
+        engineVersion: "1",
+        dataHash: "x",
+        priorSd: [1, 0, 0.5, 0.5],
+      }),
+    ).toThrow(/prior standard deviations/);
+  });
+
+  it("refuses synthetic rows under an outcomes source", () => {
+    const base = syntheticRows(30).map((row) => ({ ...row, synthetic: true as const }));
+    expect(() =>
+      trainModel(base, {
+        featureNames: [...V0_FEATURES],
+        folds: 5,
+        source: "outcomes",
+        modelVersion: "mislabeled",
+        trainedAt: "2026-11-21T00:00:00.000Z",
+        engineVersion: "1",
+        dataHash: "x",
+      }),
+    ).toThrow(/synthetic rows/);
+    expect(() =>
+      trainModel(base, {
+        featureNames: [...V0_FEATURES],
+        folds: 5,
+        source: "synthetic",
+        modelVersion: "demo",
+        trainedAt: "2026-11-21T00:00:00.000Z",
+        engineVersion: "1",
+        dataHash: "x",
+      }),
+    ).not.toThrow();
+  });
+
+  it("stays finite when a feature perfectly separates the labels", () => {
+    const rows: TrainingRow[] = Array.from({ length: 40 }, (_, index) => {
+      const high = index % 2 === 0;
+      return {
+        runId: `run-${index}`,
+        userId: `user-${index}`,
+        condition: CONDITIONS[index % CONDITIONS.length],
+        features: features(high ? 1 : 0.05, 0.8, 3),
+        offset: 0,
+        label: high ? 1 : 0,
+        days: 3,
+      };
+    });
+    const trained = trainModel(rows, {
+      featureNames: [...V0_FEATURES],
+      folds: 5,
+      source: "outcomes",
+      modelVersion: "separable",
+      trainedAt: "2026-11-21T00:00:00.000Z",
+      engineVersion: "1",
+      dataHash: "x",
+    });
+    expect(Number.isFinite(trained.coefficients.peakExposure)).toBe(true);
+    expect(Number.isFinite(trained.metrics.brier)).toBe(true);
+    expect(trained.metrics.brier).toBeLessThan(0.1);
+  });
+});
+
+describe("foldIndexFor", () => {
+  it("assigns every occurrence of one user to the same fold", () => {
+    for (const userId of ["user-a", "user-b", "install-1234", "synthetic-user-7"]) {
+      const first = foldIndexFor(userId, 5);
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        expect(foldIndexFor(userId, 5)).toBe(first);
+      }
+      expect(first).toBeGreaterThanOrEqual(0);
+      expect(first).toBeLessThan(5);
     }
   });
 });

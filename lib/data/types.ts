@@ -146,6 +146,7 @@ export interface OutcomeRecord {
   severity: FlareSeverity | null;
   care: CareLevel | null;
   adherence: AdherenceLevel | null;
+  /** Reserved for a future consented feature; the public route never stores free text. */
   notes: string | null;
   reportedAt: string;
 }
@@ -159,6 +160,12 @@ export interface TrainingRow {
   offset: number;
   label: 0 | 1;
   days: number;
+  /**
+   * Marker on the committed synthetic cohort. An artifact trained with `--source
+   * outcomes` must reject any row carrying it, so a demo cohort can never be shipped as
+   * observed evidence by accident.
+   */
+  synthetic?: true;
 }
 
 /** Browser-provided capture context; both ids are opaque and anonymous. */

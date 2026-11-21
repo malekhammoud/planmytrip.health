@@ -94,11 +94,12 @@ export function TripMap({
         iconSize: [0, 0],
         iconAnchor: [0, 0],
       });
+      // Leaflet renders tooltip strings as HTML. Use a text node so an agent-supplied
+      // place name can never become markup.
+      const tooltip = document.createElement("span");
+      tooltip.textContent = `${place.geocoded === true ? "Approximate · " : ""}${CATEGORY_LABEL[place.category]} · ${place.name}`;
       L.marker([place.lat, place.lng], { icon, title: place.name })
-        .bindTooltip(
-          `${place.geocoded === true ? "Approximate · " : ""}${CATEGORY_LABEL[place.category]} · ${place.name}`,
-          { direction: "top", offset: [0, -6] },
-        )
+        .bindTooltip(tooltip, { direction: "top", offset: [0, -6] })
         .addTo(layer);
     }
 

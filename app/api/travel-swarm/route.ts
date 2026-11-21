@@ -16,6 +16,7 @@ import type { WorkerFindingSummary } from "@/lib/data/types";
 import {
   encodeSwarmEvent,
   isSwarmRequestBody,
+  normalizeSwarmText,
   resolveWorkers,
   type SwarmEvent,
 } from "@/lib/swarmTypes";
@@ -54,9 +55,9 @@ export async function POST(request: Request): Promise<Response> {
   const workers = resolveWorkers(body.workers);
   const runBody = body;
   const input: SwarmRunContext["input"] = {
-    destination: body.destination.trim(),
+    destination: normalizeSwarmText(body.destination),
     condition: body.condition,
-    medication: body.medication.trim(),
+    medication: normalizeSwarmText(body.medication),
   };
   const apiKey = process.env.TINYFISH_API_KEY?.trim() ?? "";
   const mock = process.env.SWARM_MOCK === "1" && process.env.NODE_ENV !== "production";

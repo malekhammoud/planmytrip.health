@@ -5,7 +5,7 @@
  * request abort signal, and the dev mock flag.
  * Outputs: queued/running status, streaming URL, progress, completion, error, and done
  * events for the requested workers.
- * Invariants: each live worker has its own AbortController and 240s timeout; a rejected
+ * Invariants: each live worker has its own AbortController and 300s timeout; a rejected
  * worker becomes one upstream_error and aborts sibling upstreams; every path emits
  * exactly one swarm_done. The API key is passed only to the TinyFish client and never
  * appears in an event.

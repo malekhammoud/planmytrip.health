@@ -34,7 +34,11 @@ export async function capturePlannerRun(
   const runId = request.runId;
   const installId = request.installId;
   if (runId === undefined || installId === undefined) return;
-  if (input.plan.mock === true && process.env.PLANMYTRIP_CAPTURE_MOCK !== "1") {
+  if (
+    input.plan.mock === true &&
+    (process.env.PLANMYTRIP_CAPTURE_MOCK !== "1" ||
+      process.env.NODE_ENV === "production")
+  ) {
     return;
   }
   const enginePlan = buildHealthTripPlan({

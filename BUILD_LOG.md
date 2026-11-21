@@ -386,9 +386,60 @@ thresholds and Sun Life stability window remain VERIFY.
   explicit false label against the capture. The two browser-test rows were then removed; the
   production store keeps one consented, unlabeled trip and no training labels.
 
+### Step 14: production readiness and nested calibration
+
+- Rebuilt the evaluation half of the model. Feature scaling and logistic coefficients are
+  now fitted inside each fold, and an inner grouped cross-validation fits the isotonic map
+  before it scores an outer fold. The old reported ECE (0.0121) was in-sample for the
+  calibrator; the honest nested ECE is 0.0238. Brier is 0.1612 against the engine's 0.1674,
+  AUROC 0.6620, calibration slope 0.9549. The artifact records `pipelineVersion: 2`; the
+  committed cohort and artifact are now `synthetic-5a38cf18`.
+- Hardened artifact loading: `artifact.ts` now dimension-checks features, statistics,
+  coefficients, covariance, isotonic knots, condition counts, and metrics; rejects another
+  pipeline, another engine version, a zero-row file, and a mismatched metric count; and
+  falls back to the engine-only artifact. `tierFor` treats a zero-row or stale-engine
+  artifact as the engine.
+- Closed capture integrity holes. The synthetic cohort marks every row `synthetic: true`;
+  both the training CLI and `trainModel` refuse it under `--source outcomes`. Export now
+  excludes mock plans, other data schemas, and other engine versions. Conflict updates are
+  scoped to the original install id for dossiers and swarm findings, so another browser
+  cannot overwrite a run. Pool limits are bounded and an idle-client error can no longer
+  crash the process.
+- Closed a real safety gap in the concierge and fallback routes. A day's cap flag now uses
+  the computed block dose as well as the agent estimate, so a long hike with a low
+  self-report still shows the over-ceiling caution. The fallback sizes each anchor against
+  the engine's step and walking ceilings and reports the computed dose instead of an invented
+  factor. `normalizeWirePlan` keeps block place ids, so the map draws its per-day routes.
+- Made the post-trip label explicit: the flare question is a required Select, not a
+  pre-unchecked box. The public outcome route ignores free text, so the privacy claim is now
+  true. The install id read survives blocked localStorage.
+- Bounded untrusted upstream text: worker findings, lists, checklist items, raw results,
+  progress copy, and preview URLs all have finite limits; URLs are rejected rather than
+  truncated. Leaflet tooltips now use a text node, so a place name from research can never
+  become markup.
+- Hardened transport and privacy edges: PostgreSQL TLS now validates certificates instead of
+  disabling verification, the app sends `nosniff`, a strict referrer policy, and
+  `X-Frame-Options: DENY`, and the trip log prefers an `X-Install-Id` header so the anonymous
+  install id stays out of proxy URLs.
+- Added 57 tests (348 total): nested calibration and pipeline-version guards, deep artifact
+  validation, engine fallback, model/cohort/card reproducibility, no-live-model-import
+  guard, computed-dose cap reconciliation, fallback anchor sizing, wire place ids, captured
+  dose, mock/schema/engine export filters, install isolation, bounded limits, explicit
+  outcome parsing, upstream bounds, and a PostgreSQL capture-to-outcome-to-export-to-train
+  loop.
+- Gate: typecheck, 348 tests with the test database (321 pass and 27 skip without it), lint,
+  and production build pass. A production `next start` smoke returned 200 for `/` and
+  `/model`, 200 for the install-scoped trip log through both the header and query, 400 for a
+  missing id, and 404 for an unknown outcome; the baseline security headers were present. No
+  live OpenCode, TinyFish, Nominatim, or tile request was made.
+- Unverified: real traveler labels, responder bias, a returning-traveler outcome flow, the
+  live three-worker and 7-of-7 passes, and every clinical and insurance threshold.
+
 ## Next action
 
 Run a consented pilot cohort against production PostgreSQL, confirm capture and outcome rows
-arrive, and replace the synthetic artifact only after the pooled tier is reached. Monitor
-pharmacy consistency and check the live iframe and clipboard behavior. The clinical thresholds
-and Sun Life stability window remain VERIFY.
+arrive, and replace the synthetic artifact only after the pooled tier is reached. Close the
+returning-traveler gap first: a browser that comes back after the trip must be able to find
+its saved run and record the explicit outcome without the live plan on screen. Monitor
+pharmacy consistency and check the live iframe and clipboard behavior. The clinical
+thresholds and Sun Life stability window remain VERIFY.

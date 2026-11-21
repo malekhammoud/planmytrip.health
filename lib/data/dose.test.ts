@@ -3,6 +3,7 @@ import {
   computeEngineDose,
   computePlannerDose,
   computeTripFeatures,
+  reconcileDayCaps,
 } from "./dose";
 import { CONDITION_PROFILES } from "../conditionProfiles";
 import { buildHealthTripPlan } from "../healthTripEngine";
@@ -131,6 +132,61 @@ describe("computePlannerDose", () => {
       "concierge",
     )[0];
     expect(dose.withinCaps).toBe(false);
+  });
+});
+
+describe("reconcileDayCaps", () => {
+  it("catches a long block that the agent estimate understated", () => {
+    const hike = place({
+      category: "hike",
+      distanceKm: 5,
+      elevationM: 200,
+      difficulty: "moderate",
+    });
+    const understated = day({
+      stepEstimate: 0,
+      walkingKm: 0,
+      stepCeiling: 5_000,
+      walkingCapKm: 3,
+      blocks: [
+        {
+          time: "09:00",
+          kind: "hike",
+          title: "Long ridge",
+          detail: "",
+          durationMin: 240,
+          placeId: "place-1",
+        },
+      ],
+    });
+    expect(understated.withinCaps).toBe(true);
+    const [reconciled] = reconcileDayCaps([understated], [hike]);
+    // 240 min at exertion 2 -> 6,240 steps, above the 5,000 ceiling.
+    expect(reconciled.withinCaps).toBe(false);
+  });
+
+  it("keeps a day inside both caps when the blocks fit", () => {
+    const [reconciled] = reconcileDayCaps([day()], [place()]);
+    expect(reconciled.withinCaps).toBe(true);
+  });
+
+  it("leaves a rest day with only non-walking blocks inside its caps", () => {
+    const rest = day({
+      stepEstimate: 0,
+      walkingKm: 0,
+      blocks: [
+        {
+          time: "15:00",
+          kind: "rest",
+          title: "Recovery",
+          detail: "",
+          durationMin: 90,
+          placeId: null,
+        },
+      ],
+    });
+    const [reconciled] = reconcileDayCaps([rest], []);
+    expect(reconciled.withinCaps).toBe(true);
   });
 });
 

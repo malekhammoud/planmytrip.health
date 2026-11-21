@@ -64,7 +64,10 @@ function connectionString(): string {
 /** Opens the pool once. The schema is applied before the first query. */
 export function getPool(): Pool {
   if (pool !== null) return pool;
-  const ssl = process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : undefined;
+  const ssl =
+    process.env.DATABASE_SSL === "true"
+      ? { rejectUnauthorized: true }
+      : undefined;
   pool = new Pool({
     connectionString: connectionString(),
     max: 10,
@@ -72,6 +75,12 @@ export function getPool(): Pool {
     idleTimeoutMillis: 10_000,
     application_name: "planmytrip.health",
     ...(ssl === undefined ? {} : { ssl }),
+  });
+  // An idle client can fail (for example after a database restart). Without a listener
+  // Node treats the pool's 'error' event as fatal. The pool replaces the client itself;
+  // log no connection details, credentials, or host names.
+  pool.on("error", () => {
+    console.warn("[db] an idle database client failed and was replaced");
   });
   return pool;
 }

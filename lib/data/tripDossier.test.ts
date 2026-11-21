@@ -182,6 +182,14 @@ describe("parseOutcome", () => {
     expect(outcome?.care).toBe("clinic");
     expect(outcome?.adherence).toBe("less");
     expect(outcome?.flareDay).toBe(3);
-    expect(outcome?.notes).toBe("Fatigue on day three.");
+    expect(outcome?.notes).toBeNull();
+  });
+
+  it("drops free text on the public contract", () => {
+    const outcome = parseOutcome(
+      { flare: false, notes: "A private detail." },
+      "2026-11-21T10:00:00.000Z",
+    );
+    expect(outcome?.notes).toBeNull();
   });
 });

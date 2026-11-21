@@ -101,6 +101,38 @@ describe("buildFallbackPlan", () => {
     expect(plan.summary).toContain("concierge route did not finish");
   });
 
+  it("trims or drops an anchor that would exceed a low ceiling", () => {
+    const longHike = normalizeSpecialistResult("trail", {
+      hikes: [
+        {
+          name: "Exposed ridge",
+          area: "Mountains",
+          lat: 38.73,
+          lng: -9.15,
+          distanceKm: 12,
+          elevationM: 900,
+          durationMin: 480,
+          difficulty: "strenuous",
+          sourceUrl: "https://example.com/ridge",
+        },
+      ],
+    });
+    const plan = buildFallbackPlan({
+      request,
+      research: { ...research(), trail: longHike },
+      caps,
+      recoveryMinutes: 90,
+      now: "2026-11-21T10:00:00.000Z",
+    });
+    for (const day of plan.days) {
+      expect(day.withinCaps).toBe(true);
+      expect(day.stepEstimate).toBeLessThanOrEqual(day.stepCeiling);
+      expect(day.walkingKm).toBeLessThanOrEqual(day.walkingCapKm);
+    }
+    // Every non-rest day keeps a real block, so the fallback never emits an empty day.
+    expect(plan.days.every((day) => day.blocks.length > 0)).toBe(true);
+  });
+
   it("still returns the full trip length with no research picks", () => {
     const plan = buildFallbackPlan({
       request,

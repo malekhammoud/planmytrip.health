@@ -18,6 +18,8 @@ import {
   type SpecialistAgentId,
 } from "./agentTypes";
 import { finalizePlace, type DraftPlace, type SpecialistResult } from "./agentParse";
+import { blockExertion, computePlannerDose } from "@/lib/data/dose";
+import { MODELED_LOAD_ASSUMPTIONS } from "@/lib/healthScore";
 
 interface FallbackInput {
   request: PlannerRequest;
@@ -55,6 +57,40 @@ function sourcesFromPlaces(places: readonly PlannerPlace[]): PlannerSource[] {
   return sources;
 }
 
+/** Modeled walking steps for one block kind at the fallback's fixed duration. */
+function stepsFor(
+  kind: "care" | "transit" | "hike" | "visit",
+  durationMin: number,
+  place: PlannerPlace | null,
+): number {
+  const rate =
+    MODELED_LOAD_ASSUMPTIONS.stepsPerExertionMinute[blockExertion(kind, place)];
+  return durationMin * rate;
+}
+
+/**
+ * Trims an anchor so the day stays inside its engine step ceiling after the fixed care
+ * and return-transfer blocks are counted. Returns 0 when nothing useful fits, in which
+ * case the caller drops the anchor rather than shipping an over-cap day.
+ */
+function safeAnchorMinutes(
+  kind: "hike" | "visit",
+  place: PlannerPlace,
+  requested: number,
+  stepCap: number,
+  walkingCapKm: number,
+  reservedSteps: number,
+): number {
+  const rate =
+    MODELED_LOAD_ASSUMPTIONS.stepsPerExertionMinute[blockExertion(kind, place)];
+  const stepLimit = stepCap - reservedSteps;
+  const walkingLimit =
+    walkingCapKm / MODELED_LOAD_ASSUMPTIONS.kmPerStep - reservedSteps;
+  const available = Math.max(0, Math.min(stepLimit, walkingLimit));
+  const maxMinutes = Math.floor(available / rate / 5) * 5;
+  return Math.max(0, Math.min(requested, maxMinutes));
+}
+
 /** Builds a conservative fallback route from the verified picks. */
 export function buildFallbackPlan(input: FallbackInput): AgentTripPlan {
   const picks = allPicks(input.research);
@@ -79,10 +115,10 @@ export function buildFallbackPlan(input: FallbackInput): AgentTripPlan {
   const visitPlaces = byCategory("visit");
   const carePlaces = byCategory("care");
 
-  const days: PlannerDay[] = input.caps.map((cap, index) => {
+  const built: PlannerDay[] = input.caps.map((cap, index) => {
     const day = index + 1;
     const restDay = input.request.days >= 4 && day % 3 === 0 && day < input.request.days;
-    const anchor = restDay
+    const candidate = restDay
       ? null
       : hikePlaces[(day - 1) % Math.max(1, hikePlaces.length)] ??
         visitPlaces[(day - 1) % Math.max(1, visitPlaces.length)] ??
@@ -90,6 +126,28 @@ export function buildFallbackPlan(input: FallbackInput): AgentTripPlan {
     const meal = eatPlaces[index % Math.max(1, eatPlaces.length)] ?? null;
     const stay = stayPlaces[0] ?? null;
     const care = carePlaces[index % Math.max(1, carePlaces.length)] ?? null;
+
+    // Fixed walking blocks are reserved before an anchor is sized, so the plan cannot
+    // claim a safe day while the blocks themselves exceed the engine ceiling.
+    const reservedSteps =
+      (day === 1 && care !== null ? stepsFor("care", 30, care) : 0) +
+      (day === input.request.days ? stepsFor("transit", 30, null) : 0);
+
+    let anchor: PlannerPlace | null = candidate;
+    let anchorMinutes = 0;
+    if (candidate !== null) {
+      const kind = candidate.category === "hike" ? "hike" : "visit";
+      anchorMinutes = safeAnchorMinutes(
+        kind,
+        candidate,
+        candidate.durationMin ?? 90,
+        cap.stepCap,
+        cap.walkingCapKm,
+        reservedSteps,
+      );
+      if (anchorMinutes < 20) anchor = null;
+    }
+
     const blocks: PlannerDayBlock[] = [];
     if (day === 1) {
       blocks.push(
@@ -103,14 +161,14 @@ export function buildFallbackPlan(input: FallbackInput): AgentTripPlan {
         ),
       );
     }
-    if (anchor !== null) {
+    if (anchor !== null && anchorMinutes > 0) {
       blocks.push(
         block(
           "10:00",
           anchor.category === "hike" ? "hike" : "visit",
           anchor.name,
           anchor.why || "A verified low-exertion anchor for the day.",
-          anchor.durationMin ?? 90,
+          anchorMinutes,
           anchor.id,
         ),
       );
@@ -161,8 +219,9 @@ export function buildFallbackPlan(input: FallbackInput): AgentTripPlan {
         ),
       );
     }
-    const factor = restDay ? 0.25 : 0.55;
-    const placeIds = new Set(blocks.map((item) => item.placeId).filter((id): id is string => id !== null));
+    const placeIds = new Set(
+      blocks.map((item) => item.placeId).filter((id): id is string => id !== null),
+    );
     for (const place of places) {
       if (placeIds.has(place.id) && place.day === null) place.day = day;
     }
@@ -175,8 +234,8 @@ export function buildFallbackPlan(input: FallbackInput): AgentTripPlan {
           : `Paced day in ${input.request.destination}`,
       area: stay?.area ?? "",
       restDay,
-      stepEstimate: Math.round(cap.stepCap * factor),
-      walkingKm: Math.round(cap.walkingCapKm * factor * 10) / 10,
+      stepEstimate: 0,
+      walkingKm: 0,
       recoveryMinutes: input.recoveryMinutes,
       blocks,
       stepCeiling: cap.stepCap,
@@ -185,6 +244,16 @@ export function buildFallbackPlan(input: FallbackInput): AgentTripPlan {
       checkpoint: cap.checkpoint,
     };
   });
+
+  // The fallback has no agent estimate to trust; show the computed dose instead. This
+  // makes its numbers comparable with the engine and keeps the cap flag honest.
+  const dose = computePlannerDose(built, places, "fallback");
+  const days = built.map((day, index) => ({
+    ...day,
+    stepEstimate: dose[index].steps,
+    walkingKm: Math.round(dose[index].walkingKm * 10) / 10,
+    withinCaps: dose[index].withinCaps,
+  }));
 
   return {
     summary: `A conservative ${input.request.days}-day plan assembled from verified research. The concierge route did not finish.`,

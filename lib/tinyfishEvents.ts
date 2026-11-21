@@ -36,6 +36,15 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
+/** Upstream text is untrusted; keep every forwarded string small enough to render. */
+const PURPOSE_MAX = 200;
+const URL_MAX = 2_000;
+const RAW_MAX = 2_000;
+
+function bounded(value: string, max: number): string {
+  return value.length <= max ? value : `${value.slice(0, max - 1).trimEnd()}…`;
+}
+
 interface NormalizedComplete {
   findings: ReturnType<typeof emptyFindings>;
   sourceUrl: string;
@@ -55,7 +64,7 @@ function normalizeCompleteResult(
         return {
           findings: emptyFindings(worker),
           sourceUrl: fallbackSourceUrl,
-          rawResult: result,
+          rawResult: bounded(result, RAW_MAX),
           parseError: "The agent returned JSON that is not an object. Showing the raw result.",
         };
       }
@@ -64,7 +73,7 @@ function normalizeCompleteResult(
       return {
         findings: emptyFindings(worker),
         sourceUrl: fallbackSourceUrl,
-        rawResult: result,
+        rawResult: bounded(result, RAW_MAX),
         parseError: "The agent returned text that is not valid JSON. Showing the raw result.",
       };
     }
@@ -76,7 +85,7 @@ function normalizeCompleteResult(
     return {
       findings: emptyFindings(worker),
       sourceUrl: fallbackSourceUrl,
-      rawResult: JSON.stringify(result) ?? String(result),
+      rawResult: bounded(JSON.stringify(result) ?? String(result), RAW_MAX),
       parseError: "The agent returned JSON that is not an object. Showing the raw result.",
     };
   }
@@ -135,8 +144,11 @@ export function mapTinyfishEvent(
       };
     case "STREAMING_URL": {
       const streamingUrl = event.streamingUrl?.trim() ?? "";
-      // The URL is passed to an iframe, so only absolute HTTP(S) previews are safe.
-      if (streamingUrl === "" || !isHttpUrl(streamingUrl)) return null;
+      // The URL is passed to an iframe, so only absolute HTTP(S) previews are safe and
+      // bounded; an unexpectedly long URL is rejected rather than truncated into a
+      // different destination.
+      if (streamingUrl === "" || streamingUrl.length > URL_MAX) return null;
+      if (!isHttpUrl(streamingUrl)) return null;
       return {
         event: "streaming_url",
         data: {
@@ -148,9 +160,11 @@ export function mapTinyfishEvent(
     }
     case "PROGRESS": {
       if (event.purpose === null) return null;
+      const purpose = bounded(event.purpose.trim(), PURPOSE_MAX);
+      if (purpose.length === 0) return null;
       return {
         event: "worker_progress",
-        data: { worker: context.worker, ts: context.now(), purpose: event.purpose },
+        data: { worker: context.worker, ts: context.now(), purpose },
       };
     }
     case "COMPLETE":
