@@ -48,7 +48,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 14. Full TinyFish telemetry | [x] | `feat(api): stream full TinyFish telemetry with limits and mock timeline` |
 | 15. Live swarm telemetry model | [x] | `feat(state): add live swarm telemetry model` |
 | 16. Mission control | [x] | `feat(ui): add live mission control for agent swarm` |
-| 17. Verification overlay | [ ] | `feat(engine): add tighten-only live verification overlay` |
+| 17. Verification overlay | [x] | `feat(engine): add tighten-only live verification overlay` |
 | 18. Animated plan changes | [ ] | `feat(ui): animate plan changes and live adjustments` |
 | 19. Mission control docs | [ ] | `docs(agents): document live mission control and telemetry` |
 
@@ -124,6 +124,7 @@ lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditi
       db: postgres.ts (pg pool + schema), trips.ts (async repository)
       model: types.ts, math.ts, features.ts, logistic.ts, calibration.ts, train.ts, predict.ts, artifact.ts, model.json
       output: describeTrip.ts, pacingStrip.ts, careCard.ts
+      verification: verificationOverlay.ts
 hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, swarmBatch.ts, useNow.ts, useReducedMotion.ts, usePhaseAnnouncement.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
 components/  Onboarding.tsx, PlanWorkspace.tsx, MissionBand.tsx, PlanPanel.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
 components/mission/  MissionControl.tsx, StatusBar.tsx, FocusView.tsx, WorkerTile.tsx, ActivityFeed.tsx, TempoStrip.tsx, SourcesList.tsx, FindingsReveal.tsx, PreRun.tsx, ConnectionStatus.tsx, Elapsed.tsx, missionMeta.ts
@@ -132,7 +133,7 @@ scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts
 data/  synthetic-trips.jsonl
 docs/  ML.md, MODEL_CARD.md
 tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts
-module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts
+module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts; lib/model/: calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts
 root  package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, instrumentation.ts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
 ```
 
@@ -393,6 +394,18 @@ The frame sets `referrerPolicy="no-referrer"` and
 skeleton of fake activity. A completed worker's iframe stays mounted for 1.5 seconds after its
 last event, then unmounts; none of the three hidden frames is recreated by switching tiles.
 
+### Verification overlay
+
+`lib/verificationOverlay.ts` is pure. `applyVerification(plan, {condition}, findings, options)`
+returns a new plan and typed adjustments. It only tightens: an advisory heat, air-quality,
+altitude, outbreak, or allergen match appends a bounded verified note to affected day
+checkpoints, and a heat or air-quality match on a sensitive condition extends that day's
+recovery block by 30 minutes, at most once per day. A coverage pre-authorization string becomes
+a display-only checklist adjustment. Step and walking ceilings, scores, and the Sun Life alert
+never change. Unmatched, null, or "Not found" findings produce no adjustment; a master switch
+and per-adjustment ids control what applies. Ids, order, and reason text are deterministic, and
+reapplying the result is a no-op.
+
 ### KPI strip and paced itinerary
 
 `ItineraryBoard` derives everything from `plan`; agent results never feed it. The KPI strip
@@ -599,7 +612,7 @@ allowed fixtures prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.
 
 ## 9. VERIFY register
 
-Regenerate with `grep -rn "VERIFY:" app lib components`; there are 14 entries.
+Regenerate with `grep -rn "VERIFY:" app lib components`; there are 15 entries.
 
 | File | What to verify |
 | --- | --- |
@@ -611,6 +624,7 @@ Regenerate with `grep -rn "VERIFY:" app lib components`; there are 14 entries.
 | `lib/sunLifeRules.ts` (stability placeholder) | The window is `null`; confirm the real value with the plan administrator. Never invent a number. |
 | `lib/sunLifeRules.ts` (rules) | 60-day cap, Allianz 24/7 pre-authorization, and stability window against current group policy; record source and checked date. |
 | `lib/swarmState.ts` (preview allowlist) | Docs list `*.unikraft.app`; a live production run on 2026-11-21 returned `*.tetra-data.production.tinyfish.io`, so both provider domains are allowlisted. Recheck if TinyFish introduces another host family. |
+| `lib/verificationOverlay.ts` (keyword rules) | Heat, air-quality, altitude, outbreak, and allergen keywords are product heuristics, not clinical thresholds. Have a clinician confirm the mapping and the 30-minute recovery extension. |
 | `lib/agent/agentGeocode.ts` (Nominatim) | Public Nominatim allows one request per second and requires an identifying User-Agent. Confirm the production geocoder's licence, quota, and attribution. |
 | `components/TripMap.tsx` (tiles) | Confirm the production tile licence, attribution text, and request volume. Public OSM tiles are not a high-volume production endpoint. |
 | `lib/data/dose.ts` (block exertion) | The block-kind to exertion mapping and hike thresholds (8 km, 350 m, hard/strenuous) are product assumptions, not clinical thresholds. Have a clinician confirm the walking contribution of visits, transit, and care blocks. |
@@ -713,7 +727,7 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 329 tests.
+`npm test` runs Vitest once in a Node environment. The suite has 335 tests.
 
 - `tests/design-guard.test.ts` and `tests/contrast.test.ts` guard styles and 13 WCAG AA token
   pairs; `tests/smoke.test.ts` covers the five conditions.

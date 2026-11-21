@@ -455,6 +455,22 @@ thresholds and Sun Life stability window remain VERIFY.
 - Verified in mock mode at 1280px and 375px: no horizontal overflow, real iframe content,
   `(3 running)` and `Verified 3/3` titles, zero console errors, and no "Queued" text.
 
+### Step 17: tighten-only verification overlay
+
+- Added pure `lib/verificationOverlay.ts`. An advisory heat, air-quality, altitude, outbreak,
+  or allergen match appends a bounded "Verified note" to day checkpoints; heat and air quality
+  on a sensitive condition extend that day's recovery block by 30 minutes, at most once per
+  day. A coverage pre-authorization string becomes a display-only checklist adjustment.
+- The overlay never changes step or walking ceilings, scores, or the Sun Life alert. It is
+  deterministic, idempotent, and a no-op for null, empty, unrelated, or "Not found" findings.
+  A master switch and per-adjustment ids mark what applied.
+- Tests: property coverage over every condition and 2-7 days proves recovery never decreases
+  and caps and scores never change. Added determinism, idempotence, no-op, toggle, and
+  checklist tests. Total suite is 335 tests.
+- Decision: day checkpoints receive global advisory notes on every day because the advisory is
+  destination-wide, not date-specific. Recovery extensions are per-day adjustments so each
+  row can be toggled and explained.
+
 ## Next action
 
 Run a consented pilot cohort against production PostgreSQL, confirm capture and outcome rows
