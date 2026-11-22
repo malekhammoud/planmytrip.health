@@ -6,6 +6,7 @@ import {
   Callout,
   Checkbox,
   Field,
+  NumberInput,
   Select,
   Slider,
   TextInput,
@@ -14,11 +15,11 @@ import {
 import { LocationField } from "@/components/LocationField";
 import { DEFAULT_MEDICATION_BY_CONDITION } from "@/lib/conditionProfiles";
 import { describeTrip } from "@/lib/describeTrip";
+import { TRIP_DAYS_MAX, TRIP_DAYS_MIN } from "@/lib/healthTripTypes";
 import { checkSunLifeCoverage, type SunLifeSeverity } from "@/lib/healthTripEngine";
 import {
   BUDGET_LABELS,
   BUDGET_LEVELS,
-  type BudgetLevel,
   type TripConfig,
 } from "@/lib/agent/agentTypes";
 import {
@@ -84,6 +85,7 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
   );
   const alert = checkSunLifeCoverage(config.days, config.hasSunLifeTravelCoverage);
   const canContinue = canContinueTripStep(config);
+  const budgetIndex = Math.max(0, BUDGET_LEVELS.indexOf(config.budget));
 
   function update<K extends keyof TripConfig>(key: K, value: TripConfig[K]): void {
     setConfig((current) => ({ ...current, [key]: value }));
@@ -217,44 +219,47 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
                     )}
                   </Field>
 
-                  <Field id="onboarding-days" label="Duration">
+                  <Field
+                    id="onboarding-days"
+                    label="Duration"
+                    hint={`${TRIP_DAYS_MIN} to ${TRIP_DAYS_MAX} days.`}
+                  >
                     {(control) => (
-                      <Slider
-                        id={control.id}
-                        value={config.days}
-                        min={2}
-                        max={7}
-                        onChange={(days) => update("days", days)}
-                        ariaLabel="Duration"
-                        ariaValueText={`${config.days} days`}
-                        ariaDescribedBy={control["aria-describedby"]}
-                        ariaInvalid={control["aria-invalid"]}
-                      />
+                      <div className="flex items-baseline gap-3">
+                        <div className="w-24">
+                          <NumberInput
+                            id={control.id}
+                            value={config.days}
+                            min={TRIP_DAYS_MIN}
+                            max={TRIP_DAYS_MAX}
+                            onValueChange={(days) => update("days", days)}
+                            aria-describedby={control["aria-describedby"]}
+                            aria-invalid={control["aria-invalid"]}
+                          />
+                        </div>
+                        <span className="t-small text-muted">days</span>
+                      </div>
                     )}
                   </Field>
 
                   <Field id="onboarding-budget" label="Budget">
                     {(control) => (
-                      <Select
-                        {...control}
-                        value={config.budget}
-                        onChange={(event) => {
-                          const next = event.currentTarget.value;
-                          if (
-                            next === "value" ||
-                            next === "balanced" ||
-                            next === "premium"
-                          ) {
-                            update("budget", next as BudgetLevel);
-                          }
+                      <Slider
+                        id={control.id}
+                        value={budgetIndex}
+                        min={0}
+                        max={BUDGET_LEVELS.length - 1}
+                        step={1}
+                        onChange={(index) => {
+                          const next = BUDGET_LEVELS[index];
+                          if (next !== undefined) update("budget", next);
                         }}
-                      >
-                        {BUDGET_LEVELS.map((value) => (
-                          <option key={value} value={value}>
-                            {BUDGET_LABELS[value]}
-                          </option>
-                        ))}
-                      </Select>
+                        ariaLabel="Budget"
+                        ariaValueText={`${BUDGET_LABELS[config.budget]} budget`}
+                        ariaDescribedBy={control["aria-describedby"]}
+                        ariaInvalid={control["aria-invalid"]}
+                        tickLabels={BUDGET_LEVELS.map((value) => BUDGET_LABELS[value])}
+                      />
                     )}
                   </Field>
 

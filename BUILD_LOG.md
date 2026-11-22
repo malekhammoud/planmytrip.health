@@ -873,6 +873,18 @@ thresholds and Sun Life stability window remain VERIFY.
   44px, with no page errors and no horizontal overflow at 1280 or 390.
 - Gate: typecheck, 522 tests, lint, and production build pass.
 
+### Step 31: numeric duration and budget slider
+
+- Replaced the duration range with a bounded integer field. `NumberInput` keeps an invalid
+  draft out of `TripConfig`, accepts only 2-7, clamps on leaving the field, and shows the
+  current value with a `days` suffix.
+- Replaced the budget select with a three-stop slider. `Slider` gained optional tick labels;
+  the budget track reads Value, Balanced, and Premium and announces the selected level through
+  `aria-valuetext`.
+- Added `clampInteger` and three unit tests for in-range, clamping, rounding, and non-finite
+  input.
+- Gate: typecheck, 525 tests, lint, and production build pass.
+
 ## Next action
 
 Rehearse the cached London, Ontario demo end to end: sign in, enter London (try both "London,

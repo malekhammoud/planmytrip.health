@@ -33,6 +33,10 @@ export type { MetricBarWidths } from "./metricBars";
 export { SectionHeader } from "./SectionHeader";
 export type { SectionHeaderProps } from "./SectionHeader";
 
+export { NumberInput } from "./NumberInput";
+export type { NumberInputProps } from "./NumberInput";
+export { clampInteger } from "./numberInput";
+
 export { Select } from "./Select";
 export type { SelectProps } from "./Select";
 

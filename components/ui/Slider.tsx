@@ -16,6 +16,8 @@ export interface SliderProps {
   ariaValueText?: string;
   /** Increment between allowed values. Defaults to 1. */
   step?: number;
+  /** Optional labels for each integer tick, in order from min to max. */
+  tickLabels?: readonly string[];
   /** Optional id, for example from Field. */
   id?: string;
   /** Supporting hint or error ids supplied by Field. */
@@ -37,6 +39,7 @@ export function Slider({
   ariaLabel,
   ariaValueText,
   step = 1,
+  tickLabels,
   id,
   ariaDescribedBy,
   ariaInvalid,
@@ -81,7 +84,7 @@ export function Slider({
               tick === value ? "t-data-sm font-medium text-ink" : "t-data-sm text-muted"
             }
           >
-            {tick}
+            {tickLabels?.[tick - min] ?? tick}
           </span>
         ))}
       </div>
