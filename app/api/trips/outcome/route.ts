@@ -1,12 +1,13 @@
 /**
  * POST /api/trips/outcome: records the post-trip label for one anonymous run.
  *
- * Inputs: { runId, installId, outcome: { flare, ... } }.
+ * Inputs: a signed-in Clerk session and { runId, installId, outcome: { flare, ... } }.
  * Outputs: { ok: true }, 400 for an invalid body, or 404 when the run is unknown to the
  * install. Invariants: an outcome requires an explicit boolean; the install id scopes
- * the write; no response echoes trip data.
+ * the research write; no response echoes trip data.
  */
 
+import { auth } from "@clerk/nextjs/server";
 import { parseOutcome } from "@/lib/data/tripDossier";
 import { parseInstallId, parseRunId } from "@/lib/data/validation";
 import { saveOutcome } from "@/lib/db/trips";
@@ -22,6 +23,9 @@ function json(status: number, body: Record<string, unknown>): Response {
 
 /** Handles one outcome submission. */
 export async function POST(request: Request): Promise<Response> {
+  const { userId } = await auth();
+  if (userId === null) return json(401, { error: "Sign in to record an outcome." });
+
   let body: unknown;
   try {
     body = await request.json();

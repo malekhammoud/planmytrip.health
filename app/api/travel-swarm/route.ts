@@ -11,6 +11,7 @@
  * API key is never logged, echoed, or placed in an event.
  */
 
+import { auth } from "@clerk/nextjs/server";
 import { KEEP_ALIVE_MS, runSwarm, type SwarmRunContext } from "@/lib/swarmRunner";
 import { captureSwarmFindings } from "@/lib/data/capture";
 import type { WorkerFindingSummary } from "@/lib/data/types";
@@ -40,6 +41,11 @@ function jsonError(status: number, message: string): Response {
 
 /** Handles one swarm request. Invalid bodies get JSON; valid bodies get an SSE stream. */
 export async function POST(request: Request): Promise<Response> {
+  const { userId } = await auth();
+  if (userId === null) {
+    return jsonError(401, "Sign in to start live verification.");
+  }
+
   let body: unknown;
   try {
     body = await request.json();

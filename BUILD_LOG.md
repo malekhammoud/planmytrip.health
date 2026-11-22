@@ -621,14 +621,96 @@ thresholds and Sun Life stability window remain VERIFY.
   configured in this environment, lint, and a production build.
 
 
+### Step 23: live command surface
+
+- Replaced the scrolling report with a command surface. A sticky `CommandBar` carries the
+  destination, the current stage and four-step rail, both run clocks, real agent/step/source/
+  finding counts, the newest activity line, and the trip actions. Two progress rules show the
+  planner and verification counts; every value comes from an accepted event. The mobile bar
+  keeps the newest line and drops the mock-only note beside Save trip.
+- The named-area grid now reflows through four live stages instead of one ready state:
+  `forming` leads with the planning deck, `researching` sets the stage beside the deck,
+  `composing` gives the stage the width, and `ready` leads with the stage and a compact deck.
+  Verification spans the full width at ready and moves above the safety envelope while its
+  workers run, then returns below once they settle. Panels move by grid area with a fade;
+  neither stream nor any of the three preview frames is unmounted. `lib/agent/plannerStage.ts`
+  now exports the surface mode, stage position, and newest agent as pure functions.
+- Added `DayFocus` as the map control: All days or one 44px day button, arrow/Home/End keys,
+  and a focus strip with the day's estimate and ceilings, walking distance, recovery, and
+  checkpoint. Selection fits the map to that day's stops, dims the other markers, opens the
+  matching route and day-plan rows, and rules the matching envelope row. A new map overlay
+  names the focused day; route and day rows carry "Map" actions that return to it.
+- The planning deck keeps the live roster while forming and becomes a seven-cell strip at
+  ready. It follows the agent with the newest activity line unless the reader pins one; the
+  focused agent's phase, checks, recent activity, result, or error opens below. The roster
+  marks the newest agent. The deck uses container queries, so it stays readable when research
+  moves it into a narrow column.
+- The activity rail switches between the planning signal and the verification feed. It follows
+  the stream with the newest real line, and verification once the plan is ready, unless the
+  reader pins one; `Follow live` restores auto-follow. Both feeds stay mounted, the newest
+  planner line carries an arrival wash, and the existing feed keeps its filters and jump
+  control. `useElapsed` resets on a new run so the clock cannot carry a retry.
+- Mission control now follows its own focus: the three tiles still choose the live frame, and
+  the sources and findings panes show only the pinned or auto-followed worker. All findings
+  remain reachable by switching a tile. The live frame is capped at 520px high on wide
+  screens. `StatusBar` and the section header keep the real running and finding counts.
+- The safety envelope keeps every day's step and walking caps visible. The focused day (shared
+  with the map) opens its pacing strip, block list, and checkpoint; other days stay compact.
+  Live adjustments are a two-column switch list, so all sources and diffs remain readable.
+  Secondary concierge material (selected places, booking list, sources) is a disclosure.
+- Added a fixed five-item mobile dock (`Route`, `Team`, `Checks`, `Safety`, `Activity`) below
+  1024px. It jumps to the mounted sections with scroll margin under the sticky bars, shows a
+  live dot on running streams, and uses 44px targets. 375px has no horizontal overflow.
+- Added 8 pure stage tests (surface modes, stage position, newest agent) and updated the suite
+  count. Mock verification at 1280 and 375 covered forming, ready, a selected day, a pinned
+  agent, a pinned verification stream, the dock jump, the live-to-settled verification reflow,
+  and reduced motion. A MutationObserver recorded all four surface modes: forming, researching,
+  composing, and ready.
+- Gate: typecheck, 481 tests with the test database, lint, and production build pass.
+- Unverified: a live seven-agent run and a live three-worker TinyFish run with the new
+  reflow and per-worker findings focus. Both were exercised in mock mode only.
+
+
+### Step 24: Clerk accounts and saved trips
+
+- Added `@clerk/nextjs` 7.10.7 with required sign-in at `/sign-in` and `/sign-up`. The
+  planner page, saved-trip pages, planner and swarm routes, outcome route, and trip log now
+  require a Clerk session. The header carries `Saved trips` and `UserButton`.
+- Added account-owned saved trips. `saved_trips` is keyed by `clerk_user_id` and stores one
+  validated `TripConfig` and `AgentTripPlan` snapshot per `(clerk_user_id, run_id)`. The
+  authenticated `/api/saved-trips` routes list, save, read, and delete only that account's
+  rows. `/trips` lists summaries and `/trips/[id]` rebuilds the deterministic engine envelope
+  around the captured plan. Mock plans are never saved, and the anonymous consent-gated
+  `trip_captures` table is unchanged.
+- Production Clerk is `app_3MR7sJ2fhslkGXYl4yRqjseO13C`. The domain is configured with
+  `proxy_url: https://planmytrip.health/__clerk`; `ClerkProvider` uses the same origin. Keys
+  live only in `/etc/planmytrip.env`.
+- Next 16.4.6 hangs when Clerk's middleware returns its full request-header override set.
+  `proxy.ts` now forwards only `x-clerk-*` auth request headers, preserving response cookies
+  and the Frontend API proxy. The workaround is load-bearing; see `docs/AUTH.md`.
+- The Clerk production custom-domain CNAME records are not used for the browser session.
+  The domain Dashboard selection does not authenticate the CLI; `clerk auth login` remains a
+  host action before account-level CLI commands.
+- Added 10 tests: saved-trip request bounds, normalisation, mock rejection, id validation,
+  and PostgreSQL upsert, ownership, list, read, and delete. The suite is 481 tests; 30
+  database tests skip when `DATABASE_URL` is absent. `tests/mocks/clerk-server.ts` gives route
+  handlers a stable test account.
+- Gate: typecheck, 451 passed / 30 skipped, lint, and production build pass. Production smoke:
+  `/` 307 to `https://planmytrip.health/sign-in`, `/sign-in` 200, Clerk JS proxy 200,
+  `/__clerk/v1/environment` 200, and `/api/saved-trips` 401. `npm run db:init` applied
+  `saved_trips` to the production database.
+- Unverified: a real first-user sign-up and sign-in, saving and reopening a trip in a browser,
+  the Clerk email/account-portal CNAME records, and a real account-deletion cleanup.
+
 ## Next action
 
-Run a consented pilot cohort against production PostgreSQL, confirm capture and outcome rows
-arrive, and replace the synthetic artifact only after the pooled tier is reached. Close the
-returning-traveler gap first: a browser that comes back after the trip must be able to find
-its saved run and record the explicit outcome without the live plan on screen. Monitor
-pharmacy consistency and check the live iframe and clipboard behavior. Before the pitch,
-rehearse the two staggered demo runs and complete the 0-of-5 planner audit. Then run a full
-7-of-7 concierge pass with the new transport question and open the generated Google Maps links
-on a phone. Live transit schedules, opening hours, and cross-day pacing rebalancing remain
-follow-ups. The clinical thresholds and Sun Life stability window remain VERIFY.
+Have the first user sign up, then save a plan, reopen it from `/trips`, and delete it. Confirm
+the Clerk email and account-portal DNS records. Run a consented pilot cohort against
+production PostgreSQL, confirm capture and outcome rows arrive, and replace the synthetic
+artifact only after the pooled tier is reached. The saved-trip page still needs the post-trip
+outcome action. Monitor pharmacy consistency and check the live iframe and clipboard behavior.
+Before the pitch, rehearse the two staggered demo runs and complete the 0-of-5 planner audit.
+Then run a full 7-of-7 concierge pass with the new transport question and open the generated
+Google Maps links on a phone. Live transit schedules, opening hours, cross-day pacing
+rebalancing, account deletion, and rate limiting remain follow-ups. The clinical thresholds
+and Sun Life stability window remain VERIFY.

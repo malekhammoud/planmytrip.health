@@ -91,8 +91,8 @@ export function TripOutcomePanel({ capture }: { capture: TripCaptureContext }) {
         After your trip
       </h3>
       <p className="t-body measure mt-3 text-muted">
-        Record how it went. This is what calibrates future pacing estimates. No name,
-        email, or account is stored.
+        Record how it went. This is what calibrates future pacing estimates. This
+        research copy is stored separately from your account.
       </p>
 
       <div className="mt-6 flex flex-col gap-6">

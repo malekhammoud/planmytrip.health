@@ -7,6 +7,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": projectRoot,
+      // Route-handler tests import Next handlers outside the server boundary. The real
+      // Clerk module imports server-only, so tests use a stable account stub instead.
+      "@clerk/nextjs/server": fileURLToPath(
+        new URL("./tests/mocks/clerk-server.ts", import.meta.url),
+      ),
     },
   },
   test: {

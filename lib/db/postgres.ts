@@ -51,6 +51,23 @@ CREATE TABLE IF NOT EXISTS model_runs (
   metrics_json JSONB NOT NULL,
   artifact_json JSONB NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS saved_trips (
+  id TEXT PRIMARY KEY,
+  clerk_user_id TEXT NOT NULL,
+  run_id TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  destination TEXT NOT NULL,
+  days INTEGER NOT NULL,
+  condition TEXT NOT NULL,
+  trip_json JSONB NOT NULL,
+  plan_json JSONB NOT NULL,
+  UNIQUE (clerk_user_id, run_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_saved_trips_user
+  ON saved_trips(clerk_user_id, updated_at DESC);
 `;
 
 function connectionString(): string {
@@ -107,8 +124,8 @@ export async function closeDatabase(): Promise<void> {
   if (current !== null) await current.end();
 }
 
-/** Test helper: clears capture and model rows without dropping the schema. */
+/** Test helper: clears capture, model, and saved-trip rows without dropping the schema. */
 export async function resetDatabaseForTests(): Promise<void> {
   await ensureSchema();
-  await getPool().query("TRUNCATE TABLE trip_captures, model_runs");
+  await getPool().query("TRUNCATE TABLE trip_captures, model_runs, saved_trips");
 }

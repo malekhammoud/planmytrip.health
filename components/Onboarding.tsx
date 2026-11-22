@@ -374,8 +374,9 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
                       onChange={(checked) => update("captureConsent", checked)}
                     />
                     <p className="t-small text-muted">
-                      No name, email, or account. You can record the outcome after your
-                      trip, and that is what calibrates future estimates.
+                      This research copy is not linked to your account. You can record the
+                      outcome after your trip, and that is what calibrates future
+                      estimates.
                     </p>
                   </div>
 

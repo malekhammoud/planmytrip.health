@@ -8,6 +8,7 @@
  * server-only; no API key, session secret, or raw provider error is echoed.
  */
 
+import { auth } from "@clerk/nextjs/server";
 import { runPlanner } from "@/lib/agent/agentRunner";
 import { parsePlannerRequest } from "@/lib/agent/agentRequest";
 import { capturePlannerRun } from "@/lib/data/capture";
@@ -38,6 +39,9 @@ function jsonError(status: number, message: string): Response {
 
 /** Handles one concierge request. Invalid bodies get JSON; valid bodies get SSE. */
 export async function POST(request: Request): Promise<Response> {
+  const { userId } = await auth();
+  if (userId === null) return jsonError(401, "Sign in to plan a trip.");
+
   let body: unknown;
   try {
     body = await request.json();

@@ -1,10 +1,12 @@
 /**
  * GET /api/trips?installId=...: lists recent anonymous trips for one browser.
  *
- * Inputs: an install id query parameter. Outputs: compact trip summaries with the label
- * state, never full dossiers or another install's data.
+ * Inputs: a signed-in Clerk session and an install id. Outputs: compact trip summaries
+ * with the label state, never full dossiers or another install's data. This is the
+ * anonymous research log, not the account-owned saved-trip list.
  */
 
+import { auth } from "@clerk/nextjs/server";
 import { parseInstallId } from "@/lib/data/validation";
 import { listTrips } from "@/lib/db/trips";
 
@@ -19,6 +21,8 @@ function json(status: number, body: Record<string, unknown>): Response {
 
 /** Returns the install-scoped trip log. A header is preferred so proxy logs stay clean. */
 export async function GET(request: Request): Promise<Response> {
+  const { userId } = await auth();
+  if (userId === null) return json(401, { error: "Sign in to read the trip log." });
   const url = new URL(request.url);
   const installId = parseInstallId(
     request.headers.get("x-install-id") ?? url.searchParams.get("installId"),
