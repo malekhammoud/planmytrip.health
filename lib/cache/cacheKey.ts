@@ -48,10 +48,18 @@ const REGION_ALIASES: Readonly<Record<string, string>> = {
   nu: "nunavut",
 };
 
-/** Normalises a destination and expands a trailing Canadian province abbreviation. */
+/**
+ * Normalises a destination, drops a trailing home-market country, and expands a trailing
+ * Canadian province abbreviation. A selected autocomplete label such as
+ * "London, Ontario, Canada" must share a key with "London, Ontario".
+ */
 export function normalizeDestination(value: string): string {
   const normalized = normalizeCacheText(value);
-  return normalized.replace(
+  const withoutCountry = normalized
+    .replace(/\b(united states of america|united states|usa|canada)$/, "")
+    .trim();
+  const base = withoutCountry.length > 0 ? withoutCountry : normalized;
+  return base.replace(
     /\b([a-z]+)$/,
     (token) => REGION_ALIASES[token] ?? token,
   );

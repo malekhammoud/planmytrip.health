@@ -647,6 +647,31 @@
   background: transparent;
 }
 
+/* A thin, token-coloured scrollbar for the destination suggestions. */
+.location-list {
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline-strong) transparent;
+}
+
+/* The map-picker pin is a DOM shape, not an image asset. */
+.location-pick-marker {
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.location-pick-marker::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  opacity: 0.55;
+}
+
 .trip-map-marker__hit {
   position: absolute;
   left: -22px;

@@ -52,6 +52,15 @@ describe("cache keys", () => {
     expect(buildPlanCacheKey(request({ transport: "walk" }))).not.toBe(base);
   });
 
+  it("matches an autocomplete label that includes the country", () => {
+    expect(
+      buildPlanCacheKey(request({ destination: "London, Ontario, Canada" })),
+    ).toBe(buildPlanCacheKey(request()));
+    expect(
+      buildPlanCacheKey(request({ destination: "London, ON, Canada" })),
+    ).toBe(buildPlanCacheKey(request()));
+  });
+
   it("keeps a broad identity for the related-request fallback", () => {
     expect(planCacheIdentity(request())).toEqual({
       destination: "london ontario",

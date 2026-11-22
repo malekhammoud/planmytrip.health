@@ -11,6 +11,7 @@ import {
   TextInput,
   type CalloutTone,
 } from "@/components/ui";
+import { LocationField } from "@/components/LocationField";
 import { DEFAULT_MEDICATION_BY_CONDITION } from "@/lib/conditionProfiles";
 import { describeTrip } from "@/lib/describeTrip";
 import { checkSunLifeCoverage, type SunLifeSeverity } from "@/lib/healthTripEngine";
@@ -180,17 +181,18 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
                   The trip
                 </h2>
                 <div className="mt-6 flex flex-col gap-7">
-                  <Field id="onboarding-destination" label="Destination">
+                  <Field
+                    id="onboarding-destination"
+                    label="Destination"
+                    hint="Type a city, use your current location, or pick an exact point on the map."
+                  >
                     {(control) => (
-                      <TextInput
-                        {...control}
+                      <LocationField
+                        id={control.id}
                         value={config.destination}
-                        onChange={(event) =>
-                          update("destination", event.currentTarget.value)
-                        }
-                        autoComplete="off"
-                        enterKeyHint="done"
-                        maxLength={120}
+                        onChange={(value) => update("destination", value)}
+                        aria-describedby={control["aria-describedby"]}
+                        aria-invalid={control["aria-invalid"]}
                         placeholder="City, country"
                       />
                     )}

@@ -829,14 +829,45 @@ thresholds and Sun Life stability window remain VERIFY.
   recording route returned 200 `video/webm` for a 458,544-byte file.
 - Gate: typecheck, 501 tests, lint, and production build pass.
 
+### Step 29: location autocomplete and map picker
+
+- Replaced the destination text input with `LocationField`, a controlled combobox. Typing
+  debounces for 220ms and searches `/api/geocode/search`; up to six city or place rows show a
+  label, provider kind, and city label, with arrow-key, Enter, Escape, and active-descendant
+  support.
+- Added `Use current location`, which reads the browser position and reverse-geocodes it to a
+  city label through `/api/geocode/reverse`. Denied or unavailable permission leaves the typed
+  city usable and shows calm copy.
+- Added `Pick on map`, which opens `LocationPickerDialog`, a mounted-only Leaflet modal with a
+  token-coloured DOM pin. A map click reverse-geocodes the exact point; confirm stays disabled
+  until the point is named. Escape, backdrop, and focus restoration are wired.
+- Added authenticated `/api/geocode/search` and `/api/geocode/reverse` routes with bounded
+  queries and coordinates, private cache headers, in-process caching, Nominatim/Photon
+  providers, and no raw upstream errors. Extracted shared tile configuration to `lib/mapTiles.ts`.
+- Live browser checks on the signed-in production flow: typing `London` returned London,
+  England first and London, Ontario, Canada second; selecting the Ontario row filled the
+  canonical label. Current location with a London coordinate filled `London, Ontario, Canada`
+  and showed the current-city status. A map click at the London centre resolved to
+  `406 Richmond Street, London, Ontario, Canada`, enabled the confirm action, closed the
+  dialog, and returned focus.
+- The nginx site had `Permissions-Policy: geolocation=()`, which blocked the new control.
+  Changed it to `camera=(), microphone=(), geolocation=(self)`; camera and microphone remain
+  blocked. The current-location path then succeeded in the signed-in browser.
+- Building from the selected autocomplete label still hit the London cache in 634-710 ms, with the
+  cached plan, cached verification, 10 map markers, and 3 recorded videos. No page errors and
+  no horizontal overflow at 1280 or 390; both location buttons measured 44px.
+- Gate: typecheck, 522 tests, lint, and production build pass.
+
 ## Next action
 
 Rehearse the cached London, Ontario demo end to end: sign in, enter London (try both "London,
 Ontario" and "London, ON"), confirm the cached plan, 10 map markers, three recorded videos,
 and the dated cache labels. Seed another demo destination or duration with a live run if the
 pitch needs it. Run one uncached trip after the Photon fallback to confirm new places geocode,
-and confirm the Photon and TinyFish recording terms before a paid launch. Enable Google in the
-Clerk dashboard with a production Google OAuth client ID and secret, then
+and confirm the Photon and TinyFish recording terms before a paid launch. Try the location
+controls on a real phone: the permission prompt, current-location reverse lookup, map pin, and
+the autocomplete dropdown at 390px. Enable Google in the Clerk dashboard with a production
+Google OAuth client ID and secret, then
 verify the Google button and a real sign-up. Have the first user sign up, save a plan, reopen
 it from `/trips`, and delete it. Confirm the Clerk email and account-portal DNS records. Run a
 consented pilot cohort against

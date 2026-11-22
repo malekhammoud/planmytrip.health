@@ -5,15 +5,7 @@ import type * as Leaflet from "leaflet";
 import type { PlannerDay, PlannerPlace } from "@/lib/agent/agentTypes";
 import type { TripRoute } from "@/lib/route/routeTypes";
 
-// VERIFY: Confirm the production tile licence, attribution text, and request volume
-// with the chosen tile provider before launch. The public OSM tiles are not a
-// high-volume production endpoint.
-const TILE_URL =
-  process.env.NEXT_PUBLIC_MAP_TILE_URL ??
-  "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-const ATTRIBUTION =
-  process.env.NEXT_PUBLIC_MAP_ATTRIBUTION ??
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+import { MAP_ATTRIBUTION, MAP_TILE_URL } from "@/lib/mapTiles";
 
 const CATEGORY_LABEL: Record<PlannerPlace["category"], string> = {
   stay: "Stay",
@@ -68,8 +60,8 @@ export function TripMap({
       }).setView([20, 0], 2);
       map.attributionControl.setPrefix(false);
       map.attributionControl.setPosition("bottomleft");
-      L.tileLayer(TILE_URL, {
-        attribution: ATTRIBUTION,
+      L.tileLayer(MAP_TILE_URL, {
+        attribution: MAP_ATTRIBUTION,
         maxZoom: 19,
         minZoom: 2,
       }).addTo(map);
