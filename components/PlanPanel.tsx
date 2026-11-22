@@ -174,11 +174,32 @@ export function PlanPanel({
       </Callout>
     </div>
   ) : null;
+  const cachedNote =
+    state.cachedAt === null ? null : (
+      <div className="mb-4">
+        <Callout tone="info" title="Cached plan">
+          <p>
+            Served from a verified cache checked{" "}
+            {new Date(state.cachedAt).toLocaleDateString("en-CA", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
+            .{" "}
+            {state.cacheMatch === "related"
+              ? "The cache matched the destination, duration, condition, and medication; your other preferences and starting point may differ."
+              : "The route, places, and sources are the recorded result."}
+          </p>
+          <p className="mt-2">Confirm hours, prices, and availability before booking.</p>
+        </Callout>
+      </div>
+    );
 
   if (state.plan !== null) {
     return (
       <div>
         {mockNote}
+        {cachedNote}
         <AgentPlanView
           plan={state.plan}
           visible={visible}

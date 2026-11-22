@@ -788,9 +788,55 @@ thresholds and Sun Life stability window remain VERIFY.
   `/tmp/collapse-*.png`.
 - Gate: typecheck, 481 tests, lint, and production build pass.
 
+### Step 28: instant cached plans and recorded verification
+
+- Added a two-tier result cache for both agent teams. `lib/cache/cacheKey.ts` normalises the
+  destination, days, condition, medication, preferences, budget, and transport into deterministic
+  keys. `lib/cache/cacheStore.ts` keeps a small in-process tier over an idempotent `trip_cache`
+  table in PostgreSQL. Plans live 30 days and verification 14 days.
+- `/api/agent-plan` now checks the cache before it touches OpenCode. An exact hit or a
+  destination + days + condition + medication fallback replays the real planner contract in one
+  fast pass: `planner_started`, one result per agent, `plan_ready` with `cached`, `cachedAt`, and
+  `cacheMatch`, then `planner_done`. The route adds `X-Plan-Cache: hit|miss`.
+- `/api/travel-swarm` checks for a complete recorded worker set before TinyFish. A hit replays
+  the real recorded purposes, sources, findings, and provenance, then `swarm_done`; it never
+  reuses an expired preview URL. The route adds `X-Swarm-Cache: hit|miss`.
+- The interface labels a cached result with the original date. A related planner match says the
+  other preferences may differ. Cached verification keeps its recorded browser videos.
+- When `TINYFISH_RECORDING=1`, the swarm runner asks TinyFish to record each run. The run-detail
+  `video_url` is archived as a WebM under `$HOME/recordings` in production, and
+  `/api/recordings/[id]` serves it only to a signed-in user. `FocusView` plays the recording
+  after the live frame ends.
+- Added `npm run cache:seed` for a verification row from an existing capture or a planner row
+  from a saved JSON file, and `tests/cache-route.test.ts`, `lib/cache/*.test.ts`, and
+  `lib/db/tripCache.test.ts` for keys, replay order, expiry, mock rejection, complete-set
+  reads, and the PostgreSQL tier.
+- Production seed for London, Ontario, 4 days, asthma, albuterol, balanced, mixed: the live
+  planner finished all 7 agents in 409.5s with 4 days and 10 places; the live swarm finished
+  all 3 workers in 110.1s with 25 steps, 10 sources, and 3 findings. The recording archive
+  wrote three WebM files (about 1.5 MB total).
+- The first exact cache hits after seeding returned the planner in 269 ms and verification in
+  251 ms. A related planner request with no interests, walking transport, and a Toronto origin
+  returned in 70 ms with `cacheMatch: related`; the verification hit in 69 ms. After the final
+  restart, the first related planner hit was 390 ms, the verification hit was 50 ms, and a full
+  signed-in onboarding click to a ready cached plan took 582 ms.
+- The cached London plan now has coordinates for all 10 places. Nominatim was returning a
+  Varnish 629 error in production, so `GEOCODER_FALLBACK_URL` uses Photon and
+  `geocodePlan` accepts a fallback only when its city matches the destination. The cached plan
+  was re-geocoded; the route map, 10 markers, and day focus are present.
+- A signed-in browser run of the real onboarding flow opened the cached plan and three
+  recorded WebM videos, with no page errors and no horizontal overflow at 1280 and 390. The
+  recording route returned 200 `video/webm` for a 458,544-byte file.
+- Gate: typecheck, 501 tests, lint, and production build pass.
+
 ## Next action
 
-Enable Google in the Clerk dashboard with a production Google OAuth client ID and secret, then
+Rehearse the cached London, Ontario demo end to end: sign in, enter London (try both "London,
+Ontario" and "London, ON"), confirm the cached plan, 10 map markers, three recorded videos,
+and the dated cache labels. Seed another demo destination or duration with a live run if the
+pitch needs it. Run one uncached trip after the Photon fallback to confirm new places geocode,
+and confirm the Photon and TinyFish recording terms before a paid launch. Enable Google in the
+Clerk dashboard with a production Google OAuth client ID and secret, then
 verify the Google button and a real sign-up. Have the first user sign up, save a plan, reopen
 it from `/trips`, and delete it. Confirm the Clerk email and account-portal DNS records. Run a
 consented pilot cohort against

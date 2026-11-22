@@ -12,15 +12,22 @@
  */
 
 import { auth } from "@clerk/nextjs/server";
-import { KEEP_ALIVE_MS, runSwarm, type SwarmRunContext } from "@/lib/swarmRunner";
+import { buildCachedSwarmEvents } from "@/lib/cache/cachedEvents";
+import { archiveSwarmCache } from "@/lib/cache/swarmArchive";
+import { readCachedSwarm, type SwarmCacheWriteWorker } from "@/lib/cache/swarmCache";
 import { captureSwarmFindings } from "@/lib/data/capture";
 import type { WorkerFindingSummary } from "@/lib/data/types";
+import { mergeSources } from "@/lib/swarmReducer";
+import { KEEP_ALIVE_MS, runSwarm, type SwarmRunContext } from "@/lib/swarmRunner";
 import {
   encodeSwarmEvent,
   isSwarmRequestBody,
   normalizeSwarmText,
   resolveWorkers,
   type SwarmEvent,
+  type SwarmSourceItem,
+  type TinyfishApi,
+  type WorkerId,
 } from "@/lib/swarmTypes";
 
 export const runtime = "nodejs";
@@ -68,6 +75,10 @@ export async function POST(request: Request): Promise<Response> {
   };
   const apiKey = process.env.TINYFISH_API_KEY?.trim() ?? "";
   const mock = process.env.SWARM_MOCK === "1" && process.env.NODE_ENV !== "production";
+  // Cached verification skips all three paid browser runs. A miss runs the live swarm
+  // and stores the complete set for the next request.
+  const cached = mock ? null : await readCachedSwarm(input, workers).catch(() => null);
+  const fromCache = cached !== null;
 
   const encoder = new TextEncoder();
   const abort = new AbortController();
@@ -76,6 +87,11 @@ export async function POST(request: Request): Promise<Response> {
   let keepAlive: ReturnType<typeof setInterval> | null = null;
   const findings: WorkerFindingSummary[] = [];
   const pendingCaptures: Promise<void>[] = [];
+  const sources: Partial<Record<WorkerId, SwarmSourceItem[]>> = {};
+  const purposes: Partial<Record<WorkerId, { purpose: string; tinyfishApi?: TinyfishApi }[]>> = {};
+  const runIds: Partial<Record<WorkerId, string>> = {};
+  const startedAt: Partial<Record<WorkerId, string>> = {};
+  const completions: Partial<Record<WorkerId, SwarmCacheWriteWorker>> = {};
 
   const stopKeepAlive = (): void => {
     if (keepAlive !== null) {
@@ -85,13 +101,52 @@ export async function POST(request: Request): Promise<Response> {
   };
 
   const emit = (event: SwarmEvent): void => {
+    if (event.event === "worker_started") {
+      startedAt[event.data.worker] = event.data.startedAt;
+      if (event.data.runId !== null) runIds[event.data.worker] = event.data.runId;
+    }
+    if (event.event === "worker_sources") {
+      sources[event.data.worker] = mergeSources(
+        sources[event.data.worker] ?? [],
+        event.data.items,
+      );
+    }
+    if (event.event === "worker_progress") {
+      const next = purposes[event.data.worker] ?? [];
+      purposes[event.data.worker] = [
+        ...next,
+        {
+          purpose: event.data.purpose,
+          ...(event.data.tinyfishApi === undefined
+            ? {}
+            : { tinyfishApi: event.data.tinyfishApi }),
+        },
+      ].slice(-200);
+    }
     if (event.event === "worker_complete") {
+      const worker = event.data.worker;
+      completions[worker] = {
+        findings: event.data.findings,
+        sourceUrl: event.data.sourceUrl,
+        retrievedAt: event.data.retrievedAt,
+        ...(startedAt[worker] === undefined ? {} : { startedAt: startedAt[worker] }),
+        endedAt: event.data.ts,
+        sources: sources[worker] ?? [],
+        purposes: purposes[worker] ?? [],
+        ...(event.data.rawResult === undefined ? {} : { rawResult: event.data.rawResult }),
+        ...(event.data.parseError === undefined ? {} : { parseError: event.data.parseError }),
+        ...(event.data.recordingUrl === undefined
+          ? {}
+          : { recordingUrl: event.data.recordingUrl }),
+      };
       findings.push({
-        worker: event.data.worker,
+        worker,
         ok: true,
         sourceUrl: event.data.sourceUrl,
         retrievedAt: event.data.retrievedAt,
-        summary: JSON.stringify(event.data.findings).slice(0, 800),
+        // Keep enough of the typed result to seed a complete verification cache from a
+        // capture row; 800 characters truncated the coverage checklist.
+        summary: JSON.stringify(event.data.findings).slice(0, 4_000),
       });
     }
     if (event.event === "worker_error") {
@@ -116,6 +171,27 @@ export async function POST(request: Request): Promise<Response> {
           // Capture is best-effort; the verification stream must still close cleanly.
         }),
       );
+    }
+    if (
+      event.event === "swarm_done" &&
+      !mock &&
+      !fromCache &&
+      workers.length === 3 &&
+      event.data.completed.length === workers.length &&
+      event.data.failed.length === 0
+    ) {
+      // Recordings and the cache write finish after the stream's terminal frame, so a
+      // long video download never delays the live result.
+      void archiveSwarmCache({
+        identity: input,
+        workers,
+        values: completions,
+        runIds,
+        apiKey,
+        now: event.data.ts,
+      }).catch(() => {
+        // A cache miss on the next request is harmless.
+      });
     }
     if (closed || controllerRef === null || abort.signal.aborted) return;
     try {
@@ -158,6 +234,12 @@ export async function POST(request: Request): Promise<Response> {
           stopKeepAlive();
         }
       }, KEEP_ALIVE_MS);
+      if (cached !== null) {
+        for (const event of buildCachedSwarmEvents(cached, workers)) emit(event);
+        void Promise.allSettled(pendingCaptures).finally(finish);
+        return;
+      }
+
       void runSwarm(workers, context, mock)
         .catch(() => {
           // The runner guarantees swarm_done; this prevents an unhandled rejection.
@@ -173,5 +255,10 @@ export async function POST(request: Request): Promise<Response> {
     },
   });
 
-  return new Response(stream, { headers: SSE_HEADERS });
+  return new Response(stream, {
+    headers: {
+      ...SSE_HEADERS,
+      "X-Swarm-Cache": cached === null ? "miss" : "hit",
+    },
+  });
 }

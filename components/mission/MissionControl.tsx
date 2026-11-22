@@ -145,6 +145,20 @@ export function MissionControl({
         </div>
       ) : null}
 
+      {state.cachedAt !== null ? (
+        <div className="mb-4">
+          <Callout tone="info" title="Cached verification">
+            These findings and the recorded browser runs are a verified cache from{" "}
+            {new Date(state.cachedAt).toLocaleDateString("en-CA", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
+            . Live pages may have changed; re-run before relying on a detail.
+          </Callout>
+        </div>
+      ) : null}
+
       {stale ? (
         <div className="mb-4">
           <Callout tone="caution" title="Inputs changed since this verification ran">

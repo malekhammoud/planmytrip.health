@@ -189,6 +189,8 @@ export interface SwarmWorkerEnvelope {
   /** Server receive time, ISO. */
   ts: string;
   mock?: true;
+  /** True when this frame replays a verified cached run. */
+  cached?: true;
 }
 
 /** Payload for worker_status: the worker entered the queue. */
@@ -233,6 +235,10 @@ export interface WorkerCompletePayload extends SwarmWorkerEnvelope {
   retrievedAt: string;
   rawResult?: string;
   parseError?: string;
+  /** When the live result was produced and cached. */
+  cachedAt?: string;
+  /** Authenticated same-origin recording path, when one was archived. */
+  recordingUrl?: string;
 }
 
 /** Payload for worker_error: a calm, user-facing failure. */
@@ -263,6 +269,10 @@ export interface SwarmDonePayload {
   failed: WorkerId[];
   summary: SwarmDoneSummary;
   mock?: true;
+  /** True when this run replayed the verified cache. */
+  cached?: true;
+  /** When the live run was produced and cached. */
+  cachedAt?: string;
 }
 
 /** Names of the SSE events this route emits. */

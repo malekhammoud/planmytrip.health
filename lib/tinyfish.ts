@@ -201,6 +201,8 @@ export interface StreamTinyfishOptions {
   outputSchema?: Record<string, unknown>;
   browserProfile?: TinyfishBrowserProfile;
   agentConfig?: TinyfishAgentConfig;
+  /** Ask TinyFish to keep a run recording that can be archived after completion. */
+  captureRecording?: boolean;
   signal?: AbortSignal;
   onEvent: (event: TinyfishEvent) => void;
   /** Called with the upstream type name for any event this build does not know. */
@@ -247,6 +249,9 @@ function buildRunPayload(
     }
     if (options.agentConfig.mode !== undefined) agentConfig.mode = options.agentConfig.mode;
     payload.agent_config = agentConfig;
+  }
+  if (options.captureRecording === true) {
+    payload.capture_config = { recording: true };
   }
   return payload;
 }

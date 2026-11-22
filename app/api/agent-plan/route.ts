@@ -11,6 +11,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { runPlanner } from "@/lib/agent/agentRunner";
 import { parsePlannerRequest } from "@/lib/agent/agentRequest";
+import { buildCachedPlannerEvents } from "@/lib/cache/cachedEvents";
+import { readCachedPlan, writeCachedPlan } from "@/lib/cache/planCache";
 import { capturePlannerRun } from "@/lib/data/capture";
 import type { AgentResultSummary } from "@/lib/data/types";
 import {
@@ -58,6 +60,9 @@ export async function POST(request: Request): Promise<Response> {
 
   const mock =
     process.env.AGENT_MOCK === "1" && process.env.NODE_ENV !== "production";
+  // A cache hit skips the OpenCode runtime entirely, so a known trip is one fast
+  // replay of validated results rather than a six-to-twelve-minute research run.
+  const cached = mock ? null : await readCachedPlan(plannerRequest).catch(() => null);
   const encoder = new TextEncoder();
   const abort = new AbortController();
   let closed = false;
@@ -92,6 +97,22 @@ export async function POST(request: Request): Promise<Response> {
           // Capture is best-effort; the live plan must still render.
         }),
       );
+      if (!mock && cached === null) {
+        pendingCaptures.push(
+          writeCachedPlan(
+            plannerRequest,
+            {
+              plan: event.data.plan,
+              research,
+              completed: event.data.completed,
+              failed: event.data.failed,
+            },
+            event.data.ts,
+          ).catch(() => {
+            // Cache writes never delay or fail a live plan.
+          }),
+        );
+      }
     }
     if (closed || controllerRef === null || abort.signal.aborted) return;
     try {
@@ -131,6 +152,12 @@ export async function POST(request: Request): Promise<Response> {
         }
       }, KEEP_ALIVE_MS);
 
+      if (cached !== null) {
+        for (const event of buildCachedPlannerEvents(cached)) emit(event);
+        void Promise.allSettled(pendingCaptures).finally(finish);
+        return;
+      }
+
       void runPlanner(plannerRequest, { emit, signal: abort.signal }, mock)
         .catch(() => {
           emit({
@@ -161,5 +188,10 @@ export async function POST(request: Request): Promise<Response> {
     },
   });
 
-  return new Response(stream, { headers: SSE_HEADERS });
+  return new Response(stream, {
+    headers: {
+      ...SSE_HEADERS,
+      "X-Plan-Cache": cached === null ? "miss" : "hit",
+    },
+  });
 }

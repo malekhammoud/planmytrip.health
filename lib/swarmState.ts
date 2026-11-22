@@ -81,6 +81,8 @@ export interface WorkerState {
   retrievedAt: string | null;
   rawResult: string | null;
   parseError: string | null;
+  /** Authenticated same-origin recording path, when one was archived. */
+  recordingUrl: string | null;
   errorCode: SwarmErrorCode | null;
   /** Calm, user-facing failure cause. */
   errorMessage: string | null;
@@ -100,6 +102,8 @@ export interface SwarmState {
   mock: boolean;
   /** Last swarm_done, cleared when a run or retry starts. */
   done: SwarmDoneState | null;
+  /** When a cached verification was produced, or null for a live run. */
+  cachedAt: string | null;
   workers: Record<WorkerId, WorkerState>;
 }
 
@@ -171,6 +175,8 @@ export type SwarmAction =
       retrievedAt: string;
       rawResult?: string;
       parseError?: string;
+      cachedAt?: string;
+      recordingUrl?: string;
       seq?: number;
       ts?: string;
       mock?: true;
@@ -191,6 +197,7 @@ export type SwarmAction =
       seq?: number;
       ts?: string;
       mock?: true;
+      cachedAt?: string;
     }
   | { type: "stream_failed"; message: string; workers?: readonly WorkerId[] };
 
@@ -252,6 +259,7 @@ export function createWorker(phase: WorkerPhase): WorkerState {
     retrievedAt: null,
     rawResult: null,
     parseError: null,
+    recordingUrl: null,
     errorCode: null,
     errorMessage: null,
   };
@@ -288,6 +296,7 @@ export function createSwarmState(runToken = 0): SwarmState {
     runToken,
     mock: false,
     done: null,
+    cachedAt: null,
     workers: createWorkerMap("idle"),
   };
 }
@@ -302,6 +311,7 @@ export function createQueuedSwarmState(runToken: number): SwarmState {
     runToken,
     mock: false,
     done: null,
+    cachedAt: null,
     workers: createWorkerMap("queued"),
   };
 }

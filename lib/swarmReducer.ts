@@ -108,6 +108,7 @@ export function swarmReducer(state: SwarmState, action: SwarmAction): SwarmState
         runToken: action.runToken,
         mock: newRun ? false : state.mock,
         done: null,
+        cachedAt: null,
         workers,
       };
     }
@@ -232,21 +233,25 @@ export function swarmReducer(state: SwarmState, action: SwarmAction): SwarmState
       const worker = state.workers[action.worker];
       if (!isLive(worker.phase) || !acceptsSeq(worker, action.seq)) return state;
       const next = withEvent(worker, action.seq, action.ts);
+      const updated = replaceWorker(state, action.worker, {
+        ...next,
+        phase: "complete",
+        streamingUrl: null,
+        endedAt:
+          toMillis(action.ts) ?? toMillis(action.retrievedAt) ?? worker.lastEventAt,
+        findings: action.findings,
+        sourceUrl: action.sourceUrl,
+        retrievedAt: action.retrievedAt,
+        rawResult: action.rawResult ?? null,
+        parseError: action.parseError ?? null,
+        recordingUrl: action.recordingUrl ?? null,
+        errorCode: null,
+        errorMessage: null,
+      });
       return withMock(
-        replaceWorker(state, action.worker, {
-          ...next,
-          phase: "complete",
-          streamingUrl: null,
-          endedAt:
-            toMillis(action.ts) ?? toMillis(action.retrievedAt) ?? worker.lastEventAt,
-          findings: action.findings,
-          sourceUrl: action.sourceUrl,
-          retrievedAt: action.retrievedAt,
-          rawResult: action.rawResult ?? null,
-          parseError: action.parseError ?? null,
-          errorCode: null,
-          errorMessage: null,
-        }),
+        action.cachedAt === undefined
+          ? updated
+          : { ...updated, cachedAt: action.cachedAt },
         action.mock,
       );
     }
@@ -266,6 +271,7 @@ export function swarmReducer(state: SwarmState, action: SwarmAction): SwarmState
           retrievedAt: null,
           rawResult: null,
           parseError: null,
+          recordingUrl: null,
           errorCode: action.code ?? null,
           errorMessage: action.message,
         }),
@@ -281,6 +287,7 @@ export function swarmReducer(state: SwarmState, action: SwarmAction): SwarmState
             completed: resolveWorkers(action.completed),
             failed: resolveWorkers(action.failed),
           },
+          ...(action.cachedAt === undefined ? {} : { cachedAt: action.cachedAt }),
         },
         action.mock,
       );

@@ -61,6 +61,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 25. Clerk form appearance | [x] | `fix(auth): use visible Clerk appearance tokens` |
 | 26. TinyFish live-check recovery | [x] | `fix(api): stop sending beta-gated TinyFish max steps` |
 | 27. Collapsing live surfaces | [x] | `feat(ui): collapse completed work into live disclosures` |
+| 28. Instant cached plans and verification | [x] | `feat(cache): add instant cached plans and recorded verification` |
 
 ## 3. Commands
 
@@ -79,6 +80,8 @@ npm run data:synthetic      # deterministic cohort -> JSONL + optional Postgres 
 npm run data:export         # labeled Postgres rows -> gitignored training JSONL
 npm run model:train         # JSONL -> lib/model/model.json + docs/MODEL_CARD.md
 npm run model:demo          # data:synthetic then model:train
+npm run cache:seed -- --run-id <id>   # seed verification cache from a capture row
+npm run cache:seed -- --plan-file <json>  # seed a planner cache from a saved run
 npm run typecheck && npm test && npm run lint && npm run build   # full gate
 ```
 
@@ -99,6 +102,10 @@ host, build first, then `chown -R planmytrip:planmytrip .next` before restarting
 | `CLERK_SECRET_KEY` | Server only, Clerk middleware, route handlers, proxy | Required. Never expose it to client code, logs, or the repository. |
 | `NEXT_PUBLIC_CLERK_PROXY_URL` | Browser and server render | Defaults to `/__clerk`. Production Clerk's domain `proxy_url` must use the same path. |
 | `TINYFISH_API_KEY` | Server only, `app/api/travel-swarm/route.ts` | Each worker emits `worker_error` code `missing_api_key`; the stream still returns 200. Never log, echo, or commit it. |
+| `TINYFISH_RECORDING` | Server only, swarm runner and archive | When `1`, asks TinyFish for a recording and archives it locally. Off otherwise; live checks are unaffected. |
+| `PLANMYTRIP_RECORDINGS_DIR` | Server only, `lib/cache/recordings.ts` | Defaults to `$HOME/recordings` in production and `.next/cache/recordings` elsewhere. Must be writable by the app user. |
+| `PLANMYTRIP_CACHE` | Server only, cache store | Set `0` to disable both cache tiers. Enabled by default when a database is configured. |
+| `PLANMYTRIP_CACHE_MEMORY` | Server only, cache store | Force (`1`) or disable (`0`) the in-process tier. Production enables it automatically when `DATABASE_URL` is set; tests use `1` without a database. |
 | `SWARM_MOCK` | Server only, swarm route | Only when `1` and `NODE_ENV !== "production"`; mock events carry `mock: true`. Ignored in production. |
 | `SWARM_MOCK_SPEED` | Server only, mock timeline | Multiplies the scripted mock clock; tests use `50`. Ignored in production. |
 | `SWARM_MOCK_FAIL` | Server only, mock timeline | One worker id that fails with `site_blocked`; used to exercise the error UI. Ignored in production. |
@@ -109,6 +116,7 @@ host, build first, then `chown -R planmytrip:planmytrip .next` before restarting
 | `OPENCODE_MODEL_VARIANT` | Server only, planner sessions | Optional model variant passed with `OPENCODE_MODEL`. |
 | `NOMINATIM_URL` | Server only, geocoder | Defaults to the public Nominatim endpoint; production should use a licensed endpoint. |
 | `NOMINATIM_USER_AGENT` | Server only, geocoder | Defaults to `PlanMyTrip.health/0.1 (travel planning; contact@planmytrip.health)`. |
+| `GEOCODER_FALLBACK_URL` | Server only, geocoder | Optional GeoJSON fallback used when Nominatim returns no point. Production points at Photon; confirm its licence, quota, and attribution. |
 | `NEXT_PUBLIC_MAP_TILE_URL` | Browser, `components/TripMap.tsx` | Defaults to public OpenStreetMap tiles; production should use a licensed tile endpoint. |
 | `NEXT_PUBLIC_MAP_ATTRIBUTION` | Browser, `components/TripMap.tsx` | Defaults to the OpenStreetMap attribution. |
 | `DATABASE_URL` | Server only, `lib/db/postgres.ts` | Required for capture. The app returns 500 JSON for trip routes and capture stays best-effort until a database is configured. |
@@ -122,7 +130,8 @@ host, build first, then `chown -R planmytrip:planmytrip .next` before restarting
 `npm run db:init` and `npm run dev`. The development-only filename keeps the production
 `next start` from reading the local secret file. The OpenCode service must be installed and
 authenticated for live planning; `AGENT_MOCK=1` needs neither a key nor a service. Production
-keeps database, Clerk, and provider secrets in `/etc/planmytrip.env`. The production Clerk
+keeps database, Clerk, and provider secrets in `/etc/planmytrip.env`; production also sets
+`TINYFISH_RECORDING=1` and leaves the cache enabled. The production Clerk
 application is `app_3MR7sJ2fhslkGXYl4yRqjseO13C`; its production domain uses the same-origin
 Frontend API proxy at `https://planmytrip.health/__clerk`. Dashboard sign-in does not
 authenticate the Clerk CLI; run `npx -y clerk@latest auth login` on the host before targeting
@@ -134,7 +143,7 @@ Every tracked source file, annotated; `package-lock.json` and generated files
 (`next-env.d.ts`, `.next`, `tsconfig.tsbuildinfo`) are omitted by category.
 
 ```text
-app/  globals.css, layout.tsx, page.tsx, model/page.tsx, sign-in/[[...sign-in]]/, sign-up/[[...sign-up]]/, trips/, trips/[id]/, mock-browser/[worker]/, api/travel-swarm/route.ts, api/agent-plan/route.ts, api/saved-trips/route.ts, api/saved-trips/[id]/route.ts, api/trips/route.ts, api/trips/outcome/route.ts
+app/  globals.css, layout.tsx, page.tsx, model/page.tsx, sign-in/[[...sign-in]]/, sign-up/[[...sign-up]]/, trips/, trips/[id]/, mock-browser/[worker]/, api/travel-swarm/route.ts, api/agent-plan/route.ts, api/recordings/[id]/route.ts, api/saved-trips/route.ts, api/saved-trips/[id]/route.ts, api/trips/route.ts, api/trips/outcome/route.ts
 lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditionProfiles.ts, sunLifeRules.ts, healthScore.ts, itineraryBuilder.ts
       swarm: swarmTypes.ts (wire contracts), swarmConfig.ts, swarmState.ts, swarmReducer.ts, swarmRunner.ts, swarmGoals.ts, swarmMock.ts, swarmTelemetry.ts, swarmErrors.ts, sse.ts, tinyfish.ts, tinyfishEvents.ts
       agent: agentTypes.ts (wire contracts), agentRequest.ts, agentProfiles.ts, agentPrompts.ts, agentConfig.ts, agentClient.ts, agentWarmup.ts, agentRunner.ts, agentSession.ts, agentParse.ts, agentPlanParse.ts, agentFallback.ts, agentGeocode.ts, agentEvents.ts, agentMock.ts, plannerReducer.ts, plannerStage.ts
@@ -144,16 +153,17 @@ lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditi
       output: describeTrip.ts, pacingStrip.ts, careCard.ts, planMotion.ts
       verification: verificationOverlay.ts
       route: routeTypes.ts (wire contracts), geometry.ts, legs.ts, optimizer.ts, routeStops.ts, routeDay.ts, routePlan.ts, mapsLink.ts
+      cache: cacheKey.ts (identities), cacheStore.ts (memory and Postgres), planCache.ts, swarmCache.ts, cachedEvents.ts, swarmArchive.ts, recordings.ts, tinyfishRuns.ts (run detail)
 hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, swarmBatch.ts, useNow.ts, useElapsed.ts, useReducedMotion.ts, usePhaseAnnouncement.ts, usePlanMotion.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
 components/  Onboarding.tsx, PlannerHome.tsx, PlanWorkspace.tsx, WorkspaceSection.tsx, SiteChrome.tsx, CommandBar.tsx, CommandDock.tsx, LiveRail.tsx, PlanPanel.tsx, DayFocus.tsx, SaveTripButton.tsx, SavedTripView.tsx, DeleteSavedTripButton.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, RoutePanel.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, VerificationAdjustments.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
 components/mission/  MissionControl.tsx, StatusBar.tsx, FocusView.tsx, WorkerTile.tsx, ActivityFeed.tsx, TempoStrip.tsx, SourcesList.tsx, FindingsReveal.tsx, PreRun.tsx, ConnectionStatus.tsx, Elapsed.tsx, missionMeta.ts
 components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Disclosure.tsx, Field.tsx, LinkButton.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
 public/pitch/  index.html, deck.css, deck.js, basil.jpg, fonts/
-scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts
+scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts, seed-cache.ts
 data/  synthetic-trips.jsonl
 docs/  ML.md, MODEL_CARD.md, PITCH.md, ROUTE.md, AUTH.md
-tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, model-artifact.test.ts, data-loop.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts, mocks/clerk-server.ts
-module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, planMotion.test.ts, savedTrips.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmTypes.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts, plannerStage.test.ts; lib/route/: geometry.test.ts, legs.test.ts, optimizer.test.ts, routePlan.test.ts, mapsLink.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts, savedTrips.test.ts; lib/model/: artifact.test.ts, calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts
+tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, model-artifact.test.ts, data-loop.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, cache-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts, mocks/clerk-server.ts
+module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, planMotion.test.ts, savedTrips.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmTypes.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/cache/: cacheKey.test.ts, planCache.test.ts, swarmCache.test.ts, cachedEvents.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts, plannerStage.test.ts; lib/route/: geometry.test.ts, legs.test.ts, optimizer.test.ts, routePlan.test.ts, mapsLink.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts, savedTrips.test.ts, tripCache.test.ts; lib/model/: artifact.test.ts, calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts
 root  proxy.ts, package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, instrumentation.ts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
 ```
 
@@ -178,6 +188,33 @@ explicit outcome. A missing outcome is excluded from training, never read as a n
 `Saved trips` and the Clerk `UserButton`. `/trips` lists account-owned snapshots and
 `/trips/[id]` reopens one. The install id and the consented research capture remain anonymous
 and are not linked to the Clerk account.
+
+### Cached planner and verification
+
+`lib/cache/` is a two-tier result cache in front of both agent teams. `cacheKey.ts` normalises
+destination, condition, medication, preferences, budget, and transport into a canonical key;
+`cacheStore.ts` keeps an in-process map over an idempotent `trip_cache` table. A planner read
+tries the exact preference key, then the newest row for the same destination, days, and
+condition and labels that related match in the interface. A verification read requires every
+requested worker, so a single-worker retry can reuse a complete recorded set. Plans live 30
+days and verification 14 days; a hit records its hit count without delaying the response.
+
+`/api/agent-plan` checks the cache before it touches OpenCode. A hit emits the same planner
+contract in one fast pass: `planner_started`, one `agent_result` per agent, `plan_ready` with
+`cached`, `cachedAt`, and `cacheMatch`, then `planner_done`. `/api/travel-swarm` does the same
+with `worker_status`, `worker_started`, recorded `worker_sources` and `worker_progress`,
+`worker_complete`, then `swarm_done`. Cached frames are real recorded telemetry, never
+invented progress; they carry `cached: true`, and the workspace shows a "Cached plan" or
+"Cached verification" callout with the original date. Both routes add `X-Plan-Cache` or
+`X-Swarm-Cache: hit|miss`.
+
+A live miss writes the finished result after the terminal frame. When `TINYFISH_RECORDING=1`,
+the swarm runner asks TinyFish for a recording; `tinyfishRuns.ts` reads the run-detail
+`video_url`, `recordings.ts` archives the WebM under `PLANMYTRIP_RECORDINGS_DIR`, and
+`/api/recordings/[id]` serves it only to a signed-in user. `FocusView` plays the recording
+after the live frame ends. Cache keys exclude origin, run id, install id, and Clerk identity;
+the cache writes no training label and never runs for mock data. `npm run cache:seed` can seed
+a verification row from an existing capture or a planner row from a saved JSON file.
 
 ### Accounts and saved trips
 
@@ -634,6 +671,15 @@ and vanilla JavaScript; do not rebuild it in React.
   training row is computed from block kind, duration, exertion, and verified hike elevation,
   so live and fallback plans yield comparable doses. A displayed day is inside its cap only
   when the agent estimate and the computed dose both fit; an empty day is unsafe, not zero.
+- **Cache results, not progress:** a cached destination replays completed planner and
+  verification results in about a second. Frames keep the real event contract and carry
+  `cached: true`; no percentage, ETA, or fake step is added. A planner cache key includes the
+  preference set, with a clearly labelled destination + days + condition + medication fallback. A
+  verification key requires all requested workers. Mock data is never cached, cache writes
+  never block a live result, and the cached plan is a snapshot, not a live recheck.
+- **Recordings are evidence, not a preview:** when recording is enabled, the archive stores
+  the real TinyFish run video locally and serves it only to signed-in users. The live preview
+  URL still expires and is never replayed from cache.
 - **Calibration, not a new predictor:** the engine's modeled risk is the prior log-odds; the
   model learns the residual. A zero-coefficient artifact is exactly the engine, and a
   synthetic artifact can never drive a live plan.
@@ -808,7 +854,7 @@ allowed fixtures prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.
 
 ## 9. VERIFY register
 
-Regenerate with `grep -rn "VERIFY:" app lib components`; there are 21 entries.
+Regenerate with `grep -rn "VERIFY:" app lib components`; there are 24 entries.
 
 | File | What to verify |
 | --- | --- |
@@ -826,11 +872,14 @@ Regenerate with `grep -rn "VERIFY:" app lib components`; there are 21 entries.
 | `components/mission/FocusView.tsx` (iframe multi-viewer) | Confirm three distinct TinyFish previews can be embedded at once with two hidden but mounted. A concurrent-viewer limit would require pausing hidden frames. |
 | `lib/verificationOverlay.ts` (keyword rules) | Heat, air-quality, altitude, outbreak, and allergen keywords are product heuristics, not clinical thresholds. Have a clinician confirm the mapping and the 30-minute recovery extension. |
 | `lib/agent/agentGeocode.ts` (Nominatim) | Public Nominatim allows one request per second and requires an identifying User-Agent. Confirm the production geocoder's licence, quota, and attribution. |
+| `lib/agent/agentGeocode.ts` (fallback) | The optional fallback uses Photon's public demo API in production today. Confirm its licence, quota, attribution, and data-retention terms, or point `GEOCODER_FALLBACK_URL` at a licensed GeoJSON provider. |
 | `components/TripMap.tsx` (tiles) | Confirm the production tile licence, attribution text, and request volume. Public OSM tiles are not a high-volume production endpoint. |
 | `lib/data/dose.ts` (block exertion) | The block-kind to exertion mapping and hike thresholds (8 km, 350 m, hard/strenuous) are product assumptions, not clinical thresholds. Have a clinician confirm the walking contribution of visits, transit, and care blocks. |
 | `lib/data/dose.ts` (recovery) | Recovery coverage counts only `rest` blocks. Confirm that meals, stay, and unplanned pauses should not count as recovery. |
 | `lib/route/legs.ts` (speeds) | 4.5 km/h walking, 18 km/h urban transit, 32 km/h driving, and the access and parking overheads are product assumptions. Confirm them for the destinations this product serves. |
 | `lib/route/mapsLink.ts` (Maps URLs) | Nine waypoints and the `walking`/`transit`/`driving` values against Google's Maps URLs reference; confirm the terms permit this deep-link handoff. |
+| `lib/cache/recordings.ts` (archive) | TinyFish recordings are WebM today. Confirm the codec, typical size, provider retention, and that local archival and authenticated replay are permitted. |
+| `lib/tinyfishRuns.ts` (video_url) | The run-detail `video_url` is a presigned recording. Confirm its lifetime and the provider's permission to archive a copy locally. |
 | `lib/model/model.json` (artifact) | The committed artifact is trained on synthetic trips. Never use it for a live plan. Replace it only with an artifact whose `source` is `outcomes` and whose tier is `pooled` or `condition`. |
 | `docs/MODEL_CARD.md` (metrics) | Regenerate after every training run; confirm Brier, ECE, AUROC, and the calibration slope match `lib/model/model.json`. |
 
@@ -880,7 +929,9 @@ interrupts sessions. `/api/agent-plan` declares `maxDuration = 900`.
 
 Geocoding: `geocodePlan` calls `${NOMINATIM_URL}?format=jsonv2&limit=1&q=...` with a custom
 User-Agent, at most ten places per plan, sequentially, one second apart, and 7s per request.
-A failed lookup leaves `lat` and `lng` null. Map tiles come from `NEXT_PUBLIC_MAP_TILE_URL`
+When Nominatim returns no point and `GEOCODER_FALLBACK_URL` is set, it asks that GeoJSON
+endpoint once per query and accepts the result only when the city matches the destination. A
+failed lookup leaves `lat` and `lng` null. Map tiles come from `NEXT_PUBLIC_MAP_TILE_URL`
 with `NEXT_PUBLIC_MAP_ATTRIBUTION`; the Leaflet attribution prefix is disabled.
 
 TinyFish Web Agent API: `POST https://agent.tinyfish.ai/v1/automation/run-sse` with
@@ -890,7 +941,9 @@ read only in the route; never log or echo it. `output_schema` is a top-level obj
 sends `agent_config` with `cursor_style: "standard"` and `max_duration_seconds: 100`. Custom
 `max_steps` is deliberately omitted because the account is not enabled for it; the provider
 default is 150 steps. The limits live in `lib/swarmConfig.ts` and keep one worker inside the
-120s route budget.
+120s route budget. When `TINYFISH_RECORDING=1`, the request also carries
+`capture_config: { recording: true }`; after completion, `GET /v1/runs/{id}` supplies the
+presigned `video_url` that `lib/tinyfishRuns.ts` reads and `lib/cache/recordings.ts` archives.
 
 Upstream `data: <json>` events: `STARTED` (run_id), `STREAMING_URL`, `PROGRESS`
 (purpose, optional tinyfish_api), `HEARTBEAT`, `COMPLETE` (status/result/error), and optional
@@ -945,7 +998,7 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 481 tests. Database-backed
+`npm test` runs Vitest once in a Node environment. The suite has 501 tests. Database-backed
 files skip when `DATABASE_URL` is absent. `tests/mocks/clerk-server.ts` replaces
 `@clerk/nextjs/server` in Vitest so route handlers can run outside Next's server boundary;
 proxy and Clerk provider behavior are covered by a production build and live request checks,
@@ -980,6 +1033,11 @@ not by the unit suite.
 - `tests/agent-route.test.ts` runs the whole mock planner route through real SSE: roster, seven
   agent starts, immediate phase messages, activity, plan_ready, mock flags, map coordinates,
   planner_done last, and 400s for bad bodies. No OpenCode service or model call is made.
+- `lib/cache/*.test.ts`, `tests/cache-route.test.ts`, and `lib/db/tripCache.test.ts` cover
+  normalised keys, exact and related planner reads, expiry, mock rejection, complete-set
+  verification reads, recorded telemetry replay, terminal-frame order, a full route cache hit
+  with no live session, and PostgreSQL exact/related and worker-set reads. The database file
+  skips without `DATABASE_URL`.
 - `lib/savedTrips.test.ts` covers saved-trip request bounds, normalisation, mock-plan rejection,
   and saved-trip id validation. `lib/db/savedTrips.test.ts` covers account-scoped upsert,
   list, read, delete, and cross-account isolation; it skips without `DATABASE_URL`. Route
@@ -1018,9 +1076,12 @@ exempting lines.
   A 2026-11-21 one-page run completed advisory and coverage while medication/customs exposed a
   Retry; the page keeps the failed column visible with its source and retry action. The new
   mission control was exercised in mock mode only: three iframes rendered, the fail path
-  reached `SITE_BLOCKED`, and reduced motion switched every named class off. A live production
-  run with the 120s/100s limits, the stealth retry, and the multi-viewer frames still
-  needs to be run. Clipboard permissions remain unverified.
+  reached `SITE_BLOCKED`, and reduced motion switched every named class off. A 2026-11-22
+  London, Ontario run completed all three workers in 110.1s under the 120s/100s limits with
+  recording enabled; three WebM recordings were archived and served from the authenticated
+  route. The cached replay returned the same 25 steps, 10 sources, and 3 findings in about
+  50-120 ms. A live production run with the stealth retry and the multi-viewer frames still
+  needs to be run, and clipboard permissions remain unverified.
 - The route tolerates unknown events, stringified `result` values, and partial payloads.
 - The preview allowlist covers `mock.invalid`, `*.unikraft.app` (docs), and `*.tinyfish.io`
   (verified live 2026-11-21).
@@ -1035,8 +1096,10 @@ exempting lines.
 - The runtime warmup runs at server start, so a normal first trip no longer pays service and
   agent-registration latency. A production 4-day run on 2026-11-21 showed the first phase at
   1 second, the first real searches at 3 seconds, and plan ready at 6m12s with all seven
-  specialists complete. If the OpenCode service itself is still starting, the first request
-  still waits; the mission band names that wait but cannot shorten it.
+  specialists complete. A 2026-11-22 London seed took 409.5s live with all seven complete;
+  the exact cache hit returned in 269 ms and the signed-in onboarding click reached a ready
+  plan in 582 ms. If the OpenCode service itself is still starting, the first request still
+  waits; the mission band names that wait but cannot shorten it.
 - The workspace is intentionally one long page. On a phone, live verification sits below the
   full safety envelope; both streams keep running while the reader scrolls. Do not reintroduce
   tabs to shorten it.
@@ -1058,6 +1121,12 @@ exempting lines.
 - Saved snapshots do not include live TinyFish verification, and they do not refresh source
   URLs or opening hours. The saved page rebuilds the engine envelope and labels the snapshot;
   confirm live details before booking.
+- Cached plans and verification are snapshots with a date, not a live recheck. A planner hit
+  can be an exact preference match or a destination + days + condition + medication fallback; the UI names
+  the fallback, and a reader who needs current hours or advisories must re-run. The cache has
+  no per-destination purge UI; rows expire after 30 days (plan) or 14 days (verification), and
+  `npm run cache:seed` can replace a demo row. Archived recordings are local files with no
+  automatic retention sweep yet; confirm storage, privacy, and deletion policy before a pilot.
 - Consent and privacy: the destination, condition, medication name, and preferences are sent
   to the configured OpenCode model provider; place queries go to Nominatim. Account identity
   and sessions are handled by Clerk. The research capture is opt-in and keyed only by a random

@@ -45,6 +45,7 @@ function plan(places: PlannerPlace[]): AgentTripPlan {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });
 
 describe("geocodePlan", () => {
@@ -109,6 +110,60 @@ describe("geocodePlan", () => {
     );
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result.places[0]?.geocoded).toBeUndefined();
+  });
+
+  it("uses the configured fallback when the primary geocoder fails", async () => {
+    vi.stubEnv("GEOCODER_FALLBACK_URL", "https://fallback.example/api/");
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response("no", { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            features: [
+              {
+                properties: { city: "Lisbon", country: "Portugal" },
+                geometry: { coordinates: [-9.1, 38.7] },
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      );
+    const result = await geocodePlan(
+      plan([place({ name: "Unique Museum 25" })]),
+      "Lisbon, Portugal",
+      new AbortController().signal,
+    );
+    expect(result.places[0]).toMatchObject({ lat: 38.7, lng: -9.1, geocoded: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain("fallback.example");
+  });
+
+  it("rejects a fallback result from another city", async () => {
+    vi.stubEnv("GEOCODER_FALLBACK_URL", "https://fallback.example/api/");
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response("no", { status: 404 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            features: [
+              {
+                properties: { city: "Timmins", country: "Canada" },
+                geometry: { coordinates: [-81.1, 48.4] },
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValue(new Response("no", { status: 404 }));
+    const result = await geocodePlan(
+      plan([place({ name: "Unique Museum 26" })]),
+      "Lisbon, Portugal",
+      new AbortController().signal,
+    );
+    expect(result.places[0]?.lat).toBeNull();
   });
 
   it("returns immediately when the run is aborted", async () => {

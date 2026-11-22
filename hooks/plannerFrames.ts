@@ -79,6 +79,16 @@ function asActivityKind(value: unknown): PlannerActivityKind | null {
     : null;
 }
 
+function asCacheMatch(value: unknown): "exact" | "related" | undefined {
+  return value === "exact" || value === "related" ? value : undefined;
+}
+
+function asCachedAt(value: unknown): string | undefined {
+  return typeof value === "string" && Number.isFinite(Date.parse(value))
+    ? value
+    : undefined;
+}
+
 function asErrorCode(value: unknown): PlannerErrorCode | null {
   return typeof value === "string" &&
     (ERROR_CODES as readonly string[]).includes(value)
@@ -168,6 +178,12 @@ export function applyPlannerFrame(
         completed: asAgentList(raw.completed),
         failed: asAgentList(raw.failed),
         mock: plan.mock ?? mock,
+        ...(asCachedAt(raw.cachedAt) === undefined
+          ? {}
+          : { cachedAt: asCachedAt(raw.cachedAt) }),
+        ...(asCacheMatch(raw.cacheMatch) === undefined
+          ? {}
+          : { cacheMatch: asCacheMatch(raw.cacheMatch) }),
       });
       return false;
     }

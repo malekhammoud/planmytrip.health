@@ -68,6 +68,28 @@ CREATE TABLE IF NOT EXISTS saved_trips (
 
 CREATE INDEX IF NOT EXISTS idx_saved_trips_user
   ON saved_trips(clerk_user_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS trip_cache (
+  cache_key TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  destination_norm TEXT NOT NULL,
+  days INTEGER,
+  condition TEXT,
+  medication_norm TEXT,
+  interest_norm TEXT,
+  budget TEXT,
+  transport TEXT,
+  payload JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  hits INTEGER NOT NULL DEFAULT 0,
+  last_hit_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_trip_cache_lookup
+  ON trip_cache(kind, destination_norm, days, condition, expires_at DESC);
+CREATE INDEX IF NOT EXISTS idx_trip_cache_expiry
+  ON trip_cache(expires_at);
 `;
 
 function connectionString(): string {
@@ -127,5 +149,5 @@ export async function closeDatabase(): Promise<void> {
 /** Test helper: clears capture, model, and saved-trip rows without dropping the schema. */
 export async function resetDatabaseForTests(): Promise<void> {
   await ensureSchema();
-  await getPool().query("TRUNCATE TABLE trip_captures, model_runs, saved_trips");
+  await getPool().query("TRUNCATE TABLE trip_captures, model_runs, saved_trips, trip_cache");
 }

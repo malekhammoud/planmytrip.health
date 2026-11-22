@@ -274,6 +274,8 @@ export interface PlannerStartedPayload {
   agents: readonly PlannerAgentMeta[];
   ts: string;
   mock?: true;
+  /** True when the result was replayed from the verified cache. */
+  cached?: true;
 }
 
 /** Payload for agent_started: a specialist session is open. */
@@ -310,6 +312,7 @@ export interface AgentResultPayload {
   summary: string;
   ts: string;
   mock?: true;
+  cached?: true;
 }
 
 /** Payload for plan_ready: the finished concierge plan. */
@@ -319,6 +322,12 @@ export interface PlanReadyPayload {
   failed: readonly PlannerAgentId[];
   ts: string;
   mock?: true;
+  /** True when the plan was replayed from the verified cache. */
+  cached?: true;
+  /** When the live plan was produced and cached. */
+  cachedAt?: string;
+  /** Exact preference match, or a same-destination related match. */
+  cacheMatch?: "exact" | "related";
 }
 
 /** Payload for planner_error: one calm failure. */
@@ -335,6 +344,7 @@ export interface PlannerDonePayload {
   failed: readonly PlannerAgentId[];
   ts: string;
   mock?: true;
+  cached?: true;
 }
 
 /** Names of the SSE events this route emits. */

@@ -154,6 +154,17 @@ export function FocusView({ worker, state, visible, onRetry }: FocusViewProps) {
             sandbox="allow-scripts allow-same-origin"
             className="h-full w-full border-0"
           />
+        ) : state.phase === "complete" && state.recordingUrl !== null ? (
+          <video
+            controls
+            playsInline
+            preload="metadata"
+            aria-label={`${meta.name} recorded browser run`}
+            className="h-full w-full bg-ink object-contain"
+          >
+            <source src={state.recordingUrl} type="video/webm" />
+            Your browser cannot play this recording.
+          </video>
         ) : state.phase === "complete" ? (
           <div className="flex h-full flex-col justify-center gap-2 p-6">
             <p className="t-label text-muted">Stream ended</p>

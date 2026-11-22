@@ -50,6 +50,10 @@ export interface PlannerState {
   plan: AgentTripPlan | null;
   done: PlannerDoneState | null;
   error: { code: PlannerErrorCode; message: string } | null;
+  /** When a cached plan was produced, or null for a live run. */
+  cachedAt: string | null;
+  /** Exact preference match, or a same-destination related match. */
+  cacheMatch: "exact" | "related" | null;
   agents: Record<PlannerAgentId, PlannerAgentState>;
   log: readonly PlannerLogEntry[];
   nextLogId: number;
@@ -88,6 +92,8 @@ export type PlannerAction =
       completed: readonly PlannerAgentId[];
       failed: readonly PlannerAgentId[];
       mock?: true;
+      cachedAt?: string;
+      cacheMatch?: "exact" | "related";
     }
   | {
       type: "planner_error";
@@ -134,6 +140,8 @@ export function createPlannerState(runToken = 0): PlannerState {
     plan: null,
     done: null,
     error: null,
+    cachedAt: null,
+    cacheMatch: null,
     agents: createAgentMap("idle"),
     log: [],
     nextLogId: 1,
@@ -254,6 +262,8 @@ export function plannerReducer(
           plan: action.plan,
           done: { completed: action.completed, failed: action.failed },
           error: null,
+          cachedAt: action.cachedAt ?? null,
+          cacheMatch: action.cacheMatch ?? null,
         },
         action.mock,
       );

@@ -100,6 +100,18 @@ function asTinyfishApi(value: unknown): TinyfishApi | undefined {
   return value === "search" || value === "fetch" ? value : undefined;
 }
 
+function asCachedAt(value: unknown): string | undefined {
+  return typeof value === "string" && Number.isFinite(Date.parse(value))
+    ? value
+    : undefined;
+}
+
+function asRecordingUrl(value: unknown): string | undefined {
+  if (typeof value !== "string" || value.length > 500) return undefined;
+  if (/^\/api\/recordings\/[0-9a-f-]{36}$/.test(value)) return value;
+  return asHttpUrl(value) ?? undefined;
+}
+
 function asTextList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   const texts = value.filter(
@@ -175,7 +187,17 @@ export function applyFrame(
     const failed = asWorkerList(raw.failed);
     if (completed === null || failed === null) return false;
     if (!WORKER_IDS.some((worker) => latestRequest[worker] === requestId)) return false;
-    dispatch({ type: "swarm_done", completed, failed, seq: asSeq(raw.seq), ts, mock });
+    dispatch({
+      type: "swarm_done",
+      completed,
+      failed,
+      seq: asSeq(raw.seq),
+      ts,
+      mock,
+      ...(asCachedAt(raw.cachedAt) === undefined
+        ? {}
+        : { cachedAt: asCachedAt(raw.cachedAt) }),
+    });
     return true;
   }
 
@@ -245,6 +267,12 @@ export function applyFrame(
         retrievedAt: typeof raw.retrievedAt === "string" ? raw.retrievedAt : "",
         ...(typeof raw.rawResult === "string" ? { rawResult: raw.rawResult } : {}),
         ...(typeof raw.parseError === "string" ? { parseError: raw.parseError } : {}),
+        ...(asCachedAt(raw.cachedAt) === undefined
+          ? {}
+          : { cachedAt: asCachedAt(raw.cachedAt) }),
+        ...(asRecordingUrl(raw.recordingUrl) === undefined
+          ? {}
+          : { recordingUrl: asRecordingUrl(raw.recordingUrl) }),
         seq: asSeq(raw.seq),
         ts,
         mock,
