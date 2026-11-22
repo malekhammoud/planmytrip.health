@@ -651,6 +651,15 @@ thresholds and Sun Life stability window remain VERIFY.
   slide keeps "Generation is probabilistic. The ceiling is not." with one accent.
 - Gate: typecheck, 466 tests (439 passed, 27 skipped), lint, production build pass.
 
+### Pitch runbook: two frames, then live (2026-11-21)
+
+- Rewrote `docs/PITCH.md` for the judges' live-demo tip: two frames (cover, problem) for 36
+  seconds, then the live app for 114 seconds. The other eight deck slides are backup and Q&A.
+- The runbook opens the deck at `/pitch#1`, the live app on onboarding, and a finished run
+  pre-warmed at T−25; the pitch switches A→B at 0:36 and B→C at 1:30, and closes on the
+  finished plan.
+- Gate: typecheck, 466 tests (439 passed, 27 skipped), lint, production build pass.
+
 ## Next action
 
 Run a consented pilot cohort against production PostgreSQL, confirm capture and outcome rows

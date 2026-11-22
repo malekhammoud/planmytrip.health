@@ -1,136 +1,162 @@
 # Pitch deck and demo runbook
 
+The judges said the session is a live demo, not a slide deck. That is a tip about priority, not
+a ban on a title card. This runbook uses **two frames and then the product for two minutes**.
+
 The deck is a static 1920×1080 artifact in `public/pitch/`, served at
-`https://planmytrip.health/pitch` by a rewrite in `next.config.ts`. It is presentation-only:
-it is not an app route, it is not covered by the design guard, and it adds no application code.
+`https://planmytrip.health/pitch` by a rewrite in `next.config.ts`. It is presentation-only: not
+an app route, not covered by the design guard, and it adds no application code. **Only slides 1
+and 2 are presented.** Slides 3–10 are backup, Q&A, and the leave-behind PDF.
 
-Keys: `→` / `Space` advance, `←` back, `Home` / `End` jump, `F` fullscreen. The deck also
-prints to PDF at 13.333 × 7.5 in; use the PDF as the offline fallback.
+Keys: `→` / `Space` advance, `←` back, `Home` / `End` jump, `F` fullscreen.
 
-## The 3:00 script
+## The 2:55 run sheet
 
-Target 2:55, leaving five seconds of breathing room. Do not read the slides. The slides carry
-the evidence; the script carries the argument.
-
-| Time | Slide | Beat |
+| Time | Beat | Where |
 | --- | --- | --- |
-| 0:00–0:22 | 1. Basil | The story |
-| 0:22–0:37 | 2. Problem | The number and the gap |
-| 0:37–0:56 | 3. Solution | Plan, pace, prove |
-| 0:56–2:04 | 4. Demo | Live product |
-| 2:04–2:26 | 5. Architecture | The live loop and the learning loop |
-| 2:26–2:37 | 6. Comparison | The missing layer |
-| 2:37–2:48 | 7. Impact | Who it helps, what changes |
-| 2:48–2:54 | 8. Close | Basil |
+| 0:00–0:20 | Basil | deck slide 1 |
+| 0:20–0:36 | Problem | deck slide 2 |
+| 0:36–0:46 | Solution | live app, onboarding |
+| 0:46–1:10 | Seven agents | live app, mission band |
+| 1:10–1:30 | Three browsers | live app, End to verification |
+| 1:30–2:30 | Finished trip | finished window: route, caps, care card, findings |
+| 2:30–2:49 | Architecture and impact | spoken over the finished plan |
+| 2:49–2:55 | Close | finished plan |
 
-Slides 9 and 10 are the appendix. They are not part of the three minutes; open them only if a
-judge asks about the model or the data asset.
+Two frames, one window switch, 114 seconds of live product. No deck after 0:36.
 
-### 0:00 — cover
+## Script
+
+### 0:00 — slide 1
 
 > Basil loved to travel. He also had cancer. He died in February 2024, at 33. The trips were
-> never the problem. Planning them was. Which day is too long. Is his medication legal at the
-> border. Will insurance pay. He did that alone, at two in the morning.
+> never the problem; planning was. Which day is too long. Is his medication legal at the border.
+> Will insurance pay. He did that alone, at two in the morning.
 
 Pause after “33.” Do not perform the grief; state it.
 
-### 0:22 — problem
+### 0:20 — slide 2
 
-> Basil wasn’t rare. Forty-five percent of Canadians live with a chronic disease. One in
-> twelve lives with three or more. Two-thirds of adults over 50 plan a trip this year. No major
-> planner asks about any of it.
+> Basil wasn’t rare. Forty-five percent of Canadians live with a chronic disease. One in twelve
+> lives with three or more. Two-thirds of adults over 50 plan a trip this year. No major planner
+> asks about any of it.
 
-### 0:37 — solution
+### 0:36 — switch to the live app
 
-> So we built the planner that starts with the body. Plan it: six specialists research, a
-> concierge puts the route in order. Pace it: the engine sets daily step and walking caps.
-> Prove it: three live browsers check advisories, drug rules, insurance. Every finding cited.
+The live window is on the onboarding review step, pre-filled. Say:
 
-### 0:56 — demo
+> So we built the planner that starts with the body. Two steps in. The engine sets the caps.
+> Seven agents plan the trip. Three browsers verify it.
 
-The live window is the run started two minutes ago. The finished window is the run started
-twenty-five minutes earlier. The workspace is one page; scroll it.
+Press **Build my plan** at 0:44.
 
-> This run is live. The mission band shows the stage, the elapsed time, and how many of the
-> seven agents have finished. Stays, tables, trails, culture, transit, care, and a lead
-> concierge.
+### 0:46 — mission band
 
-*(press End in the live window to reach live verification)*
+> This is live. Seven agents: stays, tables, trails, culture, transit, care, and a lead
+> concierge. The mission band shows the stage, the elapsed time, and how many have finished.
+> They’re searching now.
+
+### 1:10 — live verification
+
+Press **End** to reach live verification.
 
 > Three real browsers, live. Canada’s advisory. Drugs.com. Sun Life. Not cached.
 
-*(switch to the finished window, route stage)*
+The live run will not finish before you leave it. That is expected. It is the proof that the
+agents are working on real sites; the finished window is the proof of the whole job.
 
-> Same run, finished. The route is ordered by day, with a Maps handoff.
+### 1:30 — switch to the finished window
 
-*(scroll to the safety envelope)*
+> Here’s the same trip from earlier, finished.
+
+Route stage:
+
+> The route is ordered by day, with a Maps handoff.
+
+Safety envelope:
 
 > Each day carries the agent’s estimate and the engine’s caps. The agent can suggest a day.
 > It cannot lift the cap.
 
-*(copy the care card)*
+Copy the care card:
 
 > One click: the days, the caps, the checkpoints.
 
-*(scroll to the verification findings)*
+Scroll to verification findings:
 
 > Every finding carries the page and the time we read it.
 
-### 2:04 — architecture
+### 2:30 — architecture and impact
 
 > Two loops. The live loop: seven OpenCode agents plan, the engine sets the caps, three TinyFish
-> browsers verify. The data loop: every consented trip becomes a dossier and an outcome. The
-> model learns the residual and may only tighten a cap. Generation is probabilistic; the
-> ceiling is not.
+> browsers verify. The learning loop: every consented trip becomes a dossier and an outcome. The
+> model learns the residual and may only tighten a cap. Hours of research become seven minutes.
 
-### 2:20 — comparison
-
-> Google plans the route. Tripadvisor plans the sights. Your insurer knows the policy. None know
-> you’re the patient. We do — and we show our work.
-
-### 2:31 — impact
-
-> For people managing a condition, the caregiver at 2 a.m., the clinician who gets a summary.
-> Hours of research become seven minutes.
-
-### 2:43 — close
+### 2:49 — close
 
 > Basil would have gone anyway. The planning should have been easier.
 
-Stop. Hold the slide. No “thank you.”
+Stay on the finished plan. Do not return to the deck.
 
-## Demo runbook
+## Runbook
+
+### Windows
+
+- **A — deck.** `https://planmytrip.health/pitch#1`, maximized. Right arrow once at 0:20.
+- **B — live app.** Onboarding step 2, pre-filled with the exact demo inputs. Do not press Build
+  until 0:44.
+- **C — finished app.** A run started at T−25 on the same inputs, finished, scrolled to the
+  route stage.
+- **D — backups.** The recorded clean run and the PDF. Not a window; open only if needed.
 
 ### Before the room
 
-1. Open the finished window. Complete onboarding with the exact demo inputs. Press Build my
-   plan at T−25. Before the pitch, scroll to the route stage.
-2. Open the live window. Complete onboarding with the same inputs at T−2. Press Build my plan.
-   Leave it at the top of the workspace.
-3. Browser zoom 90%, window about 1600×1000, bookmarks bar hidden, notifications off.
-4. Confirm the finished window is finished and scrolled to the route; the live window is live
-   at the top.
-5. Keep a recorded clean run and the PDF on the desktop.
+1. Open C at T−25. Complete onboarding, press Build my plan, leave it to finish. Before the
+   pitch, scroll to the route stage.
+2. Open B. Complete onboarding with the same inputs. Stop on the review step. Do not press
+   Build.
+3. Open A at slide 1. Maximize both windows; hide bookmarks and notifications. Zoom 90% on the
+   app, 1600×1000.
+4. Confirm C is finished and scrolled to the route; B is ready; A is on slide 1.
+5. Keep D ready.
 
-During the demo: live window top → End (live verification) → finished window route → scroll to
-safety → copy the care card → scroll to verification findings.
+### The switch
 
-Never refresh either window and never press Plan again during the pitch. Both remount the
-workspace and abort the running streams.
+- **0:20:** right arrow to slide 2.
+- **0:36:** alt-tab A → B. Press Build at 0:44.
+- **1:10:** press End in B to show live verification.
+- **1:30:** alt-tab B → C. Say “here’s the same trip from earlier, finished.”
+- **2:49:** close on C.
+
+Never refresh B or C. Both remount the workspace and abort the running streams. Never press
+Plan again on C. Do not return to A after 0:36.
 
 ### Fallback ladder
 
-1. Both runs live: the script above.
-2. The live window is slow or stuck: talk over the mission band and the agent deck; the live stages are still evidence.
-3. The finished window failed: use the recorded run and say “recorded live, unedited.”
-4. Network gone: PDF plus the recording. The deck never depends on the network.
+1. B starts live: the script above.
+2. B is slow: talk over the mission band and the agent deck; move to C at 1:10.
+3. B fails: switch to C at 0:50 and say “here’s one from earlier.”
+4. Network gone: C is already loaded; use it. If C is gone, play the recording.
+5. No deck fallback. The deck is not the pitch.
 
 ### The 0-of-5 audit
 
-The problem slide claims 0 of 5 major planners ask about health. Before presenting, open the
-trip-planning flow in Google Travel, Tripadvisor, Expedia, Booking.com, and Kayak and screenshot
-the input steps. Keep the screenshots in the speaker notes. If any planner asks, change the
-number and the source line.
+Slide 2 claims 0 of 5 major planners ask about health. Before presenting, open the trip-planning
+flow in Google Travel, Tripadvisor, Expedia, Booking.com, and Kayak and screenshot the input
+steps. Keep the screenshots in the speaker notes. If any planner asks, change the number and the
+source line.
+
+## Q&A and the appendix
+
+If a judge asks about the system, open the relevant slide directly:
+
+- Architecture: `/pitch#5`.
+- Comparison: `/pitch#6`.
+- The calibration model: `/pitch#9`.
+- The data asset: `/pitch#10`.
+
+Do not walk through them; answer the question, show the one slide, then return to the product.
+The full deck is also the leave-behind PDF.
 
 ## Sources
 
@@ -148,18 +174,18 @@ number and the source line.
 
 | Slide | Title words | Body words | Accent | Result |
 | --- | --- | --- | --- | --- |
-| 1 Cover | — | 12 | none | PASS. No footer. One personal photograph, provided by the presenter; not stock. |
-| 2 Problem | 1 | 33 | the `0` | PASS. Every number sourced in the label. |
-| 3 Solution | 1 | 31 | `Pace` | PASS. Three rows, one rule each. |
-| 4 Demo | 1 | 19 | `Live` | PASS. Stage cue and fallback. |
-| 5 Architecture | 1 | 7 | `not` | PASS. Two-loop inline SVG: live run and data loop. |
-| 6 Comparison | 1 | 11 footnote | one `Yes` | PASS. Table excluded from the body budget. |
-| 7 Impact | 1 | 24 | `seven` | PASS. Three bullets, no sub-bullets. |
-| 8 Close | 5 + 6 | 0 | URL | PASS. |
-| 9 Model | 1 | 21 + table | `never` | PASS. Appendix; formula, tiers, ship gate. |
-| 10 Data | 1 | 10 + tables | `dose` | PASS. Appendix; not presented in the three minutes. |
+| 1 Cover | — | 12 | none | **Presented.** One personal photograph, provided by the presenter; not stock. |
+| 2 Problem | 1 | 33 | the `0` | **Presented.** Every number sourced in the label. |
+| 3 Solution | 1 | 31 | `Pace` | Backup; the onboarding screen replaces it. |
+| 4 Demo | 1 | 19 | `Live` | Backup; the app is the demo. |
+| 5 Architecture | 1 | 7 | `not` | Backup; spoken over the finished plan. |
+| 6 Comparison | 1 | 11 footnote | one `Yes` | Backup; one spoken line if needed. |
+| 7 Impact | 1 | 24 | `seven` | Backup; spoken over the care card. |
+| 8 Close | 5 + 6 | 0 | URL | Backup; spoken over the live plan. |
+| 9 Model | 1 | 21 + table | `never` | Q&A appendix; formula, tiers, ship gate. |
+| 10 Data | 1 | 10 + tables | `dose` | Q&A appendix; not presented. |
 
-Titles are the presenter's section names, not assertions. The content carries the takeaway.
+Titles are the presenter’s section names, not assertions. The content carries the takeaway.
 
 Banned check: no emoji, no icons, no gradients, shadows, blur, glass, centered text, pill
 badges, decorative shapes, purple, marketing filler, agenda or thank-you slide. No app tabs;
@@ -206,8 +232,8 @@ answer. Only this product knows what dose it prescribed, so the corpus cannot be
 **What is the moat?** That dose and outcome pair at scale. The model is a calibration layer on
 the engine; synthetic data proves the pipeline, not the risk.
 
-**Business model?** Insurer partnership and travel clinics. The three-minute pitch does not
-need it; have the answer ready.
+**Business model?** Insurer partnership and travel clinics. The live demo does not need it;
+have the answer ready.
 
 ## Photo note
 
