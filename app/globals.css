@@ -113,6 +113,216 @@
     max-width: 65ch;
   }
 
+  /* Sparse instrument header: one ink rule, a mono heading, and a live count. */
+  .panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-top: 1px solid var(--ink);
+    padding-top: 12px;
+  }
+
+  /*
+   * The command surface grid. Panels keep one DOM order and one mount for the whole
+   * workspace; only the named areas move when the mission stage changes, so a live
+   * stream or preview frame is never unmounted by a layout shift. On phones the grid
+   * also reorders: the team leads while sessions open, then the stage leads.
+   */
+  .command-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "deck"
+      "stage"
+      "verify"
+      "env"
+      "rail";
+    gap: 48px 40px;
+    align-items: start;
+  }
+
+  .command-grid--forming {
+    grid-template-areas:
+      "deck"
+      "stage"
+      "verify"
+      "env"
+      "rail";
+  }
+
+  .command-grid--researching,
+  .command-grid--composing {
+    grid-template-areas:
+      "stage"
+      "deck"
+      "verify"
+      "env"
+      "rail";
+  }
+
+  .command-grid--ready {
+    grid-template-areas:
+      "stage"
+      "deck"
+      "env"
+      "verify"
+      "rail";
+  }
+
+  /* While the checks are live they move above the envelope; when they settle, the
+   * envelope moves back ahead of the archived verification. */
+  .command-grid--ready[data-checks="live"] {
+    grid-template-areas:
+      "stage"
+      "deck"
+      "verify"
+      "env"
+      "rail";
+  }
+
+  .cg-stage { grid-area: stage; }
+
+  /* The deck adapts to its grid column, not the viewport, so it stays readable
+   * when research moves it beside the stage. */
+  .cg-deck {
+    grid-area: deck;
+    container-type: inline-size;
+  }
+
+  .agent-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 8px;
+  }
+
+  .agent-roster {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0 32px;
+  }
+
+  .agent-strip__label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @container (min-width: 480px) {
+    .agent-strip {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  @container (min-width: 640px) {
+    .agent-roster {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @container (min-width: 840px) {
+    .agent-strip {
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+  }
+
+  .cg-verify { grid-area: verify; }
+  .cg-env { grid-area: env; }
+  .cg-rail { grid-area: rail; align-self: stretch; }
+
+  /* Jump targets sit clear of the fixed site header and command bar. */
+  .workspace-section {
+    scroll-margin-top: 200px;
+  }
+
+  /* On a phone the mock-only note beside Save trip would push the actions to a
+   * second row; the stage carries the same caution in full. */
+  @media (max-width: 639px) {
+    .command-actions span.t-small.text-muted {
+      display: none;
+    }
+  }
+
+  /* The fixed workspace dock overlaps the page footer on a phone; keep the closing
+   * notice above it without editing the shared site chrome. */
+  @media (max-width: 1023px) {
+    body:has(.command-dock) footer {
+      padding-bottom: 88px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .command-grid {
+      grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr) 320px;
+    }
+
+    .command-grid--forming {
+      grid-template-areas:
+        "deck deck rail"
+        "stage stage rail"
+        "verify verify rail"
+        "env env rail";
+    }
+
+    .command-grid--researching {
+      grid-template-areas:
+        "stage deck rail"
+        "verify verify rail"
+        "env env rail";
+    }
+
+    .command-grid--composing {
+      grid-template-areas:
+        "stage stage rail"
+        "deck deck rail"
+        "verify verify rail"
+        "env env rail";
+    }
+
+    .command-grid--ready {
+      grid-template-areas:
+        "stage stage rail"
+        "deck deck rail"
+        "env env rail"
+        "verify verify verify";
+    }
+
+    .command-grid--ready[data-checks="live"] {
+      grid-template-areas:
+        "stage stage rail"
+        "deck deck rail"
+        "verify verify verify"
+        "env env rail";
+    }
+
+    .workspace-section {
+      scroll-margin-top: 184px;
+    }
+
+    /* The rail persists beside the stage; its inner column sticks under the bar. */
+    .live-rail {
+      position: sticky;
+      top: 198px;
+      max-height: calc(100vh - 222px);
+      overflow-y: auto;
+    }
+  }
+
+  /* At the smallest desktop width the stage needs the full column; the side-by-side
+   * research layout starts when there is room for both panels. */
+  @media (min-width: 1024px) and (max-width: 1199px) {
+    .command-grid--researching {
+      grid-template-areas:
+        "stage stage rail"
+        "deck deck rail"
+        "verify verify rail"
+        "env env rail";
+    }
+  }
+
   .t-display {
     font-family: var(--font-serif);
     font-size: 36px;
@@ -360,6 +570,24 @@
 }
 
 /* Function-first Leaflet chrome, kept inside the Paper and Ink palette. */
+.trip-map {
+  /* Confine Leaflet's pane z-indexes so the sticky command bar always paints above. */
+  isolation: isolate;
+}
+
+/* The focused-day readout on the map; a sibling of the Leaflet container. */
+.trip-map-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 500;
+  pointer-events: none;
+  padding: 4px 8px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-frame);
+  background: var(--surface);
+}
+
 .trip-map.leaflet-container {
   background: var(--paper);
   font-family: var(--font-sans);
@@ -441,6 +669,12 @@
   justify-content: center;
   border: 2px solid var(--surface);
   background: var(--ink);
+  transition: opacity var(--dur-base) var(--ease);
+}
+
+/* A focused day leads; every other marker recedes but stays plotted and clickable. */
+.trip-map-marker--dim .trip-map-marker__dot {
+  opacity: 0.3;
 }
 
 .trip-map-marker__index {

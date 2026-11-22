@@ -133,7 +133,7 @@ export function FocusView({ worker, state, visible, onRetry }: FocusViewProps) {
         </div>
       </div>
 
-      <div className="relative aspect-[16/10] w-full bg-sunken">
+      <div className="relative aspect-[16/10] max-h-[520px] w-full bg-sunken">
         {state.phase === "error" ? (
           <div className="flex h-full flex-col items-start justify-center gap-3 p-6">
             <p className="t-heading text-ink">This check did not finish</p>

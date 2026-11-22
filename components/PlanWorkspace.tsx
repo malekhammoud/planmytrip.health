@@ -1,29 +1,26 @@
 "use client";
 
-import type { CSSProperties } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AgentTeamPanel } from "@/components/AgentTeamPanel";
-import { MissionBand } from "@/components/MissionBand";
+import { CommandBar } from "@/components/CommandBar";
+import { CommandDock } from "@/components/CommandDock";
 import { CareCardButton, ItineraryBoard } from "@/components/ItineraryBoard";
+import { LiveRail } from "@/components/LiveRail";
 import { MissionControl } from "@/components/mission/MissionControl";
 import { PlanPanel } from "@/components/PlanPanel";
 import { AdjustmentsPanel } from "@/components/VerificationAdjustments";
-import { Button, Callout, SectionHeader, type CalloutTone } from "@/components/ui";
+import { Callout, type CalloutTone } from "@/components/ui";
 import { useAgentPlan } from "@/hooks/useAgentPlan";
 import { useSwarm } from "@/hooks/useSwarm";
-import { swarmSummary } from "@/lib/swarmTelemetry";
+import { surfaceMode, missionStage } from "@/lib/agent/plannerStage";
+import { isSwarmLive, swarmSummary } from "@/lib/swarmTelemetry";
 import {
   applyVerification,
   type VerificationFindingInput,
 } from "@/lib/verificationOverlay";
 import { WORKER_IDS } from "@/lib/swarmTypes";
 import type { HealthTripPlan, SunLifeSeverity } from "@/lib/healthTripEngine";
-import { describeTrip } from "@/lib/describeTrip";
-import {
-  BUDGET_LABELS,
-  type TripConfig,
-} from "@/lib/agent/agentTypes";
-import { TRANSPORT_LABELS } from "@/lib/types";
+import type { TripConfig } from "@/lib/agent/agentTypes";
 
 /** Props for {@link PlanWorkspace}. */
 export interface PlanWorkspaceProps {
@@ -46,14 +43,17 @@ const ALERT_TONES: Record<SunLifeSeverity, CalloutTone> = {
   blocking: "risk",
 };
 
-function revealStyle(index: number): CSSProperties {
-  return { "--reveal-index": index } as CSSProperties;
+function count(value: number): string {
+  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 /**
- * The one-page result screen: trip masthead, live mission band, seven-agent deck,
- * planning signal, route stage, safety envelope, and live verification. Both agent
- * streams stay mounted for the whole page, so nothing aborts as the reader scrolls.
+ * The live command surface. One sticky instrument bar carries identity, stage, clocks,
+ * and counts; below it a named-area grid reorders as real events land: the team leads
+ * while sessions open, stage and team sit together as research arrives, the stage takes
+ * the width while the concierge composes, and the finished stage leads with the team
+ * compacted to a strip. Both agent streams and all three preview frames stay mounted
+ * for the whole workspace, so nothing aborts when panels move.
  */
 export function PlanWorkspace({
   trip,
@@ -65,7 +65,7 @@ export function PlanWorkspace({
   onEditTrip,
   onReplan,
 }: PlanWorkspaceProps) {
-  const { state, runInput, retry } = useAgentPlan({
+  const { state, retry } = useAgentPlan({
     destination: trip.destination,
     origin: trip.origin,
     days: trip.days,
@@ -93,6 +93,7 @@ export function PlanWorkspace({
 
   const [adjustmentMaster, setAdjustmentMaster] = useState(true);
   const [disabledAdjustments, setDisabledAdjustments] = useState<readonly string[]>([]);
+  const [activeDay, setActiveDay] = useState<number | null>(null);
   const verificationFindings = useMemo<VerificationFindingInput[]>(
     () =>
       WORKER_IDS.flatMap((worker) => {
@@ -120,6 +121,60 @@ export function PlanWorkspace({
     [plan, trip.condition, verificationFindings, adjustmentMaster, disabledAdjustments],
   );
   const verification = swarmSummary(swarm.state);
+  const checksLive = isSwarmLive(swarm.state);
+  const stage = missionStage(state);
+  const mode = surfaceMode(stage);
+  const completed = Object.values(state.agents).filter(
+    (agent) => agent.phase === "complete",
+  ).length;
+  const applied = overlay.adjustments.filter((adjustment) => adjustment.applied).length;
+  const walkingCap = Math.max(
+    ...plan.itinerary.map((day) => day.walkingCapKm),
+    0,
+  );
+
+  const routeMeta =
+    state.plan !== null
+      ? `${state.plan.days.length} days · plan ready`
+      : stage === "error"
+        ? "Planning paused"
+        : stage === "composing"
+          ? `${completed}/7 in · concierge composing`
+          : stage === "researching"
+            ? `${completed}/7 in · route forming`
+            : "Sessions opening";
+
+  // A new build or replan remounts the workspace; open it at the top, not at the
+  // onboarding submit button's scroll offset. Edit trip keeps the position untouched.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [runToken]);
+
+  // The first plan_ready focuses day one, so the map, route, and day plan open together.
+  const seenPlanRef = useRef(state.plan);
+  useEffect(() => {
+    if (state.plan === null) {
+      seenPlanRef.current = null;
+      return;
+    }
+    if (seenPlanRef.current !== state.plan) {
+      seenPlanRef.current = state.plan;
+      setActiveDay(state.plan.days[0]?.day ?? null);
+    }
+  }, [state.plan]);
+
+  // A layout reorder fades the moved panels once; the class toggle never remounts them.
+  const [reorderPulse, setReorderPulse] = useState(false);
+  const layoutKey = `${mode}:${checksLive ? "live" : "settled"}`;
+  const previousModeRef = useRef(layoutKey);
+  useEffect(() => {
+    if (previousModeRef.current === layoutKey) return;
+    previousModeRef.current = layoutKey;
+    setReorderPulse(true);
+    const timer = window.setTimeout(() => setReorderPulse(false), 300);
+    return () => window.clearTimeout(timer);
+  }, [layoutKey]);
+  const pulse = reorderPulse ? "anim-fade" : "";
 
   const toggleAdjustment = (id: string, enabled: boolean): void => {
     setDisabledAdjustments((current) =>
@@ -130,147 +185,155 @@ export function PlanWorkspace({
   };
 
   return (
-    <main className="page-container pt-10 md:pt-16">
-      <header
-        className="reveal-section flex flex-wrap items-start justify-between gap-6 border-b border-hairline pb-6"
-        style={revealStyle(0)}
-      >
-        <div className="min-w-0">
-          <p className="t-label text-muted">Current trip</p>
-          <h1 className="t-title mt-2 max-w-3xl">
-            {describeTrip({
-              destination: trip.destination,
-              days: trip.days,
-              condition: trip.condition,
-            })}
-          </h1>
-          <p className="t-data mt-2 text-muted">
-            {TRANSPORT_LABELS[trip.transport]} · {BUDGET_LABELS[trip.budget]} ·{" "}
-            {trip.interests || "No extra preferences"} ·{" "}
-            {trip.hasSunLifeTravelCoverage
-              ? "Sun Life coverage recorded"
-              : "Sun Life coverage not confirmed"}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={onEditTrip}>
-            Edit trip
-          </Button>
-          <Button variant="secondary" onClick={onReplan}>
-            Plan again
-          </Button>
-        </div>
-      </header>
+    <main>
+      <CommandBar
+        trip={trip}
+        runId={runId}
+        plan={state.plan}
+        state={state}
+        swarm={swarm.state}
+        onEditTrip={onEditTrip}
+        onReplan={onReplan}
+      />
 
-      <MissionBand state={state} />
-
-      <section
-        aria-labelledby="team-heading"
-        className="reveal-section"
-        style={revealStyle(2)}
-      >
-        <SectionHeader index="01" title="Planning team" id="team-heading" />
-        <AgentTeamPanel state={state} runInput={runInput} />
-      </section>
-
-      <section
-        aria-labelledby="route-heading"
-        className="reveal-section"
-        style={revealStyle(3)}
-      >
-        <SectionHeader index="02" title="Route and days" id="route-heading" />
-        <PlanPanel
-          state={state}
-          runInput={runInput}
-          visible={visible}
-          origin={trip.origin}
-          transport={trip.transport}
-          capture={{ runId, installId, consent: trip.captureConsent }}
-          onRetry={retry}
-        />
-      </section>
-
-      <section
-        aria-labelledby="safety-heading"
-        className="reveal-section"
-        style={revealStyle(4)}
-      >
-        <SectionHeader
-          index="03"
-          title="Safety envelope"
-          id="safety-heading"
-          action={
-            <CareCardButton
-              destination={trip.destination}
-              condition={trip.condition}
-              medication={trip.medication}
-              plan={overlay.plan}
-              adjustments={overlay.adjustments}
-            />
-          }
-        />
-        <p className="t-small measure text-muted">
-          The engine derives daily step, walking, recovery, altitude, and heat limits
-          from your condition profile. These limits stay authoritative.
-        </p>
-        {verificationFindings.length > 0 ? (
-          <AdjustmentsPanel
-            adjustments={overlay.adjustments}
-            master={adjustmentMaster}
-            onMaster={setAdjustmentMaster}
-            onToggle={toggleAdjustment}
-          />
-        ) : null}
-        <div className="mt-6">
-          <Callout
-            tone={ALERT_TONES[plan.sunLifeAlert.severity]}
-            title={plan.sunLifeAlert.title}
+      <div className="page-container pb-32 pt-8 md:pt-10 lg:pb-24">
+        <div
+          className={`command-grid command-grid--${mode}`}
+          data-mode={mode}
+          data-checks={checksLive ? "live" : "settled"}
+        >
+          <section
+            id="route-stage"
+            aria-labelledby="route-heading"
+            className="cg-stage workspace-section"
           >
-            <div className="flex flex-col gap-1">
-              {plan.sunLifeAlert.messages.map((message) => (
-                <p key={message}>{message}</p>
-              ))}
+            <div className="panel-head">
+              <h2 id="route-heading" className="t-label text-muted">
+                Route and days
+              </h2>
+              <p className="t-data-sm text-muted">{routeMeta}</p>
             </div>
-          </Callout>
-        </div>
-        <div className="mt-8">
-          <ItineraryBoard
-            plan={overlay.plan}
-            destination={trip.destination}
-            condition={trip.condition}
-            medication={trip.medication}
-            adjustments={overlay.adjustments}
-            verification={{ checked: verification.findings, total: 3 }}
-          />
-        </div>
-      </section>
+            <div className="mt-4">
+              <PlanPanel
+                state={state}
+                visible={visible}
+                days={trip.days}
+                stage={stage}
+                origin={trip.origin}
+                transport={trip.transport}
+                capture={{ runId, installId, consent: trip.captureConsent }}
+                onRetry={retry}
+                activeDay={activeDay}
+                onSelectDay={setActiveDay}
+              />
+            </div>
+          </section>
 
-      <section
-        aria-labelledby="verification-heading"
-        className="reveal-section"
-        style={revealStyle(5)}
-      >
-        <SectionHeader
-          index="04"
-          title="Live verification"
-          id="verification-heading"
-        />
-        <p className="t-small measure text-muted">
-          Three browser agents check the advisory, medication and customs rules, and
-          emergency coverage. Their sessions run while this page stays open.
-        </p>
-        <div className="mt-6">
-          <MissionControl
-            state={swarm.state}
-            runInput={swarm.runInput}
-            destination={trip.destination}
-            condition={trip.condition}
-            medication={trip.medication}
-            onRetry={swarm.retry}
-            onRerun={swarm.rerun}
-          />
+          <section
+            id="planning-team"
+            aria-labelledby="team-heading"
+            className={`cg-deck workspace-section ${pulse}`}
+          >
+            <AgentTeamPanel state={state} compact={stage === "ready"} stage={stage} />
+          </section>
+
+          <section
+            id="live-verification"
+            aria-labelledby="verification-heading"
+            className={`cg-verify workspace-section ${pulse}`}
+          >
+            <div className="panel-head">
+              <h2 id="verification-heading" className="t-label text-muted">
+                Live verification
+              </h2>
+              <p className="t-data-sm flex items-center gap-2 text-muted">
+                <span
+                  aria-hidden="true"
+                  className={`block h-1.5 w-1.5 ${
+                    checksLive ? "anim-pulse-dot bg-accent" : "bg-ink"
+                  }`}
+                />
+                {verification.running} running · {verification.steps} steps ·{" "}
+                {verification.sources} sources · {verification.findings}/3 findings
+              </p>
+            </div>
+            <div className="mt-4">
+              <MissionControl
+                state={swarm.state}
+                runInput={swarm.runInput}
+                destination={trip.destination}
+                condition={trip.condition}
+                medication={trip.medication}
+                onRetry={swarm.retry}
+                onRerun={swarm.rerun}
+                expanded={stage === "ready"}
+              />
+            </div>
+          </section>
+
+          <section
+            id="safety-envelope"
+            aria-labelledby="safety-heading"
+            className={`cg-env workspace-section ${pulse}`}
+          >
+            <div className="panel-head">
+              <h2 id="safety-heading" className="t-label text-muted">
+                Safety envelope
+              </h2>
+              <CareCardButton
+                destination={trip.destination}
+                condition={trip.condition}
+                medication={trip.medication}
+                plan={overlay.plan}
+                adjustments={overlay.adjustments}
+              />
+            </div>
+            <p className="t-data-sm mt-1 text-muted">
+              {plan.itinerary.length} days · {count(plan.dailyStepCeiling)} steps/day ·{" "}
+              {walkingCap.toFixed(1)} km walking/day · modeled ceilings
+              {applied > 0 ? ` · ${applied} live adjustments applied` : ""}
+            </p>
+            {verificationFindings.length > 0 ? (
+              <AdjustmentsPanel
+                adjustments={overlay.adjustments}
+                master={adjustmentMaster}
+                onMaster={setAdjustmentMaster}
+                onToggle={toggleAdjustment}
+              />
+            ) : null}
+            <div className="mt-4">
+              <Callout
+                tone={ALERT_TONES[plan.sunLifeAlert.severity]}
+                title={plan.sunLifeAlert.title}
+              >
+                <div className="flex flex-col gap-1">
+                  {plan.sunLifeAlert.messages.map((message) => (
+                    <p key={message}>{message}</p>
+                  ))}
+                </div>
+              </Callout>
+            </div>
+            <div className="mt-6">
+              <ItineraryBoard
+                plan={overlay.plan}
+                destination={trip.destination}
+                condition={trip.condition}
+                medication={trip.medication}
+                adjustments={overlay.adjustments}
+                verification={{ checked: verification.findings, total: 3 }}
+                activeDay={activeDay}
+                onSelectDay={setActiveDay}
+              />
+            </div>
+          </section>
+
+          <aside id="live-activity" aria-labelledby="rail-heading" className="cg-rail workspace-section">
+            <LiveRail state={state} swarm={swarm.state} />
+          </aside>
         </div>
-      </section>
+      </div>
+
+      <CommandDock plannerLive={state.status === "running"} checksLive={checksLive} />
     </main>
   );
 }

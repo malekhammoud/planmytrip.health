@@ -3,24 +3,34 @@
 import type { CSSProperties } from "react";
 import { AgentPlanView } from "@/components/AgentPlanView";
 import { Button, Callout, Skeleton } from "@/components/ui";
-import type { AgentPlanRunInput } from "@/hooks/useAgentPlan";
-import type { PlannerState } from "@/lib/agent/plannerReducer";
-import { BUDGET_LABELS, type PlannerAgentId } from "@/lib/agent/agentTypes";
-import type { PlannerAgentState } from "@/lib/agent/plannerReducer";
+import {
+  PLANNER_AGENTS,
+  type PlannerAgentId,
+  type PlannerAgentPhase,
+} from "@/lib/agent/agentTypes";
+import type { PlannerAgentState, PlannerState } from "@/lib/agent/plannerReducer";
+import type { MissionStage } from "@/lib/agent/plannerStage";
+import { STAGE_META } from "@/lib/agent/plannerStage";
 import type { TripCaptureContext } from "@/lib/data/types";
-import { CONDITION_LABELS, TRANSPORT_LABELS, type TransportMode } from "@/lib/types";
+import type { TransportMode } from "@/lib/types";
 
 /** Props for {@link PlanPanel}. */
 export interface PlanPanelProps {
   state: PlannerState;
-  runInput: AgentPlanRunInput | null;
   visible: boolean;
+  /** Trip length, so the forming frame shows the real number of day slots. */
+  days: number;
+  /** Current mission stage; changes the forming copy without changing the plan. */
+  stage: MissionStage;
   /** Free-text starting point used by the arrival map link. */
   origin: string;
   /** Travel method used to order stops and choose each leg's mode. */
   transport: TransportMode;
   capture: TripCaptureContext;
   onRetry: () => void;
+  /** The day highlighted on the map and in the route, owned by the workspace. */
+  activeDay: number | null;
+  onSelectDay: (day: number | null) => void;
 }
 
 const ROUTE_PATH =
@@ -34,7 +44,14 @@ const ROUTE_NODES: readonly { left: string; top: string }[] = [
   { left: "98%", top: "43%" },
 ];
 
-const DAY_SLOTS: readonly string[] = ["01", "02", "03"];
+const TICK: Record<PlannerAgentPhase, string> = {
+  idle: "bg-hairline",
+  queued: "bg-hairline",
+  researching: "status-pulse bg-accent",
+  writing: "status-pulse bg-accent",
+  complete: "bg-ink",
+  error: "bg-risk",
+};
 
 function completedCount(
   agents: Record<PlannerAgentId, PlannerAgentState>,
@@ -42,36 +59,49 @@ function completedCount(
   return Object.values(agents).filter((agent) => agent.phase === "complete").length;
 }
 
-function RunContext({ runInput }: { runInput: AgentPlanRunInput | null }) {
-  if (runInput === null) return null;
-  return (
-    <p className="t-small text-muted">
-      Last plan: {runInput.destination} · {runInput.days} days ·{" "}
-      {TRANSPORT_LABELS[runInput.transport]} · {CONDITION_LABELS[runInput.condition]} ·{" "}
-      {BUDGET_LABELS[runInput.budget]}
-    </p>
-  );
-}
-
 /**
- * The live route stage. The finished concierge plan leads when ready; a designed
- * route-forming frame holds the space while the run is live; a failure keeps the
- * calm retry in place. The engine envelope below never depends on this panel.
+ * The live route stage while the plan forms. Seven real phase ticks, the trip's true
+ * day slots, and stage copy hold the space. No route or place is invented here.
  */
-function RouteForming({ completed }: { completed: number }) {
+function RouteForming({
+  agents,
+  days,
+  stage,
+}: {
+  agents: Record<PlannerAgentId, PlannerAgentState>;
+  days: number;
+  stage: MissionStage;
+}) {
+  const completed = completedCount(agents);
+  const failing = Object.values(agents).filter((agent) => agent.phase === "error").length;
   const status =
-    completed >= 7
-      ? "All seven agents are in. The concierge is writing the final route."
-      : `${completed} of 7 agents complete. The map appears when the route is ready.`;
+    stage === "composing"
+      ? "The concierge is sequencing verified picks inside each day's ceilings."
+      : completed >= 7
+        ? "All seven agents are in. The concierge is writing the final route."
+        : `${completed} of 7 agents complete. The map appears when the route is ready.`;
+  const slots = Array.from({ length: Math.min(Math.max(days, 1), 7) }, (_, i) => i + 1);
+
   return (
     <div className="rounded-frame border border-hairline-strong bg-surface p-4 md:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className="t-label text-muted">Route forming</p>
-        <p className="t-data-sm text-muted">{completed} / 7 agents</p>
+        <p className="t-data-sm text-muted">
+          {completed} / 7 agents{failing > 0 ? ` · ${failing} incomplete` : ""}
+        </p>
       </div>
       <p role="status" aria-live="polite" className="t-small mt-1 text-muted">
         {status}
       </p>
+
+      <div className="mt-4 flex items-center gap-1" aria-hidden="true">
+        {PLANNER_AGENTS.map((meta) => (
+          <span
+            key={meta.id}
+            className={`block h-1 flex-1 ${TICK[agents[meta.id].phase]}`}
+          />
+        ))}
+      </div>
 
       <div className="relative mt-6 h-32 w-full" aria-hidden="true">
         <svg
@@ -101,11 +131,11 @@ function RouteForming({ completed }: { completed: number }) {
         })}
       </div>
 
-      <div className="mt-2 grid grid-cols-1 gap-6 border-t border-hairline pt-5 md:grid-cols-3">
-        {DAY_SLOTS.map((day) => (
+      <div className="mt-2 grid grid-cols-1 gap-6 border-t border-hairline pt-5 sm:grid-cols-3">
+        {slots.map((day) => (
           <div key={day}>
             <div className="flex items-baseline justify-between gap-3">
-              <p className="t-label text-muted">Day {day}</p>
+              <p className="t-label text-muted">Day {String(day).padStart(2, "0")}</p>
               <p className="t-data-sm text-muted">Pending</p>
             </div>
             <div className="mt-3 flex flex-col gap-2">
@@ -118,7 +148,7 @@ function RouteForming({ completed }: { completed: number }) {
         ))}
       </div>
       <p className="t-small mt-5 text-muted">
-        The engine safety envelope below is already final.
+        {STAGE_META[stage].copy} The engine safety envelope is already final.
       </p>
     </div>
   );
@@ -127,15 +157,18 @@ function RouteForming({ completed }: { completed: number }) {
 /** Route and itinerary stage: live skeleton, retry, or the finished agent plan. */
 export function PlanPanel({
   state,
-  runInput,
   visible,
+  days,
+  stage,
   origin,
   transport,
   capture,
   onRetry,
+  activeDay,
+  onSelectDay,
 }: PlanPanelProps) {
   const mockNote = state.mock ? (
-    <div className="mb-6">
+    <div className="mb-4">
       <Callout tone="caution" title="Mock planning data">
         These agents ran in mock mode. The places, prices, and route are sample data.
       </Callout>
@@ -152,6 +185,8 @@ export function PlanPanel({
           origin={origin}
           transport={transport}
           capture={capture}
+          activeDay={activeDay}
+          onSelectDay={onSelectDay}
         />
       </div>
     );
@@ -161,23 +196,20 @@ export function PlanPanel({
     return (
       <div>
         {mockNote}
-        <RunContext runInput={runInput} />
-        <div className="mt-4">
-          <Callout
-            tone={state.error?.code === "agent_unavailable" ? "caution" : "risk"}
-            title="Planning paused"
-          >
-            <p>{state.error?.message ?? "The concierge did not return a plan."}</p>
-            <p className="mt-2">
-              The safety envelope and live verification below keep running.
-            </p>
-            <div className="mt-3">
-              <Button variant="secondary" onClick={onRetry}>
-                Try the concierge again
-              </Button>
-            </div>
-          </Callout>
-        </div>
+        <Callout
+          tone={state.error?.code === "agent_unavailable" ? "caution" : "risk"}
+          title="Planning paused"
+        >
+          <p>{state.error?.message ?? "The concierge did not return a plan."}</p>
+          <p className="mt-2">
+            The safety envelope and live verification keep running.
+          </p>
+          <div className="mt-3">
+            <Button variant="secondary" onClick={onRetry}>
+              Try the concierge again
+            </Button>
+          </div>
+        </Callout>
       </div>
     );
   }
@@ -185,10 +217,7 @@ export function PlanPanel({
   return (
     <div>
       {mockNote}
-      <RunContext runInput={runInput} />
-      <div className="mt-4">
-        <RouteForming completed={completedCount(state.agents)} />
-      </div>
+      <RouteForming agents={state.agents} days={days} stage={stage} />
     </div>
   );
 }

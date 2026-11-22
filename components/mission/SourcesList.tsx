@@ -23,9 +23,9 @@ interface SourceRow {
 
 const API_LABEL = { search: "search", fetch: "fetch" } as const;
 
-function rows(state: SwarmState): SourceRow[] {
+function rows(state: SwarmState, focus?: WorkerId): SourceRow[] {
   const output: SourceRow[] = [];
-  for (const worker of WORKER_IDS) {
+  for (const worker of focus === undefined ? WORKER_IDS : [focus]) {
     for (const item of collectSources(state.workers[worker])) {
       output.push({
         worker,
@@ -41,20 +41,28 @@ function rows(state: SwarmState): SourceRow[] {
 /** Props for {@link SourcesList}. */
 export interface SourcesListProps {
   state: SwarmState;
+  /** When set, only this worker's sources appear; the tiles choose it. */
+  worker?: WorkerId;
 }
 
 /** The growing provenance list, with no placeholder rows. */
-export function SourcesList({ state }: SourcesListProps) {
-  const items = rows(state);
+export function SourcesList({ state, worker }: SourcesListProps) {
+  const items = rows(state, worker);
 
   return (
     <div className="mt-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-solid border-hairline pb-2">
-        <p className="t-label text-muted">Sources consulted</p>
+        <p className="t-label text-muted">
+          Sources{worker === undefined ? " consulted" : ` · ${WORKER_TAG[worker]}`}
+        </p>
         <p className="t-data-sm text-muted">{items.length}</p>
       </div>
       {items.length === 0 ? (
-        <p className="t-small py-4 text-muted">No sources consulted yet.</p>
+        <p className="t-small py-4 text-muted">
+          {worker === undefined
+            ? "No sources consulted yet."
+            : `No sources yet for ${WORKER_TAG[worker]}.`}
+        </p>
       ) : (
         <ul>
           {items.map(({ worker, item, key }) => (

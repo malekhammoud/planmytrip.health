@@ -68,7 +68,7 @@ export function AdjustmentsPanel({
           onChange={onMaster}
         />
       </div>
-      <ul className="mt-2">
+      <ul className="mt-2 grid gap-x-10 md:grid-cols-2">
         {adjustments.map((adjustment) => {
           const id = `adjustment-${adjustment.id.replace(/[^a-zA-Z0-9-]/g, "-")}`;
           return (

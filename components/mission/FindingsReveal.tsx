@@ -16,30 +16,36 @@ import {
   formatRetrievedAt,
 } from "@/components/mission/missionMeta";
 import type { SwarmState } from "@/lib/swarmReducer";
-import { WORKER_IDS } from "@/lib/swarmTypes";
+import { WORKER_IDS, type WorkerId } from "@/lib/swarmTypes";
 
 /** Props for {@link FindingsReveal}. */
 export interface FindingsRevealProps {
   state: SwarmState;
   /** Dims the old findings after the trip inputs changed. */
   dimmed?: boolean;
+  /** When set, only this worker's findings appear; the tiles choose it. */
+  worker?: WorkerId;
 }
 
 /** Completed findings, in canonical worker order, with provenance. */
-export function FindingsReveal({ state, dimmed = false }: FindingsRevealProps) {
-  const completed = WORKER_IDS.filter(
-    (worker) => state.workers[worker].findings !== null,
+export function FindingsReveal({ state, dimmed = false, worker }: FindingsRevealProps) {
+  const completed = (worker === undefined ? WORKER_IDS : [worker]).filter(
+    (id) => state.workers[id].findings !== null,
   );
 
   return (
     <div className="mt-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-solid border-hairline pb-2">
-        <p className="t-label text-muted">Findings</p>
+        <p className="t-label text-muted">
+          Findings{worker === undefined ? "" : ` · ${MISSION_WORKERS[worker].name}`}
+        </p>
         <p className="t-data-sm text-muted">{completed.length} of 3</p>
       </div>
       {completed.length === 0 ? (
         <p className="t-small py-4 text-muted">
-          Findings appear only when a worker completes.
+          {worker === undefined
+            ? "Findings appear only when a worker completes."
+            : `No findings yet for ${MISSION_WORKERS[worker].name}. They appear only when that check completes.`}
         </p>
       ) : (
         <div className={dimmed ? "opacity-45" : undefined}>

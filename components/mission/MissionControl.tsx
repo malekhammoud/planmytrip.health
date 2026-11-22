@@ -3,9 +3,9 @@
  *
  * Inputs: the swarm state and run snapshot from useSwarm, the current trip inputs, and
  * retry/re-run actions.
- * Outputs: a sticky status bar, one hero live view per worker (all mounted), a tab list
- * of worker tiles, a real activity feed, the source ledger, findings, the pre-run state,
- * and the stale-input caution.
+ * Outputs: a status row, one hero live view per worker (all mounted), a tab list of
+ * worker tiles, the source ledger, findings, the pre-run state, and the stale-input
+ * caution. The chronological activity feed lives in the workspace's persistent rail.
  * Invariants: every visible change comes from an accepted event; no percentage, ETA, or
  * partial finding is invented; nothing ticks while idle; the browser title reflects the
  * real running or verified count; mock runs stay labelled.
@@ -14,7 +14,6 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { ActivityFeed } from "@/components/mission/ActivityFeed";
 import { FindingsReveal } from "@/components/mission/FindingsReveal";
 import { FocusView } from "@/components/mission/FocusView";
 import { PreRun } from "@/components/mission/PreRun";
@@ -39,6 +38,8 @@ export interface MissionControlProps {
   medication: string;
   onRetry: (worker: WorkerId) => void;
   onRerun: () => void;
+  /** True once the plan is ready: sources and findings share the full width. */
+  expanded?: boolean;
 }
 
 function lastProgressAt(state: SwarmState, worker: WorkerId): number {
@@ -80,6 +81,7 @@ export function MissionControl({
   medication,
   onRetry,
   onRerun,
+  expanded = false,
 }: MissionControlProps) {
   const [pinned, setPinned] = useState<WorkerId | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -211,9 +213,15 @@ export function MissionControl({
             ))}
           </div>
 
-          <ActivityFeed state={state} />
-          <SourcesList state={state} />
-          <FindingsReveal state={state} dimmed={stale} />
+          <p className="mt-3 t-data-sm text-muted">
+            Sources and findings follow {MISSION_WORKERS[focused].name}. Choose a tile to
+            read another check.
+          </p>
+
+          <div className={expanded ? "mt-2 grid gap-x-10 lg:grid-cols-2" : undefined}>
+            <SourcesList state={state} worker={focused} />
+            <FindingsReveal state={state} worker={focused} dimmed={stale} />
+          </div>
         </>
       )}
     </div>

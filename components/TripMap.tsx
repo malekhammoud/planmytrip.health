@@ -36,12 +36,15 @@ export function TripMap({
   days,
   route,
   visible = true,
+  activeDay = null,
 }: {
   places: readonly PlannerPlace[];
   days: readonly PlannerDay[];
   /** Optimized route; when present its stop order draws the day lines. */
   route?: TripRoute;
   visible?: boolean;
+  /** Focused day: its line and markers lead, the others recede. */
+  activeDay?: number | null;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Leaflet.Map | null>(null);
@@ -91,9 +94,27 @@ export function TripMap({
     map.invalidateSize();
     layer.clearLayers();
 
+    // The focused day's places lead; every other marker recedes but stays plotted.
+    const members = new Set<string>();
+    if (activeDay !== null) {
+      if (route !== undefined) {
+        const day = route.days.find((entry) => entry.day === activeDay);
+        if (day !== undefined) {
+          if (day.base !== null) members.add(day.base.placeId);
+          for (const stop of day.stops) members.add(stop.placeId);
+        }
+      } else {
+        const day = days.find((entry) => entry.day === activeDay);
+        for (const block of day?.blocks ?? []) {
+          if (block.placeId !== null) members.add(block.placeId);
+        }
+      }
+    }
+
     for (const [index, place] of mapped.entries()) {
+      const dim = activeDay !== null && !members.has(place.id);
       const icon = L.divIcon({
-        className: "trip-map-marker",
+        className: dim ? "trip-map-marker trip-map-marker--dim" : "trip-map-marker",
         html: `<span class="trip-map-marker__hit"></span><span class="trip-map-marker__pin" style="--marker-index:${index}"><span class="trip-map-marker__dot trip-map-marker__dot--${place.category}"><span class="trip-map-marker__index">${index + 1}</span></span></span>`,
         iconSize: [0, 0],
         iconAnchor: [0, 0],
@@ -107,6 +128,14 @@ export function TripMap({
         .addTo(layer);
     }
 
+    const lineStyle = (dayNumber: number) =>
+      activeDay === null
+        ? { weight: 1.5, opacity: 0.65 }
+        : dayNumber === activeDay
+          ? { weight: 2.5, opacity: 0.9 }
+          : { weight: 1.5, opacity: 0.15 };
+
+    const focusPoints: Leaflet.LatLngExpression[] = [];
     if (route !== undefined) {
       for (const day of route.days) {
         const points: Leaflet.LatLngExpression[] = [];
@@ -116,11 +145,11 @@ export function TripMap({
         for (const stop of day.stops) {
           points.push([stop.lat, stop.lng]);
         }
+        if (day.day === activeDay) focusPoints.push(...points);
         if (points.length > 1) {
           L.polyline(points, {
             color: "var(--accent)",
-            weight: 1.5,
-            opacity: 0.65,
+            ...lineStyle(day.day),
             dashArray: "4 4",
             className: "trip-map-route",
           }).addTo(layer);
@@ -135,11 +164,11 @@ export function TripMap({
           const place = byId.get(item.placeId);
           if (place !== undefined) points.push([place.lat, place.lng]);
         }
+        if (day.day === activeDay) focusPoints.push(...points);
         if (points.length > 1) {
           L.polyline(points, {
             color: "var(--accent)",
-            weight: 1.5,
-            opacity: 0.65,
+            ...lineStyle(day.day),
             dashArray: "4 4",
             className: "trip-map-route",
           }).addTo(layer);
@@ -147,13 +176,15 @@ export function TripMap({
       }
     }
 
-    if (mapped.length > 0) {
-      const bounds = L.latLngBounds(
-        mapped.map((place) => [place.lat, place.lng] as [number, number]),
-      );
+    const boundsPoints =
+      focusPoints.length > 0
+        ? focusPoints
+        : mapped.map((place) => [place.lat, place.lng] as [number, number]);
+    if (boundsPoints.length > 0) {
+      const bounds = L.latLngBounds(boundsPoints);
       map.fitBounds(bounds.pad(0.25), { maxZoom: 15 });
     }
-  }, [days, mapped, ready, route, visible]);
+  }, [activeDay, days, mapped, ready, route, visible]);
 
   if (mapped.length === 0) {
     return (
@@ -164,14 +195,33 @@ export function TripMap({
     );
   }
 
+  const focusStops =
+    activeDay === null
+      ? null
+      : route?.days.find((day) => day.day === activeDay)?.stops.length ??
+        days
+          .find((day) => day.day === activeDay)
+          ?.blocks.filter((block) => block.placeId !== null).length ??
+        0;
+
   return (
-    <figure>
+    <figure id="trip-map" className="relative">
       <div
         ref={containerRef}
         className="trip-map h-80 w-full rounded-frame border border-hairline-strong md:h-96"
         role="region"
         aria-label="Map of selected stays, tables, hikes, visits, and care. Numbered markers match the list below."
       />
+      <div className="trip-map-overlay" aria-hidden="true">
+        <p className="t-label text-ink">
+          {activeDay === null ? "All days" : `Day ${String(activeDay).padStart(2, "0")}`}
+        </p>
+        <p className="t-data-sm text-muted">
+          {activeDay === null
+            ? `${mapped.length} places mapped`
+            : `${focusStops} ${focusStops === 1 ? "stop" : "stops"} in focus`}
+        </p>
+      </div>
       <details className="mt-2 border-t border-hairline pt-2">
         <summary className="t-small min-h-11 cursor-pointer text-muted">
           Mapped places · {mapped.length}

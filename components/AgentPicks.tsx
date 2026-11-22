@@ -90,7 +90,7 @@ export function AgentPicks({ places }: { places: readonly PlannerPlace[] }) {
   }
 
   return (
-    <div className="mt-10 flex flex-col gap-10">
+    <div className="mt-2 flex flex-col gap-8">
       {sections.map((section) => (
         <section key={section.category} aria-labelledby={`picks-${section.category}`}>
           <h4 id={`picks-${section.category}`} className="t-heading text-ink">

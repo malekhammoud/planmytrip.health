@@ -62,17 +62,32 @@ function SignalGraph({ entries }: { entries: readonly PlannerLogEntry[] }) {
 
 /**
  * Planning signal: a bar graph and ticker built from the bounded planner log. The
- * graph is decorative; the ticker is the text equivalent. Newest lines animate in
- * without a live-region announcement, so a long run stays readable.
+ * graph is decorative; the ticker is the text equivalent. The newest line carries an
+ * arrival wash so a new event is visible in the rail without a live-region announcement.
  */
-export function AgentActivityFeed({ log }: { log: readonly PlannerLogEntry[] }) {
+export function AgentActivityFeed({
+  log,
+  live = false,
+}: {
+  log: readonly PlannerLogEntry[];
+  /** True while the planner stream is running; only then is the newest bar live. */
+  live?: boolean;
+}) {
   const bars = log.slice(-28);
   const recent = log.slice(-5).reverse();
   return (
     <div className="mt-8 border-t border-hairline pt-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <p className="t-label text-muted">Planning signal</p>
-        <p className="t-data-sm text-muted">{log.length} updates</p>
+        <p className="t-label flex items-center gap-2 text-muted">
+          {live ? (
+            <span aria-hidden="true" className="anim-pulse-dot block h-1.5 w-1.5 bg-accent" />
+          ) : null}
+          Planning signal
+        </p>
+        <p className="t-data-sm text-muted">
+          {live ? "Live · " : ""}
+          {log.length} updates
+        </p>
       </div>
 
       {bars.length === 0 ? (
@@ -83,10 +98,12 @@ export function AgentActivityFeed({ log }: { log: readonly PlannerLogEntry[] }) 
         <>
           <SignalGraph entries={bars} />
           <ol aria-label="Recent planning activity" className="mt-2 list-none p-0">
-            {recent.map((entry) => (
+            {recent.map((entry, index) => (
               <li
                 key={entry.id}
-                className="ticker-line flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-hairline py-2"
+                className={`ticker-line flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-hairline py-2 ${
+                  index === 0 ? "anim-arrive" : ""
+                }`}
               >
                 <span className="t-data-sm w-16 shrink-0 text-muted">
                   {clock(entry.ts)}

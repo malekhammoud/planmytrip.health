@@ -26,6 +26,10 @@ export interface ItineraryBoardProps {
   adjustments?: readonly VerificationAdjustment[];
   /** Live count of workers that returned findings. */
   verification?: { checked: number; total: number };
+  /** The day focused on the map; its envelope row is ruled in accent and open. */
+  activeDay?: number | null;
+  /** Selects a day so the map, route, and envelope stay in sync. */
+  onSelectDay?: (day: number | null) => void;
 }
 
 /** Props for {@link CareCardButton}. */
@@ -164,10 +168,14 @@ function ItineraryDayRow({
   day,
   index,
   adjustments,
+  focused,
+  onToggle,
 }: {
   day: HealthTripDay;
   index: number;
   adjustments?: readonly VerificationAdjustment[];
+  focused: boolean;
+  onToggle: () => void;
 }) {
   const style = { "--day-index": index } as CSSProperties;
   const recovery = adjustments?.find(
@@ -179,7 +187,8 @@ function ItineraryDayRow({
   return (
     <li
       className={[
-        "day-row border-t border-hairline py-8 md:grid md:grid-cols-[64px_minmax(0,1fr)_160px] md:gap-8",
+        "day-row md:grid md:grid-cols-[64px_minmax(0,1fr)_160px] md:gap-8",
+        focused ? "border-t-2 border-t-accent py-6" : "border-t border-hairline py-4",
         recovery === undefined ? "" : "anim-arrive",
       ]
         .filter(Boolean)
@@ -190,14 +199,31 @@ function ItineraryDayRow({
         {String(day.day).padStart(2, "0")}
       </p>
       <div className="mt-2 min-w-0 [overflow-wrap:anywhere] md:mt-0">
-        <h3 className="t-heading text-ink">
-          <span className="sr-only">Day {day.day}: </span>
-          {day.title}
-        </h3>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h3 className="t-heading text-ink">
+            <span className="sr-only">Day {day.day}: </span>
+            {day.title}
+          </h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-expanded={focused}
+            aria-controls={`envelope-day-${day.day}`}
+            onClick={onToggle}
+          >
+            {focused ? "Close day" : "Open day"}
+          </Button>
+        </div>
         <DayCaps day={day} mobile />
-        <p className="t-body mt-4 text-muted">{day.pacingRule}</p>
-        <PacingStrip blocks={day.blocks} day={day.day} />
-        <BlockList blocks={day.blocks} />
+        <div id={`envelope-day-${day.day}`} hidden={!focused}>
+          <p className="t-body mt-4 text-muted">{day.pacingRule}</p>
+          <PacingStrip blocks={day.blocks} day={day.day} />
+          <BlockList blocks={day.blocks} />
+          <div className="mt-6 rounded-frame bg-accent-soft p-3">
+            <p className="t-label text-muted">Checkpoint</p>
+            <p className="t-small mt-1 text-ink">{day.healthCheckpoint}</p>
+          </div>
+        </div>
         {recovery === undefined ? null : (
           <div className="mt-4 border-t border-solid border-hairline pt-3">
             <p className="t-label text-accent">
@@ -227,10 +253,6 @@ function ItineraryDayRow({
             </p>
           </div>
         )}
-        <div className="mt-6 rounded-frame bg-accent-soft p-3">
-          <p className="t-label text-muted">Checkpoint</p>
-          <p className="t-small mt-1 text-ink">{day.healthCheckpoint}</p>
-        </div>
       </div>
       <div className="hidden md:block">
         <DayCaps day={day} />
@@ -250,6 +272,8 @@ export function ItineraryBoard({
   condition,
   adjustments,
   verification,
+  activeDay = null,
+  onSelectDay,
 }: ItineraryBoardProps) {
   const listLabel = `Paced itinerary for ${destination.trim() || "this trip"}`;
   return (
@@ -260,13 +284,15 @@ export function ItineraryBoard({
           No itinerary days were generated for this plan.
         </p>
       ) : (
-        <ol aria-label={listLabel} className="mt-10 list-none p-0">
+        <ol aria-label={listLabel} className="mt-8 list-none p-0">
           {plan.itinerary.map((day, index) => (
             <ItineraryDayRow
               key={day.day}
               day={day}
               index={index}
               adjustments={adjustments}
+              focused={activeDay === day.day}
+              onToggle={() => onSelectDay?.(activeDay === day.day ? null : day.day)}
             />
           ))}
         </ol>

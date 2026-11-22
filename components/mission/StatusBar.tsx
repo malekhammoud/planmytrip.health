@@ -1,20 +1,18 @@
 /**
- * Sticky 48px mission status bar.
+ * Verification status row.
  *
  * Inputs: the swarm state, its summary, an optional announcement, and re-run action.
- * Outputs: running count, elapsed time, steps, sources, findings, and the done action.
- * Invariants: counts come from accepted events only; the elapsed clock is isolated in
- * Elapsed; the polite live line only repeats real state changes.
+ * Outputs: the running or settled phrase, the done action, and the polite live line.
+ * Invariants: counts come from accepted events only; the workspace command bar carries
+ * the clocks and counters, so this row stays a thin ruled line, never a second header.
  */
 
 "use client";
 
 import { Button } from "@/components/ui";
-import { Elapsed } from "@/components/mission/Elapsed";
 import type { SwarmState } from "@/lib/swarmReducer";
 import type { SwarmSummary } from "@/lib/swarmTelemetry";
-import type { WorkerId } from "@/lib/swarmTypes";
-import { WORKER_IDS } from "@/lib/swarmTypes";
+import { WORKER_IDS, type WorkerId } from "@/lib/swarmTypes";
 
 /** Props for {@link StatusBar}. */
 export interface StatusBarProps {
@@ -25,25 +23,8 @@ export interface StatusBarProps {
   announcement: string;
 }
 
-function swarmWindow(state: SwarmState): { startedAt: number | null; endedAt: number | null } {
-  let startedAt: number | null = null;
-  let endedAt: number | null = null;
-  let live = false;
-  for (const worker of Object.values(state.workers)) {
-    if (worker.startedAt !== null) {
-      startedAt = startedAt === null ? worker.startedAt : Math.min(startedAt, worker.startedAt);
-    }
-    if (worker.phase === "queued" || worker.phase === "running") live = true;
-    if (worker.endedAt !== null) {
-      endedAt = endedAt === null ? worker.endedAt : Math.max(endedAt, worker.endedAt);
-    }
-  }
-  return { startedAt, endedAt: live ? null : endedAt };
-}
-
-/** The mission's only sticky surface. */
+/** The verification panel's status line and re-run action. */
 export function StatusBar({ state, summary, onRerun, announcement }: StatusBarProps) {
-  const { startedAt, endedAt } = swarmWindow(state);
   const settled = WORKER_IDS.every((worker: WorkerId) => {
     const phase = state.workers[worker].phase;
     return phase === "complete" || phase === "error";
@@ -56,24 +37,21 @@ export function StatusBar({ state, summary, onRerun, announcement }: StatusBarPr
       : "Verification ready";
 
   return (
-    <div className="sticky top-0 z-10 border-y border-solid border-hairline bg-paper">
-      <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-6 gap-y-1 py-1">
-        <p className="t-data text-ink">{left}</p>
-        <p className="t-data text-muted">
-          <Elapsed startedAt={startedAt} endedAt={endedAt} />
-        </p>
-        <p className="t-data text-muted">
-          {summary.steps} steps, {summary.sources} sources, {summary.findings} of 3 findings
+    <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-6 gap-y-1 border-b border-solid border-hairline py-1">
+      <p className="t-data text-ink">{left}</p>
+      <div className="flex items-center gap-3">
+        <p className="t-data-sm text-muted">
+          {summary.findings} of 3 findings
         </p>
         {done ? (
           <Button variant="secondary" size="sm" onClick={onRerun}>
             Re-run
           </Button>
         ) : null}
-        <p className="sr-only" role="status" aria-live="polite">
-          {announcement}
-        </p>
       </div>
+      <p className="sr-only" role="status" aria-live="polite">
+        {announcement}
+      </p>
     </div>
   );
 }
