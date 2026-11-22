@@ -846,6 +846,11 @@ hangs when Clerk's full request-header override set (including `host` and `conne
 returned; the filter is load-bearing. Clerk's Dashboard sign-in is not CLI authentication;
 run `npx -y clerk@latest auth login` on the host before changing account-level settings.
 
+The nginx snippet `planmytrip-proxy.conf` sets `proxy_buffer_size 64k`, `proxy_buffers 8 32k`,
+and `proxy_busy_buffers_size 64k` while keeping `proxy_buffering off` for SSE. Clerk's sign-in
+handshake returns headers larger than nginx's 4k default; without the larger header buffer a
+signed-in refresh ends in a 502 "upstream sent too big header".
+
 OpenCode service: the server uses `@opencode/client` v2.3.2, discovers or starts the local
 service with `Service.ensure()`, and writes seven `agents` entries into
 `$TMPDIR/planmytrip-health-agent-workspace-<uid>/.opencode/opencode.json`. Each agent is `mode:
