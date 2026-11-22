@@ -732,10 +732,43 @@ thresholds and Sun Life stability window remain VERIFY.
 - Unverified: a real first-user sign-up and sign-in, saving and reopening a trip in a browser,
   the Clerk email/account-portal CNAME records, and a real account-deletion cleanup.
 
+### Step 25: Clerk form appearance
+
+- The prebuilt Clerk form received `var(--accent)` and the other tokens as appearance
+  variables. Clerk's own color variables do not resolve those custom properties, so the
+  primary button rendered transparent white-on-white. The sign-in form appeared to have a
+  blank space where Continue belongs.
+- Added `lib/clerkAppearance.ts` with literal Paper and Ink values and pointed
+  `ClerkProvider` at it. Clerk needs concrete CSS colors; the design guard does not scan
+  `lib/`, and the file is the single deliberate literal-color bridge. `docs/AUTH.md` records
+  the sync requirement.
+- Verified the live sign-in page after restart. The primary Continue button is now blue with
+  white text. Google is still absent because the production Clerk instance has no social
+  connection; enabling it requires a custom Google OAuth client ID and secret.
+
+### Step 26: TinyFish live-check recovery
+
+- Root cause of "The agent check stopped unexpectedly": every worker sent
+  `agent_config.max_steps: 60`. The TinyFish account is not enabled for custom max steps and
+  returns HTTP 403 `FORBIDDEN`; the error code was unmapped, so the UI showed the generic
+  upstream-error copy.
+- Removed `max_steps` from the request. The provider default is 150 steps, and the UI now
+  reports `step n of 150 max`. `max_duration_seconds: 100` and `cursor_style: "standard"`
+  remain accepted. Added a `forbidden` error code with its own calm copy so an account-level
+  refusal is never labelled an unexpected agent failure.
+- Live verification: a direct TinyFish probe with `max_duration_seconds` and the real
+  `output_schema` returned 200 and streamed STARTED, STREAMING_URL, PROGRESS, and COMPLETE.
+  A real advisory worker ran through `runSwarm` with the production key and finished with
+  typed findings; no key, preview URL, or upstream body was logged.
+- Gate: typecheck, 481 tests, lint, and production build pass. The remaining Gap: Google
+  social sign-in needs the Clerk dashboard OAuth credentials described in `docs/AUTH.md`.
+
 ## Next action
 
-Have the first user sign up, then save a plan, reopen it from `/trips`, and delete it. Confirm
-the Clerk email and account-portal DNS records. Run a consented pilot cohort against
+Enable Google in the Clerk dashboard with a production Google OAuth client ID and secret, then
+verify the Google button and a real sign-up. Have the first user sign up, save a plan, reopen
+it from `/trips`, and delete it. Confirm the Clerk email and account-portal DNS records. Run a
+consented pilot cohort against
 production PostgreSQL, confirm capture and outcome rows arrive, and replace the synthetic
 artifact only after the pooled tier is reached. The saved-trip page still needs the post-trip
 outcome action. Monitor pharmacy consistency and check the live iframe and clipboard behavior.

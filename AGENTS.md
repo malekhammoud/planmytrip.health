@@ -58,6 +58,8 @@ and this file agree at that commit. Only the orchestrator commits.
 | 22. Paper and Ink pitch deck | [x] | `feat(pitch): add Paper and Ink pitch deck at /pitch` |
 | 23. Live command surface | [x] | `feat(ui): rebuild workspace as a live command surface` |
 | 24. Clerk accounts and saved trips | [x] | `feat(auth): add Clerk accounts and saved trips` |
+| 25. Clerk form appearance | [x] | `fix(auth): use visible Clerk appearance tokens` |
+| 26. TinyFish live-check recovery | [x] | `fix(api): stop sending beta-gated TinyFish max steps` |
 
 ## 3. Commands
 
@@ -197,8 +199,10 @@ there. The anonymous `trip_captures` table is unchanged and never stores the Cle
 The Clerk production keys live in `/etc/planmytrip.env`; never put the secret in a
 `NEXT_PUBLIC_*` variable, a committed file, or a log. The production application is
 `app_3MR7sJ2fhslkGXYl4yRqjseO13C`. The Dashboard selection does not authenticate the Clerk CLI;
-use `npx -y clerk@latest auth login` on the host before account-level CLI commands. Full
-schema, privacy, and rollout notes are in `docs/AUTH.md`.
+use `npx -y clerk@latest auth login` on the host before account-level CLI commands. The
+prebuilt form reads literal Paper and Ink values from `lib/clerkAppearance.ts`; Clerk does not
+resolve `var(--token)` in its own color variables. Full schema, privacy, and rollout notes are
+in `docs/AUTH.md`.
 
 ### Agentic concierge
 
@@ -453,7 +457,7 @@ Worker tiles are a `role="tablist"` with arrow, Home, and End keys and a 2px ink
 the selected tile. Focus follows the worker with the newest progress unless the reader pins a
 tile; the line reads "Following activity" or "Pinned to <name>" with an Unpin action. The
 focused `FocusView` is a 16:10 surface frame with a 32px chrome bar: phase glyph, worker,
-preview host, a pulsing LIVE marker, elapsed time, `step n of 60 max`, and an Expand action
+preview host, a pulsing LIVE marker, elapsed time, `step n of 150 max`, and an Expand action
 using the Fullscreen API. Beneath it the "Now" line crossfades on a real purpose change and
 the tempo strip draws five-second buckets from accepted steps. Completion shows "Run complete"
 for one second, auto-follows the next active worker, and replaces the iframe with a static
@@ -497,7 +501,7 @@ Worker events are accepted only from queued or running; `run_started` is the onl
 idle. Progress keeps the last three purposes. `streaming_url` accepts only https on
 `mock.invalid`, `*.unikraft.app`, or `*.tinyfish.io` (VERIFY) in `lib/swarmState.ts` and
 `hooks/swarmFrames.ts`, plus the dev-only same-origin `/mock-browser/<worker>` path; all other
-hosts are rejected. Live workers abort after 120s and TinyFish stops them at 100s or 60 steps,
+hosts are rejected. Live workers abort after 120s and TinyFish stops them at 100s or its default step ceiling,
 so one run fits the route budget; `/api/travel-swarm` declares `maxDuration = 120`. `swarm_done`
 stores completed and failed lists. Any `mock: true` payload shows the "Mock data" caution
 Callout; a full run clears it.
@@ -803,7 +807,7 @@ Regenerate with `grep -rn "VERIFY:" app lib components`; there are 21 entries.
 | `lib/sunLifeRules.ts` (stability placeholder) | The window is `null`; confirm the real value with the plan administrator. Never invent a number. |
 | `lib/sunLifeRules.ts` (rules) | 60-day cap, Allianz 24/7 pre-authorization, and stability window against current group policy; record source and checked date. |
 | `lib/swarmState.ts` (preview allowlist) | Docs list `*.unikraft.app`; a live production run on 2026-11-21 returned `*.tetra-data.production.tinyfish.io`, so both provider domains are allowlisted. Recheck if TinyFish introduces another host family. |
-| `lib/swarmConfig.ts` (limits) | Confirm TinyFish still accepts `max_steps: 60`, `max_duration_seconds: 100`, and `cursor_style: "standard"`, and that one worker fits the 120s route budget. |
+| `lib/swarmConfig.ts` (limits) | Custom `max_steps` is beta-gated on this account and returns 403 FORBIDDEN, so it must stay omitted. Confirm `max_duration_seconds: 100` and `cursor_style: "standard"` are accepted and one worker fits the 120s route budget; the provider default is 150 steps. |
 | `lib/swarmRunner.ts` (stealth retry) | Confirm a `SITE_BLOCKED` retry with `browser_profile: "stealth"` is accepted, does not double-bill, and does not repeat a side effect. |
 | `lib/tinyfishEvents.ts` (TF_API_RESULT) | The provider documents an array but not its item shape. This build reads only direct string `url` and `title`; confirm the real shape on a live run before widening it. |
 | `components/mission/FocusView.tsx` (iframe multi-viewer) | Confirm three distinct TinyFish previews can be embedded at once with two hidden but mounted. A concurrent-viewer limit would require pausing hidden frames. |
@@ -865,9 +869,10 @@ TinyFish Web Agent API: `POST https://agent.tinyfish.ai/v1/automation/run-sse` w
 `X-API-Key` and JSON `{url, goal, output_schema?, browser_profile?, agent_config?}`. The key is
 read only in the route; never log or echo it. `output_schema` is a top-level object using
 `nullable: true`, never type arrays, `oneOf`, `const`, or `additionalProperties`. Every worker
-sends `agent_config` with `cursor_style: "standard"`, `max_steps: 60`, and
-`max_duration_seconds: 100`; the limits live in `lib/swarmConfig.ts` and keep one worker inside
-the 120s route budget.
+sends `agent_config` with `cursor_style: "standard"` and `max_duration_seconds: 100`. Custom
+`max_steps` is deliberately omitted because the account is not enabled for it; the provider
+default is 150 steps. The limits live in `lib/swarmConfig.ts` and keep one worker inside the
+120s route budget.
 
 Upstream `data: <json>` events: `STARTED` (run_id), `STREAMING_URL`, `PROGRESS`
 (purpose, optional tinyfish_api), `HEARTBEAT`, `COMPLETE` (status/result/error), and optional
@@ -893,13 +898,13 @@ instead.
 | `worker_heartbeat` | none beyond the envelope | TinyFish HEARTBEAT; never a feed line. |
 | `worker_note` | `message` | A bounded retry or lifecycle note. |
 | `worker_complete` | `findings`, `sourceUrl`, `retrievedAt`, `rawResult?`, `parseError?` | COMPLETED. Malformed JSON keeps raw text and parse error. |
-| `worker_error` | `code`, `message` | Missing key, timeout, blocked site, step limit, rate limit, credits, cancelled, upstream error. |
+| `worker_error` | `code`, `message` | Missing key, timeout, blocked site, step limit, rate limit, credits, invalid input, forbidden account, cancelled, upstream error. |
 | `swarm_done` | `completed`, `failed`, `summary` | Once after all requested workers settle. |
 
 Headers are `text/event-stream; charset=utf-8`, `Cache-Control: no-cache, no-transform`, and
 `X-Accel-Buffering: no`; a keep-alive comment goes out about every 15s. Disconnect aborts
 upstreams. Error codes: `missing_api_key`, `timeout`, `site_blocked`, `max_steps_exceeded`,
-`rate_limit`, `insufficient_credits`, `invalid_input`, `cancelled`, `upstream_error`; invalid
+`rate_limit`, `insufficient_credits`, `invalid_input`, `forbidden`, `cancelled`, `upstream_error`; invalid
 bodies 400 JSON. `/api/travel-swarm` declares `maxDuration = 120`.
 
 Mock mode needs no key or network; every payload carries `mock: true`, preview URLs use the
@@ -996,7 +1001,7 @@ exempting lines.
   Retry; the page keeps the failed column visible with its source and retry action. The new
   mission control was exercised in mock mode only: three iframes rendered, the fail path
   reached `SITE_BLOCKED`, and reduced motion switched every named class off. A live production
-  run with the 120s/100s/60-step limits, the stealth retry, and the multi-viewer frames still
+  run with the 120s/100s limits, the stealth retry, and the multi-viewer frames still
   needs to be run. Clipboard permissions remain unverified.
 - The route tolerates unknown events, stringified `result` values, and partial payloads.
 - The preview allowlist covers `mock.invalid`, `*.unikraft.app` (docs), and `*.tinyfish.io`
@@ -1044,6 +1049,13 @@ exempting lines.
   contributed a label; never present it as clinical evidence or use it for a live plan.
 - Responder bias and negative-label capture are unproven. A missing follow-up is excluded, not
   treated as a non-flare; a real pilot must measure who answers and who does not.
+- TinyFish's custom `max_steps` is beta-gated on the current account and returns 403
+  FORBIDDEN; the app therefore omits it and uses the provider default of 150 steps. Do not add
+  it back until the account is enabled.
+- Google social sign-in is not enabled on the production Clerk instance; `user_settings.social`
+  is empty. Enabling it requires a Google OAuth client ID and secret in the Clerk dashboard,
+  because production instances cannot use Clerk shared credentials. Until then the sign-in
+  form shows email and password only.
 - Clerk provides authentication; there is no rate limiting. PostgreSQL runs on the host; a
   production deployment still needs backups, access control, a retention/deletion path, and
   database monitoring. Deleting a Clerk user does not yet delete `saved_trips` rows.

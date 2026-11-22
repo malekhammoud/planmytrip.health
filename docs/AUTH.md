@@ -37,6 +37,17 @@ full request-header override set (including `host` and `connection`) is returned
 that filter is load-bearing. `/sign-in` and `/sign-up` are public, as are `/model`, `/pitch`,
 and static assets.
 
+## Sign-in form appearance
+
+Clerk's prebuilt form does not resolve `var(--accent)` or the other Paper and Ink custom
+properties inside its own color variables; the primary button renders transparent. The form
+therefore receives literal token values from `lib/clerkAppearance.ts`. Keep those values in
+sync with `app/globals.css` when the palette changes. The design guard does not scan `lib/`.
+
+Google is not enabled on the production instance. `user_settings.social` is empty, so Clerk
+renders email and password only. Production instances require a custom Google OAuth client ID
+and secret in the Clerk dashboard; shared development credentials are not valid in production.
+
 ## Saved-trip schema
 
 `npm run db:init` creates `saved_trips` idempotently:
