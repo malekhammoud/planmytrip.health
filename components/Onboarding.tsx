@@ -189,6 +189,7 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
                     {(control) => (
                       <LocationField
                         id={control.id}
+                        label="destination"
                         value={config.destination}
                         onChange={(value) => update("destination", value)}
                         aria-describedby={control["aria-describedby"]}
@@ -201,18 +202,17 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
                   <Field
                     id="onboarding-origin"
                     label="Starting from"
-                    hint="Optional. Home city or airport."
+                    hint="Optional. Type a home city or airport, use your current location, or pick a point on the map."
                   >
                     {(control) => (
-                      <TextInput
-                        {...control}
+                      <LocationField
+                        id={control.id}
+                        label="starting point"
                         value={config.origin}
-                        onChange={(event) =>
-                          update("origin", event.currentTarget.value)
-                        }
-                        autoComplete="off"
-                        maxLength={120}
-                        placeholder="City, country"
+                        onChange={(value) => update("origin", value)}
+                        aria-describedby={control["aria-describedby"]}
+                        aria-invalid={control["aria-invalid"]}
+                        placeholder="City, airport, or address"
                       />
                     )}
                   </Field>

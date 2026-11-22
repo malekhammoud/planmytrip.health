@@ -63,6 +63,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 27. Collapsing live surfaces | [x] | `feat(ui): collapse completed work into live disclosures` |
 | 28. Instant cached plans and verification | [x] | `feat(cache): add instant cached plans and recorded verification` |
 | 29. Location autocomplete and map picker | [x] | `feat(onboarding): add location autocomplete and map picker` |
+| 30. Starting-point location tools | [x] | `feat(onboarding): add location tools to starting point` |
 
 ## 3. Commands
 
@@ -462,18 +463,18 @@ The workspace is keyed by `deployNonce`, so a new build or replan remounts it at
 aborts older streams.
 
 `Onboarding` is one focused screen, not a rail. Step 01 collects destination (the only hard
-gate), duration, budget, and optional preferences. The destination is a `LocationField`
-combobox: typing searches `/api/geocode/search` after a 220ms debounce and offers at most six
-city or place rows. `Use current location` reads the browser position and reverse-geocodes it
-to a city label through `/api/geocode/reverse`; `Pick on map` opens `LocationPickerDialog`, a
-mounted-only modal Leaflet map that places a pin, reverse-geocodes the exact point, and fills
-the destination only after a place is named. Suggestions, current location, and the map all
-write a canonical label into the controlled text, and the map picker returns focus to the
-field. Step 02 collects condition, medication (name only), Sun Life coverage, the anonymous
-capture opt-in, the live coverage alert, and a review sentence. The left column explains the
-three jobs; the right column is a 420px form on desktop and stacks below at 1024. There is no
-deploy action before the form is complete. The draft helpers live in `lib/onboarding.ts` and
-are pure-tested.
+gate), duration, budget, and optional preferences. Destination and the optional starting point
+are both `LocationField` comboboxes: typing searches `/api/geocode/search` after a 220ms
+debounce and offers at most six city or place rows. `Use current location` reads the browser
+position and reverse-geocodes it to a city label through `/api/geocode/reverse`; `Pick on map`
+opens `LocationPickerDialog`, a mounted-only modal Leaflet map that places a pin,
+reverse-geocodes the exact point, and fills the field only after a place is named. Suggestions,
+current location, and the map all write a canonical label into the controlled text, and the
+map picker returns focus to its field. Step 02 collects condition, medication (name only), Sun
+Life coverage, the anonymous capture opt-in, the live coverage alert, and a review sentence.
+The left column explains the three jobs; the right column is a 420px form on desktop and stacks
+below at 1024. There is no deploy action before the form is complete. The draft helpers live in
+`lib/onboarding.ts` and are pure-tested.
 
 `PlanWorkspace` is the one-page result screen: trip summary with Edit trip and Plan again, the
 live `MissionBand`, the sectioned route, safety envelope, and verification. `MissionBand` shows

@@ -858,6 +858,21 @@ thresholds and Sun Life stability window remain VERIFY.
   no horizontal overflow at 1280 or 390; both location buttons measured 44px.
 - Gate: typecheck, 522 tests, lint, and production build pass.
 
+### Step 30: starting-point location tools
+
+- Replaced the plain starting-point input with the same `LocationField` used for the
+  destination. Origin now supports city/airport autocomplete, current location, and the exact
+  map picker, while staying optional.
+- Generalized the combobox and dialog copy with a field noun, so assistive labels and the map
+  instruction read "destination" or "starting point" rather than one hardcoded word.
+- Production browser check: the origin's current-location action filled
+  `London, Ontario, Canada`; typing `Toronto` opened a list labelled "Starting point
+  suggestions" with `Toronto, Ontario, Canada` first; selecting it and opening the origin map
+  dialog produced the instruction to type in the starting point field, named the pin, and
+  wrote `Toronto, Ontario, Canada` back to the origin. All four location controls measured
+  44px, with no page errors and no horizontal overflow at 1280 or 390.
+- Gate: typecheck, 522 tests, lint, and production build pass.
+
 ## Next action
 
 Rehearse the cached London, Ontario demo end to end: sign in, enter London (try both "London,

@@ -29,6 +29,8 @@ export interface LocationFieldProps {
   "aria-describedby"?: string;
   "aria-invalid"?: boolean;
   placeholder?: string;
+  /** Field noun used in the list label, status copy, and map dialog, e.g. "destination". */
+  label?: string;
 }
 
 type StatusTone = "muted" | "risk";
@@ -51,6 +53,7 @@ export function LocationField({
   "aria-describedby": describedBy,
   "aria-invalid": invalid,
   placeholder,
+  label = "destination",
 }: LocationFieldProps) {
   const [suggestions, setSuggestions] = useState<readonly GeocodePlace[]>([]);
   const [open, setOpen] = useState(false);
@@ -97,7 +100,7 @@ export function LocationField({
           setActive(results.length > 0 ? 0 : -1);
           if (!response.ok) {
             setTone("risk");
-            setStatus("Destination search is unavailable. Type the city and country instead.");
+            setStatus("Location search is unavailable. Type the city and country instead.");
           } else if (results.length === 0) {
             setTone("muted");
             setStatus("No matching place. Try a nearby city or pick on the map.");
@@ -107,7 +110,7 @@ export function LocationField({
         } catch (error) {
           if (error instanceof DOMException && error.name === "AbortError") return;
           setTone("risk");
-          setStatus("Destination search is unavailable. Type the city and country instead.");
+          setStatus("Location search is unavailable. Type the city and country instead.");
         } finally {
           if (!controller.signal.aborted) setLoading(false);
         }
@@ -119,8 +122,12 @@ export function LocationField({
     };
   }, [value]);
 
-  function selectPlace(place: GeocodePlace, label = place.label, nextStatus: string | null = null): void {
-    suppressRef.current = label;
+  function selectPlace(
+    place: GeocodePlace,
+    nextLabel = place.label,
+    nextStatus: string | null = null,
+  ): void {
+    suppressRef.current = nextLabel;
     setLastPlace(place);
     setSuggestions([]);
     setOpen(false);
@@ -128,7 +135,7 @@ export function LocationField({
     setLoading(false);
     setTone("muted");
     setStatus(nextStatus);
-    onChange(label);
+    onChange(nextLabel);
   }
 
   function handleInput(event: ChangeEvent<HTMLInputElement>): void {
@@ -273,7 +280,7 @@ export function LocationField({
           <ul
             id={listId}
             role="listbox"
-            aria-label="Destination suggestions"
+            aria-label={`${label.charAt(0).toUpperCase()}${label.slice(1)} suggestions`}
             className="location-list absolute left-0 right-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-frame border border-solid border-hairline-strong bg-surface p-0"
           >
             {suggestions.map((place, index) => {
@@ -343,6 +350,7 @@ export function LocationField({
       {pickerOpen ? (
         <LocationPickerDialog
           open
+          fieldLabel={label}
           initialQuery={value}
           initialCenter={lastPlace === null ? null : { lat: lastPlace.lat, lng: lastPlace.lng }}
           onClose={() => {

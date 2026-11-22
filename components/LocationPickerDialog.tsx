@@ -31,6 +31,8 @@ export interface LocationPickerDialogProps {
   initialQuery: string;
   /** Last suggestion coordinates, when the user selected one. */
   initialCenter: { lat: number; lng: number } | null;
+  /** Field noun used in the instruction copy, e.g. "destination" or "starting point". */
+  fieldLabel?: string;
   onClose: () => void;
   onConfirm: (place: GeocodePlace) => void;
 }
@@ -55,6 +57,7 @@ export function LocationPickerDialog({
   open,
   initialQuery,
   initialCenter,
+  fieldLabel = "destination",
   onClose,
   onConfirm,
 }: LocationPickerDialogProps) {
@@ -278,14 +281,14 @@ export function LocationPickerDialog({
         <div className="px-4 py-4 md:px-6">
           <p id="location-picker-instruction" className="t-small measure text-muted">
             Pan and zoom, then tap the map to place a pin. We name the point with the
-            configured geocoder. For a broad city search, type in the destination field
+            configured geocoder. For a broad city search, type in the {fieldLabel} field
             instead.
           </p>
           <div
             ref={mapElementRef}
             className="trip-map mt-4 h-72 w-full rounded-frame border border-solid border-hairline-strong md:h-96"
             role="region"
-            aria-label="Map for picking a destination. Tap to place a pin."
+            aria-label={`Map for picking a ${fieldLabel}. Tap to place a pin.`}
           />
           <div className="mt-4 min-h-12 border-t border-solid border-hairline pt-3">
             {pending ? (
