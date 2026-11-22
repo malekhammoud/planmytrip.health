@@ -118,7 +118,6 @@ describe("streamTinyfishRun", () => {
       browserProfile: "stealth",
       agentConfig: {
         cursorStyle: "standard",
-        maxSteps: 60,
         maxDurationSeconds: 100,
       },
       onEvent: (event) => events.push(event.type),
@@ -137,7 +136,6 @@ describe("streamTinyfishRun", () => {
     expect(body.browser_profile).toBe("stealth");
     expect(body.agent_config).toEqual({
       cursor_style: "standard",
-      max_steps: 60,
       max_duration_seconds: 100,
     });
   });

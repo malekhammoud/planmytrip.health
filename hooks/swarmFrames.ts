@@ -46,6 +46,7 @@ const ERROR_CODES: readonly SwarmErrorCode[] = [
   "rate_limit",
   "insufficient_credits",
   "invalid_input",
+  "forbidden",
   "cancelled",
   "upstream_error",
 ];

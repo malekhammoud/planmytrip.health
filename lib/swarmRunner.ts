@@ -58,6 +58,7 @@ const ERROR_MESSAGES: Record<SwarmErrorCode, string> = {
   rate_limit: "TinyFish rate limit reached. Try again in a minute.",
   insufficient_credits: "The TinyFish account has no credits left. Check the plan.",
   invalid_input: "The agent service rejected this check. Retry this worker.",
+  forbidden: "The live check is not enabled for this account. Check the TinyFish plan and retry.",
   cancelled: "The agent run was cancelled. Retry this check.",
   upstream_error: "The agent check stopped unexpectedly. Retry this worker.",
 };
@@ -200,7 +201,6 @@ async function runAttempt(
       browserProfile: options.browserProfile,
       agentConfig: {
         cursorStyle: SWARM_RUN_LIMITS.cursorStyle,
-        maxSteps: SWARM_RUN_LIMITS.maxSteps,
         maxDurationSeconds: SWARM_RUN_LIMITS.maxDurationSeconds,
       },
       signal: controller.signal,

@@ -6,12 +6,13 @@
  * stay in one place so a run cannot outlive its SSE response.
  */
 
-// VERIFY: TinyFish accepts max_steps 1..500 and max_duration_seconds 1..; 60 steps and
-// 100 seconds keep one worker inside the 120-second route budget. Recheck after a live
-// run reports MAX_STEPS_EXCEEDED or TIMEOUT.
+// VERIFY: TinyFish's custom max_steps is beta-gated for this account; sending it returns
+// HTTP 403 FORBIDDEN. Omit max_steps and keep max_duration_seconds at 100 so one worker
+// still fits the 120-second route budget. The provider's documented default is 150 steps.
+// Recheck after the account is enabled for custom max steps.
 export const SWARM_RUN_LIMITS = {
-  /** Hard cap on agent tool-call steps per worker. */
-  maxSteps: 60,
+  /** Provider default steps, used only for display; we do not send max_steps. */
+  providerDefaultMaxSteps: 150,
   /** Upstream wall-clock cap per worker, in seconds. */
   maxDurationSeconds: 100,
   /** Cursor style requested for every worker. */

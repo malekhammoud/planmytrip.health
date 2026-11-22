@@ -164,6 +164,7 @@ export type SwarmErrorCode =
   | "rate_limit"
   | "insufficient_credits"
   | "invalid_input"
+  | "forbidden"
   | "cancelled"
   | "upstream_error";
 

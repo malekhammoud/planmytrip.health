@@ -123,7 +123,7 @@ export function FocusView({ worker, state, visible, onRetry }: FocusViewProps) {
             className="t-data text-muted"
           />
           <p className="t-data-sm text-muted">
-            step {state.stepCount} of {SWARM_RUN_LIMITS.maxSteps} max
+            step {state.stepCount} of {SWARM_RUN_LIMITS.providerDefaultMaxSteps} max
           </p>
           {canExpand ? (
             <Button variant="ghost" size="sm" onClick={expand}>

@@ -44,6 +44,10 @@ const COPY: Record<SwarmErrorCode, SwarmErrorCopy> = {
     message: "The agent service rejected this check. Retry this worker.",
     retryable: true,
   },
+  forbidden: {
+    message: "The live check is not enabled for this account. Check the TinyFish plan and retry.",
+    retryable: false,
+  },
   cancelled: {
     message: "The agent run was cancelled. Retry this check.",
     retryable: true,

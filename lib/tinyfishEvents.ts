@@ -101,6 +101,7 @@ export function mapTinyfishErrorCode(code: string | null | undefined): SwarmErro
   if (token.includes("RATE_LIMIT") || token.includes("DAILY_LIMIT")) return "rate_limit";
   if (token.includes("INSUFFICIENT_CREDITS")) return "insufficient_credits";
   if (token.includes("INVALID_INPUT")) return "invalid_input";
+  if (token.includes("FORBIDDEN")) return "forbidden";
   if (token.includes("CANCELLED")) return "cancelled";
   if (token.includes("TIMEOUT")) return "timeout";
   if (token.includes("MISSING_API_KEY") || token.includes("INVALID_API_KEY")) {

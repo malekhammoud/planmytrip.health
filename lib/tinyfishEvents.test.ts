@@ -265,6 +265,16 @@ describe("mapTinyfishEvent", () => {
       throw new Error("expected worker_error");
     }
     expect(siteBlocked.data.code).toBe("site_blocked");
+
+    const forbidden = mapFixture({
+      type: "COMPLETE",
+      status: "FAILED",
+      error: "FORBIDDEN",
+    });
+    if (forbidden === null || forbidden.event !== "worker_error") {
+      throw new Error("expected worker_error");
+    }
+    expect(forbidden.data.code).toBe("forbidden");
   });
 
   it("normalises missing, placeholder, and duplicate values", () => {
