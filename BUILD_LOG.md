@@ -912,9 +912,11 @@ thresholds and Sun Life stability window remain VERIFY.
   `tests/swarm-runner-isolation.test.ts`, proving one worker throw leaves its sibling running.
 - Live worker check after deploy: the pharmacy worker for London, Ontario, albuterol started at
   04:33:41, emitted 17 progress steps, and completed at 04:35:40 (118.7s) with one finding and
-  no error or retry. That sits well inside the new 280s budget. Recovery, retry, and final-error
-  behavior are covered by the mocked recovery tests; a real provider stream was not forced to
-  drop.
+  no error or retry. A full production route run for Hamilton, Ontario then completed all three
+  workers in 164.6s with 38 steps, 30 sources, and 3 findings, no `worker_error`, no retry
+  note, and `swarm_done` last. That run would have been cut off by the old 120s budget, which
+  matches the reported failure. Recovery, retry, and final-error behavior are covered by the
+  mocked recovery tests; a real provider stream was not forced to drop.
 - Gate: typecheck, 528 tests, lint, and production build pass.
 
 ## Next action

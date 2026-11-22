@@ -1131,9 +1131,11 @@ exempting lines.
   route. The cached replay returned the same 25 steps, 10 sources, and 3 findings in about
   50-120 ms. A later provider run took 107s after a 65s queue delay, which exceeded the old
   120s client budget even though TinyFish completed it; the current 280s client budget and
-  run-record recovery address that case. A live production run with the new budget, the
-  recovery poller, the stealth retry, and the multi-viewer frames still
-  needs to be run, and clipboard permissions remain unverified.
+  run-record recovery address that case. A 2026-11-22 full production route run for Hamilton,
+  Ontario completed all three workers in 164.6s with 38 steps, 30 sources, and 3 findings,
+  with no error or retry note. The recovery and retry paths are covered by mocked tests; a
+  deliberately forced live stream drop and the stealth retry still need a live check.
+  Clipboard permissions remain unverified.
 - The route tolerates unknown events, stringified `result` values, and partial payloads.
 - The preview allowlist covers `mock.invalid`, `*.unikraft.app` (docs), and `*.tinyfish.io`
   (verified live 2026-11-21).
