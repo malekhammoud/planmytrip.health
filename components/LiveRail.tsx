@@ -55,24 +55,14 @@ export function LiveRail({ state, swarm }: LiveRailProps) {
             : "planning";
   const [pinned, setPinned] = useState<RailStream | null>(null);
   const active = pinned ?? auto;
-  const live = plannerLive || checksLive;
   const following = pinned === null;
 
   return (
     <div className="live-rail">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 border-t border-solid border-ink pt-3">
-        <h2 id="rail-heading" className="t-label text-muted">
-          Live activity
-        </h2>
-        <p className="t-data-sm text-muted">
-          {live ? "Streaming" : "Settled"} · {checks} check lines
-        </p>
-      </div>
-
       <div
         role="group"
         aria-label="Choose the activity stream"
-        className="mt-3 grid grid-cols-2 gap-2"
+        className="grid grid-cols-2 gap-2"
       >
         <Button
           variant={active === "planning" ? "primary" : "secondary"}

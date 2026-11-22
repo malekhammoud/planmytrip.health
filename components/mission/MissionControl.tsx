@@ -18,10 +18,9 @@ import { FindingsReveal } from "@/components/mission/FindingsReveal";
 import { FocusView } from "@/components/mission/FocusView";
 import { PreRun } from "@/components/mission/PreRun";
 import { SourcesList } from "@/components/mission/SourcesList";
-import { StatusBar } from "@/components/mission/StatusBar";
 import { WorkerTile } from "@/components/mission/WorkerTile";
 import { MISSION_WORKERS } from "@/components/mission/missionMeta";
-import { Button, Callout } from "@/components/ui";
+import { Button, Callout, Disclosure } from "@/components/ui";
 import type { SwarmRunInput } from "@/hooks/useSwarm";
 import { usePhaseAnnouncement } from "@/hooks/usePhaseAnnouncement";
 import type { SwarmState } from "@/lib/swarmReducer";
@@ -84,6 +83,8 @@ export function MissionControl({
   expanded = false,
 }: MissionControlProps) {
   const [pinned, setPinned] = useState<WorkerId | null>(null);
+  const [preRunOpen, setPreRunOpen] = useState(false);
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
   const tabsRef = useRef<HTMLDivElement>(null);
   const previousTitleRef = useRef<string | null>(null);
   const summary = swarmSummary(state);
@@ -157,17 +158,21 @@ export function MissionControl({
         </div>
       ) : null}
 
-      <StatusBar
-        state={state}
-        summary={summary}
-        onRerun={onRerun}
-        announcement={announcement}
-      />
+      <p className="sr-only" role="status" aria-live="polite">
+        {announcement}
+      </p>
 
       {preRun ? (
-        <div className="mt-6">
-          <PreRun destination={destination} condition={condition} medication={medication} />
-        </div>
+        <Disclosure
+          title="What will be checked"
+          summary="3 agents · exact instructions"
+          open={preRunOpen}
+          onToggle={() => setPreRunOpen((current) => !current)}
+        >
+          <div className="pt-4">
+            <PreRun destination={destination} condition={condition} medication={medication} />
+          </div>
+        </Disclosure>
       ) : (
         <>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -213,14 +218,18 @@ export function MissionControl({
             ))}
           </div>
 
-          <p className="mt-3 t-data-sm text-muted">
-            Sources and findings follow {MISSION_WORKERS[focused].name}. Choose a tile to
-            read another check.
-          </p>
-
-          <div className={expanded ? "mt-2 grid gap-x-10 lg:grid-cols-2" : undefined}>
-            <SourcesList state={state} worker={focused} />
-            <FindingsReveal state={state} worker={focused} dimmed={stale} />
+          <div className="mt-3">
+            <Disclosure
+              title="Sources and findings"
+              summary={`${MISSION_WORKERS[focused].name} · ${summary.findings}/3 complete`}
+              open={evidenceOpen}
+              onToggle={() => setEvidenceOpen((current) => !current)}
+            >
+              <div className={expanded ? "grid gap-x-10 lg:grid-cols-2" : undefined}>
+                <SourcesList state={state} worker={focused} />
+                <FindingsReveal state={state} worker={focused} dimmed={stale} />
+              </div>
+            </Disclosure>
           </div>
         </>
       )}

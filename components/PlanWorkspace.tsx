@@ -9,6 +9,7 @@ import { LiveRail } from "@/components/LiveRail";
 import { MissionControl } from "@/components/mission/MissionControl";
 import { PlanPanel } from "@/components/PlanPanel";
 import { AdjustmentsPanel } from "@/components/VerificationAdjustments";
+import { WorkspaceSection } from "@/components/WorkspaceSection";
 import { Callout, type CalloutTone } from "@/components/ui";
 import { useAgentPlan } from "@/hooks/useAgentPlan";
 import { useSwarm } from "@/hooks/useSwarm";
@@ -127,6 +128,9 @@ export function PlanWorkspace({
   const completed = Object.values(state.agents).filter(
     (agent) => agent.phase === "complete",
   ).length;
+  const incompleteCount = Object.values(state.agents).filter(
+    (agent) => agent.phase === "error",
+  ).length;
   const applied = overlay.adjustments.filter((adjustment) => adjustment.applied).length;
   const walkingCap = Math.max(
     ...plan.itinerary.map((day) => day.walkingCapKm),
@@ -143,6 +147,16 @@ export function PlanWorkspace({
           : stage === "researching"
             ? `${completed}/7 in · route forming`
             : "Sessions opening";
+
+  // Only the surface carrying the live work opens by default. The route stage leads
+  // while composing; verification takes over while checks run; the route returns when
+  // checks settle. The safety envelope is static reference, so it stays folded until
+  // the reader opens it.
+  const routeActive = stage === "ready" && !checksLive;
+  const teamActive =
+    stage === "starting" || stage === "researching" || stage === "composing";
+  const checksActive = checksLive;
+  const railActive = state.status === "running" || checksLive;
 
   // A new build or replan remounts the workspace; open it at the top, not at the
   // onboarding submit button's scroll offset. Edit trip keeps the position untouched.
@@ -202,51 +216,42 @@ export function PlanWorkspace({
           data-mode={mode}
           data-checks={checksLive ? "live" : "settled"}
         >
-          <section
+          <WorkspaceSection
             id="route-stage"
-            aria-labelledby="route-heading"
-            className="cg-stage workspace-section"
+            title="Route and days"
+            summary={routeMeta}
+            active={routeActive}
+            className="cg-stage"
           >
-            <div className="panel-head">
-              <h2 id="route-heading" className="t-label text-muted">
-                Route and days
-              </h2>
-              <p className="t-data-sm text-muted">{routeMeta}</p>
-            </div>
-            <div className="mt-4">
-              <PlanPanel
-                state={state}
-                visible={visible}
-                days={trip.days}
-                stage={stage}
-                origin={trip.origin}
-                transport={trip.transport}
-                capture={{ runId, installId, consent: trip.captureConsent }}
-                onRetry={retry}
-                activeDay={activeDay}
-                onSelectDay={setActiveDay}
-              />
-            </div>
-          </section>
+            <PlanPanel
+              state={state}
+              visible={visible}
+              days={trip.days}
+              stage={stage}
+              origin={trip.origin}
+              transport={trip.transport}
+              capture={{ runId, installId, consent: trip.captureConsent }}
+              onRetry={retry}
+              activeDay={activeDay}
+              onSelectDay={setActiveDay}
+            />
+          </WorkspaceSection>
 
-          <section
+          <WorkspaceSection
             id="planning-team"
-            aria-labelledby="team-heading"
-            className={`cg-deck workspace-section ${pulse}`}
+            title="Planning team"
+            summary={`${completed} of 7 complete${incompleteCount > 0 ? ` · ${incompleteCount} incomplete` : ""}`}
+            active={teamActive}
+            className={`cg-deck ${pulse}`}
           >
             <AgentTeamPanel state={state} compact={stage === "ready"} stage={stage} />
-          </section>
+          </WorkspaceSection>
 
-          <section
+          <WorkspaceSection
             id="live-verification"
-            aria-labelledby="verification-heading"
-            className={`cg-verify workspace-section ${pulse}`}
-          >
-            <div className="panel-head">
-              <h2 id="verification-heading" className="t-label text-muted">
-                Live verification
-              </h2>
-              <p className="t-data-sm flex items-center gap-2 text-muted">
+            title="Live verification"
+            summary={
+              <span className="flex items-center gap-2">
                 <span
                   aria-hidden="true"
                   className={`block h-1.5 w-1.5 ${
@@ -255,31 +260,31 @@ export function PlanWorkspace({
                 />
                 {verification.running} running · {verification.steps} steps ·{" "}
                 {verification.sources} sources · {verification.findings}/3 findings
-              </p>
-            </div>
-            <div className="mt-4">
-              <MissionControl
-                state={swarm.state}
-                runInput={swarm.runInput}
-                destination={trip.destination}
-                condition={trip.condition}
-                medication={trip.medication}
-                onRetry={swarm.retry}
-                onRerun={swarm.rerun}
-                expanded={stage === "ready"}
-              />
-            </div>
-          </section>
-
-          <section
-            id="safety-envelope"
-            aria-labelledby="safety-heading"
-            className={`cg-env workspace-section ${pulse}`}
+              </span>
+            }
+            active={checksActive}
+            className={`cg-verify ${pulse}`}
           >
-            <div className="panel-head">
-              <h2 id="safety-heading" className="t-label text-muted">
-                Safety envelope
-              </h2>
+            <MissionControl
+              state={swarm.state}
+              runInput={swarm.runInput}
+              destination={trip.destination}
+              condition={trip.condition}
+              medication={trip.medication}
+              onRetry={swarm.retry}
+              onRerun={swarm.rerun}
+              expanded={stage === "ready"}
+            />
+          </WorkspaceSection>
+
+          <WorkspaceSection
+            id="safety-envelope"
+            title="Safety envelope"
+            summary={`${plan.itinerary.length} days · ${count(plan.dailyStepCeiling)} steps/day · ${walkingCap.toFixed(1)} km walking/day${applied > 0 ? ` · ${applied} adjustments` : ""}`}
+            active={false}
+            className={`cg-env ${pulse}`}
+          >
+            <div className="mb-4">
               <CareCardButton
                 destination={trip.destination}
                 condition={trip.condition}
@@ -288,11 +293,6 @@ export function PlanWorkspace({
                 adjustments={overlay.adjustments}
               />
             </div>
-            <p className="t-data-sm mt-1 text-muted">
-              {plan.itinerary.length} days · {count(plan.dailyStepCeiling)} steps/day ·{" "}
-              {walkingCap.toFixed(1)} km walking/day · modeled ceilings
-              {applied > 0 ? ` · ${applied} live adjustments applied` : ""}
-            </p>
             {verificationFindings.length > 0 ? (
               <AdjustmentsPanel
                 adjustments={overlay.adjustments}
@@ -325,11 +325,17 @@ export function PlanWorkspace({
                 onSelectDay={setActiveDay}
               />
             </div>
-          </section>
+          </WorkspaceSection>
 
-          <aside id="live-activity" aria-labelledby="rail-heading" className="cg-rail workspace-section">
+          <WorkspaceSection
+            id="live-activity"
+            title="Live activity"
+            summary={railActive ? "Streaming" : "Settled"}
+            active={railActive}
+            className="cg-rail"
+          >
             <LiveRail state={state} swarm={swarm.state} />
-          </aside>
+          </WorkspaceSection>
         </div>
       </div>
 

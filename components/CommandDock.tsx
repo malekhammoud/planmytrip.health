@@ -44,6 +44,10 @@ export function CommandDock({ plannerLive, checksLive }: CommandDockProps) {
     event.preventDefault();
     const target = document.getElementById(id);
     if (target === null) return;
+    const toggle = target.querySelector<HTMLButtonElement>("button[aria-controls]");
+    if (toggle !== null && toggle.getAttribute("aria-expanded") === "false") {
+      toggle.click();
+    }
     target.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
     setActive(id);
     if (timer.current !== null) window.clearTimeout(timer.current);

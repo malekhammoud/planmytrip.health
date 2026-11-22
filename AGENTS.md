@@ -60,6 +60,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 24. Clerk accounts and saved trips | [x] | `feat(auth): add Clerk accounts and saved trips` |
 | 25. Clerk form appearance | [x] | `fix(auth): use visible Clerk appearance tokens` |
 | 26. TinyFish live-check recovery | [x] | `fix(api): stop sending beta-gated TinyFish max steps` |
+| 27. Collapsing live surfaces | [x] | `feat(ui): collapse completed work into live disclosures` |
 
 ## 3. Commands
 
@@ -144,9 +145,9 @@ lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditi
       verification: verificationOverlay.ts
       route: routeTypes.ts (wire contracts), geometry.ts, legs.ts, optimizer.ts, routeStops.ts, routeDay.ts, routePlan.ts, mapsLink.ts
 hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, swarmBatch.ts, useNow.ts, useElapsed.ts, useReducedMotion.ts, usePhaseAnnouncement.ts, usePlanMotion.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
-components/  Onboarding.tsx, PlannerHome.tsx, PlanWorkspace.tsx, SiteChrome.tsx, CommandBar.tsx, CommandDock.tsx, LiveRail.tsx, PlanPanel.tsx, DayFocus.tsx, SaveTripButton.tsx, SavedTripView.tsx, DeleteSavedTripButton.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, RoutePanel.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, VerificationAdjustments.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
+components/  Onboarding.tsx, PlannerHome.tsx, PlanWorkspace.tsx, WorkspaceSection.tsx, SiteChrome.tsx, CommandBar.tsx, CommandDock.tsx, LiveRail.tsx, PlanPanel.tsx, DayFocus.tsx, SaveTripButton.tsx, SavedTripView.tsx, DeleteSavedTripButton.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, RoutePanel.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, VerificationAdjustments.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
 components/mission/  MissionControl.tsx, StatusBar.tsx, FocusView.tsx, WorkerTile.tsx, ActivityFeed.tsx, TempoStrip.tsx, SourcesList.tsx, FindingsReveal.tsx, PreRun.tsx, ConnectionStatus.tsx, Elapsed.tsx, missionMeta.ts
-components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Field.tsx, LinkButton.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
+components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Disclosure.tsx, Field.tsx, LinkButton.tsx, Metric.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
 public/pitch/  index.html, deck.css, deck.js, basil.jpg, fonts/
 scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts
 data/  synthetic-trips.jsonl
@@ -257,12 +258,18 @@ The workspace is one page, not a tabbed report. A sticky `CommandBar` carries tr
 the mission stage with a four-step rail, both run clocks, agent/step/source/finding counts,
 the newest activity line, the trip actions, and two real progress rules (planners and checks).
 Below it a named-area CSS grid reflows through four stages: the planning deck leads while
-sessions open (`forming`), stage and deck sit together as research lands (`researching`), the
-stage takes the width while the concierge composes (`composing`), and the finished stage leads
-with the deck compacted to a seven-cell strip (`ready`). Verification spans the full width at
-ready. Panels move by grid area, never by unmounting, so both streams and all three preview
-frames continue while the layout changes. At ready, live verification moves above the safety
-envelope while its workers run and returns below once they settle. `lib/agent/plannerStage.ts`
+sessions open (`forming`), the deck keeps the width while research lands (`researching`), the
+deck stays open while the concierge composes (`composing`), and the finished stage leads while
+the deck collapses (`ready`). Verification spans the full width at ready. Panels move by grid
+area, never by unmounting, so both streams and all three preview frames continue while the
+layout changes.
+
+`WorkspaceSection` is the relevance layer. Each live surface opens only while it carries the
+work: the planning deck while sessions run, verification while checks run, and the route stage
+once checks settle. A settled surface collapses to one line with its real counts; the reader
+can reopen any section. The body stays mounted and becomes inert while closed, so a collapse
+never aborts a stream or unmounts a preview. `components/ui/Disclosure.tsx` supplies the
+accessible button, the animated grid-row body, and the reduced-motion path. `lib/agent/plannerStage.ts`
 derives the stage, the surface mode, the rail state, and the newest agent purely from the
 planner state.
 
@@ -276,17 +283,19 @@ checkpoint. Selecting a day fits the map to its stops, dims the other markers, o
 matching route and day-plan rows, and rules the matching envelope row. A `Map` action on a
 route day and a "Show ... on the map" action in an open day scroll the map back into view.
 
-The planning deck shows all seven agents with phase, role, and newest line while forming; at
-ready it becomes a seven-cell strip. The deck follows the agent with the newest activity line
-unless the reader pins one, and the focused agent's history, result, or error opens below.
+The planning deck shows only agents that are still working, with phase, role, and newest line.
+Completed and failed agents fold into one "Completed agents" disclosure. At ready the deck is
+also collapsed by its section. The deck follows the agent with the newest activity line unless
+the reader pins one, and the focused agent's history, result, or error opens below.
 
 The activity rail switches between the planning signal and the verification feed. It follows
 the stream with the newest real line, and verification once the plan is ready, unless the
-reader pins one; `Follow live` restores auto-follow. Both feeds stay mounted. The verification
-section shows three worker tiles, one mounted live frame per worker, and only the focused
-worker's sources and findings; choosing a tile changes all three. The safety envelope keeps
-every day's step and walking caps and the over-cap caution visible. The focused day opens its
-pacing strip, block list, and checkpoint, and live adjustments stay a two-column switch list.
+reader pins one; `Follow live` restores auto-follow. Both feeds stay mounted. The planner
+signal shows the newest two lines with an "Earlier updates" disclosure; the verification feed
+shows the newest three with an "Earlier activity" archive. The verification section shows three
+worker tiles, one mounted live frame per worker, and the focused worker's sources and findings
+inside a disclosure. The safety envelope keeps every day's step and walking caps and the
+over-cap caution visible; the focused day opens its pacing strip, block list, and checkpoint.
 
 While the route is forming, `PlanPanel` holds the space with a designed route skeleton, seven
 real phase ticks, and the trip's true day slots. `DayFocus` labels the focused day with the
@@ -649,6 +658,10 @@ and vanilla JavaScript; do not rebuild it in React.
   reset the page and streams on a new build.
 - **One page keeps streams alive:** every live surface is mounted for the whole workspace.
   Do not bring back conditional tab panels or unmount verification while the plan forms.
+- **Collapse by relevance, never by unmount:** `WorkspaceSection` opens the surface carrying
+  the live work and collapses settled surfaces to a real summary. A reader can reopen any
+  section. Closed bodies stay mounted and inert, so a collapse never aborts a stream. The
+  activity feeds show only the newest lines; history is one disclosure away.
 - **Route is derived, not re-planned:** `lib/route/` projects the finished plan into an order
   and a Maps link. It may reorder stops inside a day and pin meals, but it never moves a place
   to another day, so the plan, the dose, and the dossier stay identical. Transport changes

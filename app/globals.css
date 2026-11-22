@@ -269,7 +269,8 @@
 
     .command-grid--researching {
       grid-template-areas:
-        "stage deck rail"
+        "deck deck rail"
+        "stage stage rail"
         "verify verify rail"
         "env env rail";
     }
@@ -316,8 +317,8 @@
   @media (min-width: 1024px) and (max-width: 1199px) {
     .command-grid--researching {
       grid-template-areas:
-        "stage stage rail"
         "deck deck rail"
+        "stage stage rail"
         "verify verify rail"
         "env env rail";
     }
@@ -1094,6 +1095,58 @@
   }
 
   .mission-progress__fill {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Disclosure primitives.
+ *
+ * Content is mounted while closed so live streams and iframes never remount.
+ * The grid-row transition keeps the collapse calm; reduced motion makes it
+ * instant, and the focusable body is inert while closed.
+ * ------------------------------------------------------------------------- */
+
+.disclosure__button {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 0;
+  background: transparent;
+  padding: 8px 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.disclosure__icon {
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.disclosure__icon--open {
+  transform: rotate(180deg);
+}
+
+.disclosure__body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-base) var(--ease);
+}
+
+.disclosure__body[data-open="true"] {
+  grid-template-rows: 1fr;
+}
+
+.disclosure__inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .disclosure__icon,
+  .disclosure__body {
     transition: none;
   }
 }

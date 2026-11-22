@@ -1,32 +1,30 @@
 /**
- * Chronological activity feed for the three workers.
+ * Streaming activity for the three workers.
  *
  * Inputs: the swarm state and the selected filter.
- * Outputs: a 320px scrolling list of real progress and retry lines, with worker tags,
- * relative times, a filter row, and a jump-to-latest control.
- * Invariants: heartbeats never appear; the feed is capped; the newest line types only
- * when it arrived alone; older lines settle to muted after two seconds; the region is
- * aria-live off and state changes are announced by the status bar instead.
+ * Outputs: the latest three real lines, a filter row, and one collapsed archive. New
+ * lines type in when they arrive alone; older lines settle to muted after two seconds.
+ * Invariants: heartbeats never appear; the feed is capped; the newest line is the only
+ * one that types; the archive is a disclosure so the rail never grows into a report.
  */
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui";
+import { useEffect, useState } from "react";
+import { Button, Disclosure } from "@/components/ui";
 import { formatOffset, WORKER_TAG } from "@/components/mission/missionMeta";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import type { SwarmState } from "@/lib/swarmReducer";
-import {
-  mergedFeed,
-  type FeedFilter,
-  type FeedLine,
-} from "@/lib/swarmTelemetry";
+import { mergedFeed, type FeedFilter, type FeedLine } from "@/lib/swarmTelemetry";
 import { WORKER_IDS } from "@/lib/swarmTypes";
 
 const FILTERS: readonly { id: FeedFilter; label: string }[] = [
   { id: "all", label: "All" },
   ...WORKER_IDS.map((worker) => ({ id: worker, label: WORKER_TAG[worker] })),
 ];
+
+const VISIBLE_LINES = 3;
+const ARCHIVE_LINES = 50;
 
 function FeedRow({
   line,
@@ -77,81 +75,33 @@ export interface ActivityFeedProps {
   state: SwarmState;
 }
 
-/** Real activity only: no heartbeats, no synthetic rows. */
+/** Real activity only: no heartbeats, no synthetic rows, no growing report. */
 export function ActivityFeed({ state }: ActivityFeedProps) {
   const [filter, setFilter] = useState<FeedFilter>("all");
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const feed = mergedFeed(state, filter);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const stickRef = useRef(true);
-  const programmaticRef = useRef(false);
   const [previousLength, setPreviousLength] = useState(feed.length);
-  const [jump, setJump] = useState(0);
   const delta = Math.max(0, feed.length - previousLength);
-  const instant = delta >= 3;
-  const origin = WORKER_IDS.reduce((earliest, worker) => {
-    const steps = state.workers[worker].steps;
-    const first = steps[0]?.t;
-    if (first === undefined) return earliest;
-    return Math.min(earliest, first);
-  }, feed[0]?.at ?? Number.POSITIVE_INFINITY);
+  const instant = delta >= VISIBLE_LINES;
+  const origin = WORKER_IDS.reduce(
+    (earliest, worker) => {
+      const steps = state.workers[worker].steps;
+      const first = steps[0]?.t;
+      if (first === undefined) return earliest;
+      return Math.min(earliest, first);
+    },
+    feed[0]?.at ?? Number.POSITIVE_INFINITY,
+  );
   const safeOrigin = Number.isFinite(origin) ? origin : 0;
-  const newestId = feed[feed.length - 1]?.id;
-
-  const scrollToLatest = (): void => {
-    const element = scrollRef.current;
-    if (element === null) return;
-    programmaticRef.current = true;
-    element.scrollTop = element.scrollHeight;
-    requestAnimationFrame(() => {
-      programmaticRef.current = false;
-    });
-  };
+  const shown = feed.slice(-VISIBLE_LINES);
+  const older = feed.slice(0, -VISIBLE_LINES);
+  const archive = older.slice(-ARCHIVE_LINES).reverse();
+  const newestId = shown[shown.length - 1]?.id;
 
   useEffect(() => {
     const commit = setTimeout(() => setPreviousLength(feed.length), 0);
-    const frame = requestAnimationFrame(() => {
-      if (stickRef.current) scrollToLatest();
-    });
-    if (delta > 0 && !stickRef.current) {
-      const count = setTimeout(() => setJump((value) => value + delta), 0);
-      return () => {
-        clearTimeout(commit);
-        clearTimeout(count);
-        cancelAnimationFrame(frame);
-      };
-    }
-    return () => {
-      clearTimeout(commit);
-      cancelAnimationFrame(frame);
-    };
-  }, [feed.length, delta]);
-
-  useEffect(() => {
-    const reset = setTimeout(() => {
-      stickRef.current = true;
-      setJump(0);
-    }, 0);
-    const frame = requestAnimationFrame(scrollToLatest);
-    return () => {
-      clearTimeout(reset);
-      cancelAnimationFrame(frame);
-    };
-  }, [filter]);
-
-  const onScroll = (): void => {
-    if (programmaticRef.current) return;
-    const element = scrollRef.current;
-    if (element === null) return;
-    const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
-    stickRef.current = distance < 24;
-    if (stickRef.current) setJump(0);
-  };
-
-  const jumpToLatest = (): void => {
-    stickRef.current = true;
-    setJump(0);
-    scrollToLatest();
-  };
+    return () => clearTimeout(commit);
+  }, [feed.length]);
 
   return (
     <div className="mt-6 border-y border-solid border-hairline">
@@ -169,18 +119,12 @@ export function ActivityFeed({ state }: ActivityFeedProps) {
           </Button>
         ))}
       </div>
-      <div
-        ref={scrollRef}
-        onScroll={onScroll}
-        aria-live="off"
-        aria-label="Agent activity"
-        className="h-80 overflow-y-auto border-t border-solid border-hairline"
-      >
-        {feed.length === 0 ? (
+      <div aria-live="off" aria-label="Agent activity" className="border-t border-solid border-hairline">
+        {shown.length === 0 ? (
           <p className="t-small py-6 text-muted">No activity yet.</p>
         ) : (
           <ol>
-            {feed.map((line) => (
+            {shown.map((line) => (
               <FeedRow
                 key={line.id}
                 line={line}
@@ -192,11 +136,26 @@ export function ActivityFeed({ state }: ActivityFeedProps) {
           </ol>
         )}
       </div>
-      {jump > 0 ? (
-        <div className="border-t border-solid border-hairline py-1">
-          <Button variant="ghost" size="sm" onClick={jumpToLatest}>
-            Jump to latest ({jump})
-          </Button>
+      {archive.length > 0 ? (
+        <div className="border-t border-solid border-hairline">
+          <Disclosure
+            title="Earlier activity"
+            summary={`${older.length} earlier`}
+            open={archiveOpen}
+            onToggle={() => setArchiveOpen((current) => !current)}
+          >
+            <ol aria-label="Earlier agent activity">
+              {archive.map((line) => (
+                <FeedRow
+                  key={line.id}
+                  line={line}
+                  newest={false}
+                  instant
+                  origin={safeOrigin}
+                />
+              ))}
+            </ol>
+          </Disclosure>
         </div>
       ) : null}
     </div>

@@ -763,6 +763,31 @@ thresholds and Sun Life stability window remain VERIFY.
 - Gate: typecheck, 481 tests, lint, and production build pass. The remaining Gap: Google
   social sign-in needs the Clerk dashboard OAuth credentials described in `docs/AUTH.md`.
 
+### Step 27: collapsing live surfaces
+
+- Added `components/ui/Disclosure.tsx` and `components/WorkspaceSection.tsx`. Disclosure is an
+  accessible mounted body with a grid-row transition; WorkspaceSection opens a surface only
+  while it carries the live work and collapses it to a real summary when settled. Closed bodies
+  stay mounted and inert, so a collapse never aborts a planner stream or unmounts a preview
+  frame.
+- The workspace now opens only the current surface: the planning deck while sessions run,
+  verification while checks run, and the route stage once checks settle. Each other surface is
+  a one-line header with real counts. A reader can reopen any surface, and the mobile dock
+  opens the target before scrolling to it.
+- The planning deck hides agents that have settled behind one completed-agents disclosure and
+  keeps only active agents in the live list. The verification body no longer repeats the status
+  bar; pre-run instructions and the focused worker's sources and findings are disclosures.
+- The activity rail now streams only new work: the planner shows its newest two lines with an
+  earlier-updates disclosure, and verification shows its newest three with an earlier-activity
+  archive.
+- `TripMap` re-measures through a `ResizeObserver`, so a map inside a reopened disclosure is
+  never left at a zero-size tile.
+- Verified in the mock mirror at 1280 and 375: at forming the team, checks, and rail were open
+  and the route and safety folded; at ready the route was the only open surface; the mobile dock
+  opened Safety; no horizontal overflow; no page errors. Screenshots under
+  `/tmp/collapse-*.png`.
+- Gate: typecheck, 481 tests, lint, and production build pass.
+
 ## Next action
 
 Enable Google in the Clerk dashboard with a production Google OAuth client ID and secret, then

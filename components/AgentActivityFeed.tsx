@@ -1,7 +1,8 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import type { PlannerLogEntry } from "@/lib/agent/plannerReducer";
+import { Disclosure } from "@/components/ui";
 import { PLANNER_AGENTS } from "@/lib/agent/agentTypes";
 
 const NAMES = new Map(PLANNER_AGENTS.map((agent) => [agent.id, agent.name]));
@@ -73,8 +74,10 @@ export function AgentActivityFeed({
   /** True while the planner stream is running; only then is the newest bar live. */
   live?: boolean;
 }) {
+  const [earlierOpen, setEarlierOpen] = useState(false);
   const bars = log.slice(-28);
-  const recent = log.slice(-5).reverse();
+  const recent = log.slice(-2).reverse();
+  const earlier = log.slice(-22, -2).reverse();
   return (
     <div className="mt-8 border-t border-hairline pt-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -124,6 +127,42 @@ export function AgentActivityFeed({
               </li>
             ))}
           </ol>
+          {earlier.length > 0 ? (
+            <div className="mt-2 border-t border-solid border-hairline">
+              <Disclosure
+                title="Earlier updates"
+                summary={`${earlier.length} earlier`}
+                open={earlierOpen}
+                onToggle={() => setEarlierOpen((current) => !current)}
+              >
+                <ol aria-label="Earlier planning activity" className="list-none p-0">
+                  {earlier.map((entry) => (
+                    <li
+                      key={entry.id}
+                      className="ticker-line flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-hairline py-2"
+                    >
+                      <span className="t-data-sm w-16 shrink-0 text-muted">
+                        {clock(entry.ts)}
+                      </span>
+                      <span
+                        className={`t-label shrink-0 ${
+                          entry.kind === "error" ? "text-risk" : "text-muted"
+                        }`}
+                      >
+                        {KIND_LABEL[entry.kind]}
+                      </span>
+                      <span className="t-data-sm shrink-0 text-ink">
+                        {NAMES.get(entry.agentId) ?? "Planner"}
+                      </span>
+                      <span className="t-small mt-1 basis-full min-w-0 text-muted [overflow-wrap:anywhere] md:mt-0 md:basis-auto md:flex-1">
+                        {entry.text}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </Disclosure>
+            </div>
+          ) : null}
         </>
       )}
     </div>

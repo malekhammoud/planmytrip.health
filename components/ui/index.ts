@@ -16,6 +16,9 @@ export type { CheckboxProps } from "./Checkbox";
 export { DataRow } from "./DataRow";
 export type { DataRowProps } from "./DataRow";
 
+export { Disclosure } from "./Disclosure";
+export type { DisclosureLevel, DisclosureProps } from "./Disclosure";
+
 export { Field } from "./Field";
 export type { FieldControlProps, FieldProps } from "./Field";
 

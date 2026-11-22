@@ -57,6 +57,7 @@ export function TripMap({
     const element = containerRef.current;
     if (element === null) return;
     let cancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
     void import("leaflet").then((module) => {
       if (cancelled) return;
       const L = module.default ?? module;
@@ -76,9 +77,18 @@ export function TripMap({
       leafletRef.current = L;
       mapRef.current = map;
       setReady(true);
+      // A collapsed disclosure can give the map a zero-height box. Re-measure whenever
+      // the container changes size so reopening a section never leaves a grey tile.
+      if (typeof ResizeObserver !== "undefined") {
+        resizeObserver = new ResizeObserver(() => {
+          if (element.clientWidth > 0 && element.clientHeight > 0) map.invalidateSize();
+        });
+        resizeObserver.observe(element);
+      }
     });
     return () => {
       cancelled = true;
+      resizeObserver?.disconnect();
       mapRef.current?.remove();
       mapRef.current = null;
       layerRef.current = null;

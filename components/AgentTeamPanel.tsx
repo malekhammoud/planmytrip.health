@@ -38,9 +38,6 @@ export function AgentTeamPanel({ state, compact, stage }: AgentTeamPanelProps) {
   const [expanded, setExpanded] = useState<PlannerAgentId | null>(null);
   const [pinned, setPinned] = useState<PlannerAgentId | null>(null);
   const newest = newestAgent(state);
-  const agents = Object.values(state.agents);
-  const completed = agents.filter((agent) => agent.phase === "complete").length;
-  const incomplete = agents.filter((agent) => agent.phase === "error").length;
   const focused = pinned ?? newest ?? "concierge";
   const focusedMeta = PLANNER_AGENTS.find((meta) => meta.id === focused) ?? PLANNER_AGENTS[0];
   const focusedAgent = state.agents[focusedMeta.id];
@@ -48,15 +45,7 @@ export function AgentTeamPanel({ state, compact, stage }: AgentTeamPanelProps) {
 
   return (
     <div>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-solid border-ink pt-3">
-        <h2 id="team-heading" className="t-label text-muted">
-          Planning team
-        </h2>
-        <p className="t-data-sm text-muted">
-          {completed} of 7 complete
-          {incomplete > 0 ? ` · ${incomplete} incomplete` : ""} · {STAGE_LINE[stage]}
-        </p>
-      </div>
+      <p className="t-data-sm text-muted">{STAGE_LINE[stage]}</p>
 
       {compact ? (
         <div className="mt-3">
