@@ -127,39 +127,6 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
           <h1 id="onboarding-heading" className="t-display measure mt-3">
             Plan a trip that fits your body.
           </h1>
-          <p className="t-body measure mt-5 text-muted">
-            Tell us the trip and the health limits. We build the pacing, the concierge
-            plan, and the live checks around them.
-          </p>
-          <p className="t-small measure mt-3 text-muted">
-            Planning can take up to 12 minutes. The safety envelope appears immediately.
-          </p>
-
-          <ol className="mt-10 list-none p-0">
-            {[
-              ["Concierge team", "Stays, tables, trails, transit, and care."],
-              ["Safety envelope", "Steps, walking, recovery, altitude, and heat."],
-              ["Live checks", "Advisory, medication, customs, and coverage."],
-            ].map(([title, detail], index) => (
-              <li
-                key={title}
-                className="flex items-baseline gap-4 border-t border-hairline py-4"
-              >
-                <span className="t-data-sm w-5 shrink-0 text-muted">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <div>
-                  <p className="t-heading text-ink">{title}</p>
-                  <p className="t-small mt-1 text-muted">{detail}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-
-          <p className="t-small measure mt-6 text-muted">
-            Planning aid only. Not medical advice. Confirm every limit with your
-            clinician and insurer before you travel.
-          </p>
         </section>
 
         <section aria-labelledby="onboarding-form-heading">

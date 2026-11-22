@@ -965,6 +965,17 @@ thresholds and Sun Life stability window remain VERIFY.
   to 2.5s with `readyState` 4 and no media error.
 - Gate: typecheck, 597 tests, lint, and production build pass.
 
+### Step 36: lean onboarding headline
+
+- Removed the onboarding explainer paragraph, the 12-minute note, the three-item Concierge /
+  Safety / Live checks list, and the duplicate planning-aid paragraph from the left column.
+- The column now carries only the New trip label and the "Plan a trip that fits your body."
+  headline. The persistent site footer keeps the planning-aid notice.
+- Production check: the onboarding screen no longer contains the trip explainer, 12-minute
+  note, three-item list, or duplicate planning-aid line; the headline remains and there is no
+  horizontal overflow at 1280.
+- Gate: typecheck, 597 tests, lint, and production build pass.
+
 ## Next action
 
 Rehearse the cached London, Ontario demo end to end: sign in, enter London (try both "London,

@@ -69,6 +69,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 33. Exact current starting point | [x] | `fix(onboarding): use exact current location for starting point` |
 | 34. Trips up to 20 days | [x] | `feat(engine): support trips up to 20 days` |
 | 35. Cached agent recordings | [x] | `feat(ui): surface cached agent recordings` |
+| 36. Lean onboarding headline | [x] | `feat(ui): remove onboarding explainer copy` |
 
 ## 3. Commands
 
@@ -483,9 +484,10 @@ text, and the map picker returns focus to its field. Duration is a bounded integ
 (2-20 days), not a slider. Budget is a three-stop slider over Value, Balanced, and Premium.
 Step 02 collects condition, medication (name only), Sun Life coverage, the anonymous capture
 opt-in, the live coverage alert, and a review sentence.
-The left column explains the three jobs; the right column is a 420px form on desktop and stacks
-below at 1024. There is no deploy action before the form is complete. The draft helpers live in
-`lib/onboarding.ts` and are pure-tested.
+The left column carries only the New trip label and the headline; the right column is a 420px
+form on desktop and stacks below at 1024. There is no deploy action before the form is complete.
+The draft helpers live in `lib/onboarding.ts` and are pure-tested. The persistent site footer
+keeps the planning-aid notice; the onboarding column no longer repeats it.
 
 `PlanWorkspace` is the one-page result screen: trip summary with Edit trip and Plan again, the
 live `MissionBand`, the sectioned route, safety envelope, and verification. `MissionBand` shows
