@@ -73,6 +73,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 36. Lean onboarding headline | [x] | `feat(ui): remove onboarding explainer copy` |
 | 37. TinyFish venue evidence | [x] | `feat(venue): add live menu and hotel evidence` |
 | 38. Venue deck handoff | [x] | `fix(venue): link the plan to the venue deck` |
+| 39. Venue heading scroll offset | [x] | `fix(venue): keep the venue heading below the sticky bar` |
 
 ## 3. Commands
 

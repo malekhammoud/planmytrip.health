@@ -1028,6 +1028,12 @@ thresholds and Sun Life stability window remain VERIFY.
   the heading visible.
 - Gate: typecheck, 627 tests, lint, and production build pass.
 
+### Step 39: venue heading scroll offset
+
+- The "View checks" jump now lands on the venue heading with the sticky command bar clear of
+  it. The section and heading both carry scroll margin for the fixed header.
+- Gate: typecheck, 627 tests, lint, and production build pass.
+
 ## Next action
 
 Rehearse the TinyFish challenge demo end to end: sign in, enter London, Ontario with a start

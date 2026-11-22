@@ -246,7 +246,7 @@ export function VenueMissionControl({
               <span className="t-label text-muted">Partly checked</span>
             ) : null}
           </div>
-          <h3 id="venue-deck-heading" className="t-title mt-1 text-ink">
+          <h3 id="venue-deck-heading" className="t-title mt-1 scroll-mt-36 text-ink">
             Menus, room rates, and the pages behind them
           </h3>
           <p className="t-small measure mt-2 text-muted">
