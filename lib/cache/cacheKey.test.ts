@@ -21,6 +21,8 @@ function request(overrides: Partial<PlannerRequest> = {}): PlannerRequest {
     interests: "healthy vegan food",
     budget: "balanced",
     transport: "mixed",
+    checkIn: "",
+    travelers: 1,
     ...overrides,
   };
 }

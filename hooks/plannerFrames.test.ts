@@ -13,6 +13,8 @@ const request: PlannerRequest = {
   destination: "Tokyo, Japan",
   origin: "",
   transport: "mixed",
+  checkIn: "",
+  travelers: 1,
   days: 4,
   condition: "asthma_respiratory",
   medication: "albuterol",

@@ -59,6 +59,8 @@ export async function capturePlannerRun(
       medication: request.medication,
       interests: request.interests,
       budget: request.budget,
+      checkIn: request.checkIn,
+      travelers: request.travelers,
       hasSunLifeTravelCoverage: request.hasSunLifeTravelCoverage === true,
     },
     enginePlan,

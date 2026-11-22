@@ -8,6 +8,7 @@
  */
 
 import { TRIP_DAYS_MAX, TRIP_DAYS_MIN } from "@/lib/healthTripTypes";
+import { isIsoDate } from "@/lib/dates";
 import { parseInstallId, parseRunId } from "@/lib/data/validation";
 import { isCondition, isTransportMode } from "@/lib/types";
 import { BUDGET_LEVELS, type BudgetLevel, type PlannerRequest } from "./agentTypes";
@@ -62,6 +63,19 @@ export function parsePlannerRequest(value: unknown): PlannerRequest | null {
   if (!isBudgetLevel(budget)) return null;
   const transport = body.transport === undefined ? "mixed" : body.transport;
   if (!isTransportMode(transport)) return null;
+  const checkInRaw = body.checkIn === undefined ? "" : body.checkIn;
+  if (typeof checkInRaw !== "string") return null;
+  const checkIn = checkInRaw.trim();
+  if (checkIn.length > 0 && !isIsoDate(checkIn)) return null;
+  const travelers = body.travelers === undefined ? 1 : body.travelers;
+  if (
+    typeof travelers !== "number" ||
+    !Number.isInteger(travelers) ||
+    travelers < 1 ||
+    travelers > 8
+  ) {
+    return null;
+  }
   if (body.captureConsent !== undefined && typeof body.captureConsent !== "boolean") {
     return null;
   }
@@ -85,6 +99,8 @@ export function parsePlannerRequest(value: unknown): PlannerRequest | null {
     interests,
     budget,
     transport,
+    checkIn,
+    travelers,
     ...(runId === undefined ? {} : { runId }),
     ...(installId === undefined ? {} : { installId }),
     captureConsent: body.captureConsent === true,

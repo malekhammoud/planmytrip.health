@@ -50,6 +50,21 @@
   and chooses a leg mode, but never moves a place to another day. The plan, the computed dose,
   and the captured dossier therefore stay identical. Cross-day pacing is instructed in the
   concierge prompt and reported as a caution; reassigning days needs its own capture-aware step.
+- **TinyFish reads venues, not just verification:** the concierge still discovers and
+  sequences places; TinyFish now opens the selected menu or booking URL and extracts
+  structured menu items and room rates with a source and checked time. The venue route asks
+  for no recording, runs three browsers at a time, and keeps the engine as the safety
+  authority. Venue evidence is a display layer and never changes a cap, the dose, or the plan.
+- **Venue cache identity includes the place:** the first version keyed a menu only by URL, so
+  two restaurants that shared a HappyCow city listing overwrote each other. The v2 key adds the
+  place id; hotel keys also carry dates and party. Menu facts live 7 days, rates 12 hours, and
+  the cached envelope replays real recorded sources and activity offsets.
+- **A failed page is evidence too:** the venue deck keeps every successful fact when one page
+  times out or is blocked, shows a calm partial-run caution, and retries only the missing
+  pages. A preferred booking or menu URL falls back to the plan's source page once before the
+  worker fails. **Legacy verification remains mounted for now:** the user considers the video
+  verification layer legacy, but retiring it is a separate step so this one can land the venue
+  surface without breaking the cached-recordings path.
 
 ## Blockers
 
@@ -976,28 +991,47 @@ thresholds and Sun Life stability window remain VERIFY.
   horizontal overflow at 1280.
 - Gate: typecheck, 597 tests, lint, and production build pass.
 
+### Step 37: TinyFish venue evidence
+
+- Added `lib/venue/` contracts, schemas, goals, runner, reducer, and display helpers, plus the
+  authenticated `/api/venue-research` SSE route. Stay jobs use `bookingUrl ?? sourceUrl` and
+  the trip dates/party; eat jobs use `menuUrl ?? sourceUrl`. At most two hotels and three
+  restaurants per plan, three concurrent browsers, 75s job timeout, 45s run-record recovery,
+  255s run budget, one retry, and a fallback from the preferred URL to the plan source page.
+- Added timestamped `venue_activity`, source ledgers, live preview egress, per-worker clocks,
+  checked-page source fallback, v2 venue cache records with recorded sources and activity
+  offsets, and the place-id cache key that prevents a shared listing URL from colliding.
+- Built the venue surface: four-cell run bar, keyboard venue tabs, pinned/following browser,
+  one mounted live iframe per venue, Fullscreen action, merged activity, source disclosure,
+  checked hotel and menu cards, checked times, and source handoffs. Checked facts also appear
+  on the plan's selected-place rows and summary line.
+- Onboarding now collects an optional start date and traveller count; both travel through the
+  planner request and saved trips. Hotel checks need the date; menu checks do not.
+- Live verification on 2026-11-22 (London, Ontario, 4 days, 2 travellers): The Park Hotel
+  London returned CA$199.00 a night through Synxis, Udupi Dosa returned 12 Toast menu items,
+  and Organique Cafe returned 12 menu items. Locomotive Espresso failed after its HappyCow
+  listing and official site exposed no priced menu; the partial-run caution and retry stayed
+  visible and the other facts remained usable. A re-run replayed the three cached records
+  immediately and opened only the failed page. The live TinyFish preview iframe, per-page
+  clocks, source ledger, and 24-item evidence cards rendered without page overflow at 1280px
+  and 390px.
+- Added pure tests for contracts, goals, formatting, reducer transitions, frame guards, cache
+  collisions, legacy rows, fallback URLs, cache replay, and the authenticated route.
+- Docs: `docs/VENUE.md`; register gained three venue timing/schema/TTL entries.
+- Gate: typecheck, 627 tests, lint, and production build pass.
+
 ## Next action
 
-Rehearse the cached London, Ontario demo end to end: sign in, enter London (try both "London,
-Ontario" and "London, ON"), confirm the cached plan, 10 map markers, three recorded videos,
-and the dated cache labels. Seed another demo destination or duration with a live run if the
-pitch needs it. Run one uncached trip after the Photon fallback to confirm new places geocode,
-and confirm the Photon and TinyFish recording terms before a paid launch. Try the location
-controls on a real phone: the permission prompt, current-location reverse lookup, map pin, and
-the autocomplete dropdown at 390px. During the next live verification, watch
-`/var/log/planmytrip.log` for `[swarm]` recovery, retry, and failure lines; a recovered run
-should show a run-record check rather than a worker error. Before offering 20-day trips in a
-pilot, have a clinician review cumulative load and rest-day spacing; the health-score trip
-pressure saturates at seven days and the synthetic cohort is shorter. Enable Google in the
-Clerk dashboard with a production Google OAuth client ID and secret, then
-verify the Google button and a real sign-up. Have the first user sign up, save a plan, reopen
-it from `/trips`, and delete it. Confirm the Clerk email and account-portal DNS records. Run a
-consented pilot cohort against
-production PostgreSQL, confirm capture and outcome rows arrive, and replace the synthetic
-artifact only after the pooled tier is reached. The saved-trip page still needs the post-trip
-outcome action. Monitor pharmacy consistency and check the live iframe and clipboard behavior.
-Before the pitch, rehearse the two staggered demo runs and complete the 0-of-5 planner audit.
-Then run a full 7-of-7 concierge pass with the new transport question and open the generated
-Google Maps links on a phone. Live transit schedules, opening hours, cross-day pacing
-rebalancing, account deletion, and rate limiting remain follow-ups. The clinical thresholds
-and Sun Life stability window remain VERIFY.
+Rehearse the TinyFish challenge demo end to end: sign in, enter London, Ontario with a start
+date and two travellers, open the cached plan, and watch the venue deck replay the checked
+London facts and open only the failed Locomotive page. Then show a fresh date or destination
+with menu and booking URLs so all three browsers run live, including the hotel rate extraction,
+the activity feed, the source ledger, and the checked menu cards. Add or verify a third
+restaurant menu URL with prices; the cached demo now includes a third-party Locomotive menu
+source, so decide whether that source is acceptable or seed an official page.
+Confirm the live preview iframe in a normal browser, not only headless screenshot tooling, and
+check the Fullscreen action, keyboard venue tabs, and the mobile stacking at 390px. Then route
+a bounded venue-evidence summary into the concierge synthesis so a missing rate or menu can
+influence place choice, and decide when to retire the legacy video-verification section. Live
+calls still need per-user rate limiting and a budget before a public pilot. Keep the engine's
+ceilings, the computed dose, and the capped-day warning as the safety authority.

@@ -3,6 +3,7 @@
 import type { CSSProperties } from "react";
 import { AgentPlanView } from "@/components/AgentPlanView";
 import { CachedRecordings, type CachedRecording } from "@/components/CachedRecordings";
+import { VenueMissionControl } from "@/components/venue/VenueMissionControl";
 import { Button, Callout, Skeleton } from "@/components/ui";
 import {
   PLANNER_AGENTS,
@@ -13,6 +14,7 @@ import type { PlannerAgentState, PlannerState } from "@/lib/agent/plannerReducer
 import type { MissionStage } from "@/lib/agent/plannerStage";
 import { STAGE_META } from "@/lib/agent/plannerStage";
 import type { TripCaptureContext } from "@/lib/data/types";
+import type { UseVenueResearchResult } from "@/hooks/useVenueResearch";
 import type { TransportMode } from "@/lib/types";
 
 /** Props for {@link PlanPanel}. */
@@ -34,6 +36,10 @@ export interface PlanPanelProps {
   onSelectDay: (day: number | null) => void;
   /** Recorded worker runs carried by a cached verification. */
   recordings?: readonly CachedRecording[];
+  /** Live menu and hotel evidence for this plan. */
+  venue: UseVenueResearchResult;
+  /** Trip start date, used by the hotel-rate note. */
+  checkIn: string;
 }
 
 const ROUTE_PATH =
@@ -175,6 +181,8 @@ export function PlanPanel({
   activeDay,
   onSelectDay,
   recordings = [],
+  venue,
+  checkIn,
 }: PlanPanelProps) {
   const mockNote = state.mock ? (
     <div className="mb-4">
@@ -218,6 +226,13 @@ export function PlanPanel({
           capture={capture}
           activeDay={activeDay}
           onSelectDay={onSelectDay}
+          venue={venue.evidence}
+        />
+        <VenueMissionControl
+          state={venue.state}
+          checkIn={checkIn}
+          onRetry={venue.retry}
+          mock={state.mock}
         />
       </div>
     );

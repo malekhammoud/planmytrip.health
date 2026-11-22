@@ -68,6 +68,8 @@ export function parseSaveTripBody(
     interests: request.interests,
     budget: request.budget,
     transport: request.transport,
+    checkIn: request.checkIn,
+    travelers: request.travelers,
     hasSunLifeTravelCoverage: request.hasSunLifeTravelCoverage === true,
     // A saved snapshot never reruns capture. Consent belongs to the live run.
     captureConsent: false,

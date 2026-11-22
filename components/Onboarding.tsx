@@ -210,6 +210,47 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
                     )}
                   </Field>
 
+                  <Field
+                    id="onboarding-checkin"
+                    label="Start date"
+                    hint="Optional. Needed for live hotel prices."
+                  >
+                    {(control) => (
+                      <TextInput
+                        {...control}
+                        type="date"
+                        value={config.checkIn}
+                        onChange={(event) =>
+                          update("checkIn", event.currentTarget.value)
+                        }
+                        autoComplete="off"
+                      />
+                    )}
+                  </Field>
+
+                  <Field
+                    id="onboarding-travelers"
+                    label="Travellers"
+                    hint="1 to 8 people."
+                  >
+                    {(control) => (
+                      <div className="flex items-baseline gap-3">
+                        <div className="w-24">
+                          <NumberInput
+                            id={control.id}
+                            value={config.travelers}
+                            min={1}
+                            max={8}
+                            onValueChange={(travelers) => update("travelers", travelers)}
+                            aria-describedby={control["aria-describedby"]}
+                            aria-invalid={control["aria-invalid"]}
+                          />
+                        </div>
+                        <span className="t-small text-muted">people</span>
+                      </div>
+                    )}
+                  </Field>
+
                   <Field id="onboarding-budget" label="Budget">
                     {(control) => (
                       <Slider
@@ -373,6 +414,8 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
                       })}
                     </p>
                     <p className="t-data mt-2 text-muted">
+                      {config.checkIn ? `${config.checkIn} · ` : ""}
+                      {config.travelers} {config.travelers === 1 ? "traveller" : "travellers"} ·{" "}
                       {TRANSPORT_LABELS[config.transport]} ·{" "}
                       {BUDGET_LABELS[config.budget]} ·{" "}
                       {config.interests || "No extra preferences"} ·{" "}

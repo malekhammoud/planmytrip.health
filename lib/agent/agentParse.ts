@@ -38,6 +38,8 @@ export interface DraftPlace {
   elevationM: number | null;
   difficulty: string | null;
   booking: string | null;
+  bookingUrl?: string | null;
+  menuUrl?: string | null;
   sourceUrl: string | null;
   address: string | null;
   phone: string | null;
@@ -144,6 +146,8 @@ function basePlace(record: Record<string, unknown>): Omit<DraftPlace, "category"
     elevationM: asNumber(record.elevationM),
     difficulty: asText(record.difficulty, 60),
     booking: asText(record.booking ?? record.reservation, TEXT_MAX),
+    bookingUrl: asHttpUrl(record.bookingUrl),
+    menuUrl: asHttpUrl(record.menuUrl),
     sourceUrl: asHttpUrl(record.sourceUrl),
     address: asText(record.address, 240),
     phone: asText(record.phone, 80),
@@ -372,6 +376,12 @@ export function finalizePlace(
     elevationM: draft.elevationM,
     difficulty: draft.difficulty,
     booking: draft.booking,
+    ...(draft.bookingUrl === undefined || draft.bookingUrl === null
+      ? {}
+      : { bookingUrl: draft.bookingUrl }),
+    ...(draft.menuUrl === undefined || draft.menuUrl === null
+      ? {}
+      : { menuUrl: draft.menuUrl }),
     sourceUrl: draft.sourceUrl,
     address: draft.address,
     phone: draft.phone,

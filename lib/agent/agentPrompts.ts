@@ -32,10 +32,11 @@ const stayItem = {
     why: text,
     nights: nullableNumber,
     booking: nullableText,
+    bookingUrl: nullableText,
     conditionNotes: nullableText,
     sourceUrl: source,
   },
-  required: ["name", "area", "lat", "lng", "priceBand", "why", "nights", "booking", "conditionNotes", "sourceUrl"],
+  required: ["name", "area", "lat", "lng", "priceBand", "why", "nights", "booking", "bookingUrl", "conditionNotes", "sourceUrl"],
 } as const;
 
 const tableItem = {
@@ -51,9 +52,10 @@ const tableItem = {
     why: text,
     dietaryNotes: nullableText,
     reservation: nullableText,
+    menuUrl: nullableText,
     sourceUrl: source,
   },
-  required: ["name", "area", "lat", "lng", "cuisine", "meal", "priceBand", "why", "dietaryNotes", "reservation", "sourceUrl"],
+  required: ["name", "area", "lat", "lng", "cuisine", "meal", "priceBand", "why", "dietaryNotes", "reservation", "menuUrl", "sourceUrl"],
 } as const;
 
 const trailItem = {
@@ -211,6 +213,7 @@ function tripLine(request: PlannerRequest): string {
     `Destination: ${request.destination}.`,
     `Starting from: ${request.origin || "not provided"}.`,
     `Trip length: ${request.days} days.`,
+    `Start date: ${request.checkIn || "not provided"}. Travelers: ${request.travelers}.`,
     `Condition: ${CONDITION_LABELS[request.condition]}.`,
     `Medication name only: ${medication}.`,
     `Getting around: ${TRANSPORT_LABELS[request.transport]}.`,
@@ -231,6 +234,7 @@ export function buildSpecialistPrompt(
     "Search the web and read the actual pages. Prefer official tourism, transit, hospital, and venue pages. Use at least two independent sources when possible.",
     "Use at most 10 tool calls. Return the JSON object by your 16th step, even if some fields are null or empty. Do not start a new research branch once you have enough verified options.",
     "Record sourceUrl for every place. Use numeric latitude and longitude only when the source states or maps the location; otherwise use null.",
+    "For stays, add bookingUrl when a direct booking or official rate page is available. For restaurants, add menuUrl when a direct menu page is available. Use null when absent.",
     "Return exactly one JSON object. Do not wrap it in markdown. Do not add commentary.",
     "Exact shape:",
     JSON.stringify(SPECIALIST_SCHEMAS[agent], null, 2),

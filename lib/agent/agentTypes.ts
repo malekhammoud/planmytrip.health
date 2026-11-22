@@ -126,6 +126,10 @@ export interface PlannerRequest {
   budget: BudgetLevel;
   /** How the traveler expects to move between stops inside the destination. */
   transport: TransportMode;
+  /** Start date in YYYY-MM-DD form, or empty when the traveler has not chosen one. */
+  checkIn: string;
+  /** Number of travelers, 1-8. */
+  travelers: number;
   /** Opaque browser-generated id that joins the planner and swarm captures. */
   runId?: string;
   /** Anonymous install id for the local trip log. */
@@ -166,6 +170,10 @@ export interface PlannerPlace {
   elevationM: number | null;
   difficulty: string | null;
   booking: string | null;
+  /** Direct booking or official rate page, when the specialist found one. */
+  bookingUrl?: string | null;
+  /** Direct menu page, when the specialist found one. */
+  menuUrl?: string | null;
   sourceUrl: string | null;
   address: string | null;
   phone: string | null;

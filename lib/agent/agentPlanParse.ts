@@ -108,6 +108,8 @@ function asPlanPlace(value: unknown, index: number): PlannerPlace | null {
   if (name === null) return null;
   const lat = asNumber(value.lat);
   const lng = asNumber(value.lng);
+  const bookingUrl = asHttpUrl(value.bookingUrl);
+  const menuUrl = asHttpUrl(value.menuUrl);
   return {
     id: asText(value.id, 80) ?? `place-${index + 1}`,
     name,
@@ -124,6 +126,8 @@ function asPlanPlace(value: unknown, index: number): PlannerPlace | null {
     elevationM: asNumber(value.elevationM),
     difficulty: asText(value.difficulty, 60),
     booking: asText(value.booking, 600),
+    ...(bookingUrl === null ? {} : { bookingUrl }),
+    ...(menuUrl === null ? {} : { menuUrl }),
     sourceUrl: asHttpUrl(value.sourceUrl),
     address: asText(value.address, 240),
     phone: asText(value.phone, 80),

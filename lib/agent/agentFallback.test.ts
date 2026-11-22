@@ -7,6 +7,8 @@ const request: PlannerRequest = {
   destination: "Lisbon, Portugal",
   origin: "",
   transport: "mixed",
+  checkIn: "",
+  travelers: 1,
   days: 4,
   condition: "chronic_fatigue_pots",
   medication: "fludrocortisone",

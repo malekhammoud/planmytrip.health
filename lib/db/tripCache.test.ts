@@ -24,6 +24,8 @@ const request: PlannerRequest = {
   interests: "quiet food",
   budget: "balanced",
   transport: "mixed",
+  checkIn: "",
+  travelers: 1,
 };
 
 function plan(): AgentTripPlan {

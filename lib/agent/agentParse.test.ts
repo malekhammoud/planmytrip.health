@@ -70,6 +70,7 @@ describe("normalizeSpecialistResult", () => {
           why: "Short walk to the first day.",
           nights: 3,
           booking: "Book direct.",
+          bookingUrl: "https://example.com/hotel-a/book",
           conditionNotes: "Ask for a quiet room.",
           sourceUrl: "https://example.com/hotel-a",
         },
@@ -82,6 +83,7 @@ describe("normalizeSpecialistResult", () => {
       lat: 38.71,
       lng: -9.14,
       nights: 3,
+      bookingUrl: "https://example.com/hotel-a/book",
     });
     expect(result.sources).toEqual([
       { title: "Hotel A", url: "https://example.com/hotel-a" },

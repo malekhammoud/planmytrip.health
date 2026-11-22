@@ -13,6 +13,7 @@ import { WorkspaceSection } from "@/components/WorkspaceSection";
 import { Callout, type CalloutTone } from "@/components/ui";
 import { useAgentPlan } from "@/hooks/useAgentPlan";
 import { useSwarm } from "@/hooks/useSwarm";
+import { useVenueResearch } from "@/hooks/useVenueResearch";
 import { surfaceMode, missionStage } from "@/lib/agent/plannerStage";
 import { isSwarmLive, swarmSummary } from "@/lib/swarmTelemetry";
 import {
@@ -75,11 +76,22 @@ export function PlanWorkspace({
     interests: trip.interests,
     budget: trip.budget,
     transport: trip.transport,
+    checkIn: trip.checkIn,
+    travelers: trip.travelers,
     runId,
     installId,
     captureConsent: trip.captureConsent,
     hasSunLifeTravelCoverage: trip.hasSunLifeTravelCoverage,
     runToken,
+  });
+
+  const venue = useVenueResearch({
+    plan: state.plan,
+    destination: trip.destination,
+    checkIn: trip.checkIn,
+    days: trip.days,
+    travelers: trip.travelers,
+    enabled: state.plan !== null,
   });
 
   const swarm = useSwarm({
@@ -239,6 +251,8 @@ export function PlanWorkspace({
               activeDay={activeDay}
               onSelectDay={setActiveDay}
               recordings={recordedRuns}
+              venue={venue}
+              checkIn={trip.checkIn}
             />
           </WorkspaceSection>
 

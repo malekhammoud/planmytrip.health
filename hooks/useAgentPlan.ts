@@ -34,6 +34,8 @@ export interface UseAgentPlanInput {
   interests: string;
   budget: BudgetLevel;
   transport: TransportMode;
+  checkIn: string;
+  travelers: number;
   /** Opaque browser run id; joins the planner and swarm capture rows. */
   runId: string;
   /** Anonymous install id, or empty before the page effect runs. */
@@ -56,6 +58,8 @@ export interface AgentPlanRunInput {
   interests: string;
   budget: BudgetLevel;
   transport: TransportMode;
+  checkIn: string;
+  travelers: number;
 }
 
 interface StoredRunInput extends AgentPlanRunInput {
@@ -86,6 +90,8 @@ export function useAgentPlan({
   interests,
   budget,
   transport,
+  checkIn,
+  travelers,
   runId,
   installId,
   captureConsent,
@@ -152,6 +158,8 @@ export function useAgentPlan({
           interests: interests.trim(),
           budget,
           transport,
+          checkIn: checkIn.trim(),
+          travelers,
           runId,
           installId,
           captureConsent,
@@ -168,6 +176,8 @@ export function useAgentPlan({
           interests: snapshot.interests,
           budget: snapshot.budget,
           transport: snapshot.transport,
+          checkIn: snapshot.checkIn,
+          travelers: snapshot.travelers,
           runId: snapshot.runId,
           installId: snapshot.installId,
           captureConsent: snapshot.captureConsent,
@@ -187,6 +197,7 @@ export function useAgentPlan({
     abortAll,
     budget,
     captureConsent,
+    checkIn,
     condition,
     days,
     destination,
@@ -199,6 +210,7 @@ export function useAgentPlan({
     runToken,
     start,
     transport,
+    travelers,
   ]);
 
   const retry = useCallback((): void => {
@@ -214,6 +226,8 @@ export function useAgentPlan({
       interests: snapshot.interests,
       budget: snapshot.budget,
       transport: snapshot.transport,
+      checkIn: snapshot.checkIn,
+      travelers: snapshot.travelers,
       runId: snapshot.runId,
       installId: snapshot.installId,
       captureConsent: snapshot.captureConsent,
@@ -239,6 +253,8 @@ export function useAgentPlan({
           interests: storedInput.interests,
           budget: storedInput.budget,
           transport: storedInput.transport,
+          checkIn: storedInput.checkIn,
+          travelers: storedInput.travelers,
         }
       : null;
 

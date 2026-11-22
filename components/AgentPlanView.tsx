@@ -11,6 +11,7 @@ import { Callout } from "@/components/ui";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { BUDGET_LABELS, type AgentTripPlan } from "@/lib/agent/agentTypes";
 import type { TripCaptureContext } from "@/lib/data/types";
+import type { VenueEvidence } from "@/lib/venue/types";
 import { buildTripRoute } from "@/lib/route/routePlan";
 import type { TransportMode } from "@/lib/types";
 
@@ -26,6 +27,8 @@ export interface AgentPlanViewProps {
   /** The focused day, shared with the map, route, day plan, and envelope. */
   activeDay?: number | null;
   onSelectDay?: (day: number | null) => void;
+  /** Checked menu and room-rate facts for the selected places. */
+  venue?: readonly VenueEvidence[];
 }
 
 function money(plan: AgentTripPlan): string {
@@ -56,6 +59,7 @@ export function AgentPlanView({
   transport = "mixed",
   activeDay = null,
   onSelectDay,
+  venue = [],
 }: AgentPlanViewProps) {
   const reduced = useReducedMotion();
   const outside = plan.days.filter((day) => !day.withinCaps);
@@ -100,6 +104,12 @@ export function AgentPlanView({
           {BUDGET_LABELS[plan.budget.level]} · {money(plan)}
         </p>
         <p className="t-data-sm text-muted">Generated {generated(plan.generatedAt)}</p>
+        {venue.length > 0 ? (
+          <p className="t-data-sm text-muted">
+            Live venue checks: {venue.filter((item) => item.kind === "menu").length} menus ·{" "}
+            {venue.filter((item) => item.kind === "hotel").length} room quotes
+          </p>
+        ) : null}
       </div>
 
       {outside.length > 0 ? (
@@ -157,7 +167,7 @@ export function AgentPlanView({
             <span>Selected places · {plan.places.length}</span>
             <span className="t-data-sm">Open list</span>
           </summary>
-          <AgentPicks places={plan.places} />
+          <AgentPicks places={plan.places} evidence={venue} />
         </details>
 
         <div className="flex flex-col gap-10">

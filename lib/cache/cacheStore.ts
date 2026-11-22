@@ -15,7 +15,7 @@ import type { Condition } from "@/lib/types";
 /** A stored cache row after JSON parsing. */
 export interface CacheRow {
   key: string;
-  kind: "plan" | "swarm";
+  kind: "plan" | "swarm" | "venue";
   payload: unknown;
   createdAt: string;
   expiresAt: string;
@@ -35,7 +35,7 @@ export interface CacheColumns {
 /** One row to persist. */
 export interface CacheWrite {
   key: string;
-  kind: "plan" | "swarm";
+  kind: "plan" | "swarm" | "venue";
   columns: CacheColumns;
   payload: unknown;
   createdAt: string;
@@ -81,7 +81,10 @@ function asIso(value: unknown): string | null {
 function toRow(value: unknown): CacheRow | null {
   if (!isRecord(value)) return null;
   const key = typeof value.cache_key === "string" ? value.cache_key : null;
-  const kind = value.kind === "plan" || value.kind === "swarm" ? value.kind : null;
+  const kind =
+    value.kind === "plan" || value.kind === "swarm" || value.kind === "venue"
+      ? value.kind
+      : null;
   const createdAt = asIso(value.created_at);
   const expiresAt = asIso(value.expires_at);
   if (key === null || kind === null || createdAt === null || expiresAt === null) {

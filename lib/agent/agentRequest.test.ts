@@ -21,6 +21,8 @@ describe("parsePlannerRequest", () => {
       interests: "quiet food and short walks",
       budget: "balanced",
       transport: "mixed",
+      checkIn: "",
+      travelers: 1,
       captureConsent: false,
       hasSunLifeTravelCoverage: false,
     });
@@ -54,14 +56,25 @@ describe("parsePlannerRequest", () => {
     });
   });
 
-  it("accepts a 20-day trip", () => {
-    expect(parsePlannerRequest({ ...valid, days: 20 })).toMatchObject({ days: 20 });
+  it("accepts a 20-day trip and normalises the date and travellers", () => {
+    expect(
+      parsePlannerRequest({
+        ...valid,
+        days: 20,
+        checkIn: " 2026-12-10 ",
+        travelers: 3,
+      }),
+    ).toMatchObject({ days: 20, checkIn: "2026-12-10", travelers: 3 });
   });
 
   it.each([
     ["destination", { ...valid, destination: "   " }],
     ["days low", { ...valid, days: 1 }],
     ["days high", { ...valid, days: 21 }],
+    ["check-in", { ...valid, checkIn: "2026-02-30" }],
+    ["travellers low", { ...valid, travelers: 0 }],
+    ["travellers high", { ...valid, travelers: 9 }],
+    ["travellers fraction", { ...valid, travelers: 1.5 }],
     ["days fraction", { ...valid, days: 3.5 }],
     ["condition", { ...valid, condition: "unknown" }],
     ["medication", { ...valid, medication: 3 }],

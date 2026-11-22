@@ -8,8 +8,9 @@ the current step and decisions. Update this file in the same commit as any chang
 PlanMyTrip.health is a health-first travel planner for patients and caregivers, often
 anxious, on a phone or laptop. It does four jobs: a team of OpenCode specialists plans the
 trip, the biological engine turns condition limits into a paced safety envelope, three
-parallel TinyFish browser agents verify live travel risk while the user watches, and a
-consented outcome loop calibrates the pacing estimate against what actually happened.
+parallel TinyFish browser agents open the selected venue pages for live menus and room rates
+while the user watches, and a consented outcome loop calibrates the pacing estimate against
+what actually happened.
 
 It is a planning aid, never medical advice: a well-typeset clinical chart crossed with a Swiss
 timetable, typographic and ruled with hairlines. The pacing strip and the numbered route map
@@ -70,6 +71,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 34. Trips up to 20 days | [x] | `feat(engine): support trips up to 20 days` |
 | 35. Cached agent recordings | [x] | `feat(ui): surface cached agent recordings` |
 | 36. Lean onboarding headline | [x] | `feat(ui): remove onboarding explainer copy` |
+| 37. TinyFish venue evidence | [x] | `feat(venue): add live menu and hotel evidence` |
 
 ## 3. Commands
 
@@ -153,7 +155,7 @@ Every tracked source file, annotated; `package-lock.json` and generated files
 (`next-env.d.ts`, `.next`, `tsconfig.tsbuildinfo`) are omitted by category.
 
 ```text
-app/  globals.css, layout.tsx, page.tsx, model/page.tsx, sign-in/[[...sign-in]]/, sign-up/[[...sign-up]]/, trips/, trips/[id]/, mock-browser/[worker]/, api/travel-swarm/route.ts, api/agent-plan/route.ts, api/recordings/[id]/route.ts, api/geocode/search/route.ts, api/geocode/reverse/route.ts, api/saved-trips/route.ts, api/saved-trips/[id]/route.ts, api/trips/route.ts, api/trips/outcome/route.ts
+app/  globals.css, layout.tsx, page.tsx, model/page.tsx, sign-in/[[...sign-in]]/, sign-up/[[...sign-up]]/, trips/, trips/[id]/, mock-browser/[worker]/, api/travel-swarm/route.ts, api/agent-plan/route.ts, api/recordings/[id]/route.ts, api/geocode/search/route.ts, api/geocode/reverse/route.ts, api/venue-research/route.ts, api/saved-trips/route.ts, api/saved-trips/[id]/route.ts, api/trips/route.ts, api/trips/outcome/route.ts
 lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditionProfiles.ts, sunLifeRules.ts, healthScore.ts, itineraryBuilder.ts
       swarm: swarmTypes.ts (wire contracts), swarmConfig.ts, swarmState.ts, swarmReducer.ts, swarmRunner.ts, swarmGoals.ts, swarmMock.ts, swarmTelemetry.ts, swarmErrors.ts, sse.ts, tinyfish.ts, tinyfishEvents.ts
       agent: agentTypes.ts (wire contracts), agentRequest.ts, agentProfiles.ts, agentPrompts.ts, agentConfig.ts, agentClient.ts, agentWarmup.ts, agentRunner.ts, agentSession.ts, agentParse.ts, agentPlanParse.ts, agentFallback.ts, agentGeocode.ts, agentEvents.ts, agentMock.ts, plannerReducer.ts, plannerStage.ts
@@ -165,17 +167,19 @@ lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditi
       route: routeTypes.ts (wire contracts), geometry.ts, legs.ts, optimizer.ts, routeStops.ts, routeDay.ts, routePlan.ts, mapsLink.ts
       cache: cacheKey.ts (identities), cacheStore.ts (memory and Postgres), planCache.ts, swarmCache.ts, cachedEvents.ts, swarmArchive.ts, recordings.ts, tinyfishRuns.ts (run detail)
       geocode: types.ts (place contracts), search.ts (Photon/Nominatim search and reverse)
+      venue: types.ts (evidence and request contracts), goals.ts (menu and hotel schemas), runner.ts
       mapTiles.ts (shared tile URL and attribution)
-hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, swarmBatch.ts, useNow.ts, useElapsed.ts, useReducedMotion.ts, usePhaseAnnouncement.ts, usePlanMotion.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
+hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, swarmBatch.ts, useNow.ts, useElapsed.ts, useReducedMotion.ts, usePhaseAnnouncement.ts, usePlanMotion.ts, useAgentPlan.ts, useVenueResearch.ts, venueFrames.ts, plannerStream.ts, plannerFrames.ts
 components/  Onboarding.tsx, LocationField.tsx, LocationPickerDialog.tsx, CachedRecordings.tsx, PlannerHome.tsx, PlanWorkspace.tsx, WorkspaceSection.tsx, SiteChrome.tsx, CommandBar.tsx, CommandDock.tsx, LiveRail.tsx, PlanPanel.tsx, DayFocus.tsx, SaveTripButton.tsx, SavedTripView.tsx, DeleteSavedTripButton.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, RoutePanel.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, VerificationAdjustments.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
+components/venue/  VenueMissionControl.tsx (run bar, tabs, activity, source ledger), VenueWorkerTile.tsx, VenueLiveView.tsx (iframe, clock, fullscreen), VenueEvidencePreview.tsx, VenueEvidenceCards.tsx
 components/mission/  MissionControl.tsx, StatusBar.tsx, FocusView.tsx, WorkerTile.tsx, ActivityFeed.tsx, TempoStrip.tsx, SourcesList.tsx, FindingsReveal.tsx, PreRun.tsx, ConnectionStatus.tsx, Elapsed.tsx, missionMeta.ts
 components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Disclosure.tsx, Field.tsx, LinkButton.tsx, Metric.tsx, NumberInput.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, numberInput.ts (clampInteger), sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
 public/pitch/  index.html, deck.css, deck.js, basil.jpg, fonts/
 scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts, seed-cache.ts
 data/  synthetic-trips.jsonl
-docs/  ML.md, MODEL_CARD.md, PITCH.md, ROUTE.md, AUTH.md
-tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, model-artifact.test.ts, data-loop.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-isolation.test.ts, swarm-recovery.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, cache-route.test.ts, geocode-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts, mocks/clerk-server.ts
-module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, planMotion.test.ts, savedTrips.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmTypes.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/cache/: cacheKey.test.ts, planCache.test.ts, swarmCache.test.ts, cachedEvents.test.ts; lib/geocode/: types.test.ts, search.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts, plannerStage.test.ts; lib/route/: geometry.test.ts, legs.test.ts, optimizer.test.ts, routePlan.test.ts, mapsLink.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts, savedTrips.test.ts, tripCache.test.ts; lib/model/: artifact.test.ts, calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts, numberInput.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts
+docs/  ML.md, MODEL_CARD.md, PITCH.md, ROUTE.md, VENUE.md, AUTH.md
+tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, model-artifact.test.ts, data-loop.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-isolation.test.ts, swarm-recovery.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, cache-route.test.ts, geocode-route.test.ts, venue-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts, mocks/clerk-server.ts
+module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, planMotion.test.ts, savedTrips.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmTypes.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/cache/: cacheKey.test.ts, planCache.test.ts, swarmCache.test.ts, cachedEvents.test.ts, venueCache.test.ts; lib/geocode/: types.test.ts, search.test.ts; lib/venue/: types.test.ts, format.test.ts, venueState.test.ts, runner.test.ts; lib/dates.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts, plannerStage.test.ts; lib/route/: geometry.test.ts, legs.test.ts, optimizer.test.ts, routePlan.test.ts, mapsLink.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts, savedTrips.test.ts, tripCache.test.ts; lib/model/: artifact.test.ts, calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts, numberInput.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts, venueFrames.test.ts
 root  proxy.ts, package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, instrumentation.ts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
 ```
 
@@ -189,6 +193,10 @@ activity rail, route stage, and map; TinyFish events flow through
 and supplies every concierge day with its step and walking ceiling. The engine and the safety
 envelope render independently of both agent teams. The finished plan is also projected into a
 travel route in `AgentPlanView`; the route is derived from the plan and never writes back.
+After `plan_ready`, `useVenueResearch` POSTs the selected stay and meal places to
+`/api/venue-research`; checked menus and rates flow into the venue deck and the plan's place
+rows. Venue evidence is a separate display layer and never changes the engine envelope, the
+computed dose, or the cache identity of the plan.
 
 The page also owns a random install id and a per-run id; both agent POSTs carry them. On
 `plan_ready` the planner route rebuilds the engine plan server-side and writes a consented
@@ -374,6 +382,61 @@ and adjacent demanding-day cautions come from the legs, never from the agent's s
 waypoints) plus an arrival link from the origin to the base coordinates. `travelmode` is the
 day's dominant leg mode. Links open in a new tab and the copy says the stops are sent to
 Google. `docs/ROUTE.md` records the algorithm, complexity, and limits.
+
+### Live venue research
+
+`lib/venue/` and `/api/venue-research` are the TinyFish extraction layer. The concierge still
+discovers places and synthesises the route; TinyFish now opens the exact menu or booking URL
+and returns structured page facts. It is not the verification layer and it requests no
+recording or preview archive.
+
+The route requires Clerk auth, declares `maxDuration = 300`, and validates a bounded request:
+destination, optional ISO check-in, 1-20 days, 1-8 travellers, and up to eight places. A stay
+job opens `bookingUrl ?? sourceUrl`; an eat job opens `menuUrl ?? sourceUrl`. Hotel jobs run
+only with a check-in date and use `checkIn + days` as check-out. Each plan checks at most two
+hotels and three restaurants, three browsers at a time, with a 75s job timeout, 45s run-record
+recovery, a 255s run budget, one retry, and a fallback from the preferred URL to the plan's
+source page. The terminal frame always arrives inside the route budget.
+
+The venue SSE contract mirrors the other two streams. Every frame carries `worker`, `seq`,
+`ts`, and optional `cached`. `venue_started` lists every job; `venue_status` moves
+queued/running/complete/error; `venue_activity` carries one bounded search, read, note, or
+error line; `venue_streaming_url` is the live TinyFish preview; `venue_sources` grows the
+ledger; `venue_result` carries one validated menu or hotel snapshot; `venue_error` maps a calm
+failure; `venue_done` is always last with completed, failed, and summary counters.
+`hooks/venueFrames.ts` rejects unknown events, unsafe preview URLs, malformed evidence, and
+bad worker ids. `lib/venue/venueState.ts` owns the pure reducer, timestamped activity, worker
+clocks, source dedupe, and the checked-page source fallback. The route never echoes a raw
+provider body, key, or session token.
+
+`VenueMissionControl` is the surface. A four-cell run bar shows pages checked, elapsed clock,
+evidence counts, and sources/actions. Venue tabs follow the browser with the newest action
+unless the reader pins one; arrow, Home, and End keys move between tabs. `VenueLiveView` keeps
+one iframe per venue mounted and hidden, shows the TinyFish preview while the browser is live,
+then replaces it with `VenueEvidencePreview` built from the checked facts. The hero carries a
+real per-page clock, action count, LIVE marker, and a Fullscreen API expand action. The right
+rail shows the merged, timestamped activity feed and the focused worker's source ledger; the
+checked page is always one source, even when the provider exposes no search results.
+`VenueEvidenceCards` renders dated hotel quotes with taxes, cancellation, booking host, and
+source handoff, plus menus grouped by printed section, prices, descriptions, and the page's
+own allergen notes. Missing values read "Not stated"; nothing is invented. The evidence also
+appears on the plan's selected-place rows and in the plan summary line, so venue facts sit
+inside the itinerary rather than only in a separate report.
+
+The checked facts never feed the safety envelope, the dose, or the day ceilings. Menus and
+rates are display evidence; the engine remains the safety authority. A failed page keeps its
+tile and error copy, the successful facts stay usable, and a partial run shows a caution with
+a retry that returns cached facts immediately. Mock plans never call the route; a missing key
+fails each worker with `missing_api_key` and still ends with `venue_done`.
+
+`lib/cache/venueCache.ts` stores one record per place and URL. The v2 key includes the place
+id, so two restaurants that share a city listing page cannot overwrite each other. Menus live
+7 days and room rates 12 hours. The cache envelope keeps the evidence, the recorded sources,
+the recorded activity offsets, and the duration; a cache hit replays real recorded telemetry
+with `cached: true`, never invented progress. Legacy evidence-only rows still read and gain
+their checked page as a source. Venue evidence is separate from the plan cache, so a cached
+plan stays fast and the venue deck can load, replay, or refresh independently. The full
+endpoint, event, cache, safety, and live-check contract is in `docs/VENUE.md`.
 
 ### Data loop and calibration model
 
@@ -746,6 +809,18 @@ and vanilla JavaScript; do not rebuild it in React.
   to another day, so the plan, the dose, and the dossier stay identical. Transport changes
   movement and time, never a condition ceiling. Cross-day rebalancing needs its own
   capture-aware step.
+- **TinyFish extracts venue facts:** the concierge discovers and sequences places; TinyFish
+  opens the selected menu or booking URL and returns structured facts with a source and checked
+  time. A venue pass uses at most five pages, three browsers at a time, no recording, and a
+  fallback from the preferred URL to the plan source page. Venue evidence is display-only: it
+  never changes a cap, the dose, the health score, or the Sun Life alert.
+- **Venue cache is separate and place-scoped:** the v2 key includes the place id as well as the
+  URL (and dates plus party for hotels), so a shared city listing cannot collide across two
+  restaurants. Menus freshen for 7 days and rates for 12 hours; cached frames replay real
+  recorded sources and activity offsets, never invented progress.
+- **Legacy verification remains mounted:** the video verification layer is legacy product
+  direction, but it is still compiled and its cached-recording path still works. Retire it in
+  its own step after the venue surface is stable; do not leave a half-removed section.
 - **Recover the run, not the stream:** an SSE disconnect is not a failed browser run. TinyFish
   keeps the run and exposes `/v1/runs/{id}`, so the worker polls that record and emits the real
   completion. Transient errors retry once, and each worker owns its own timeout so one failure
@@ -892,7 +967,7 @@ allowed fixtures prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.
 
 ## 9. VERIFY register
 
-Regenerate with `grep -rn "VERIFY:" app lib components`; there are 25 entries.
+Regenerate with `grep -rn "VERIFY:" app lib components`; there are 28 entries.
 
 | File | What to verify |
 | --- | --- |
@@ -919,6 +994,9 @@ Regenerate with `grep -rn "VERIFY:" app lib components`; there are 25 entries.
 | `lib/route/mapsLink.ts` (Maps URLs) | Nine waypoints and the `walking`/`transit`/`driving` values against Google's Maps URLs reference; confirm the terms permit this deep-link handoff. |
 | `lib/cache/recordings.ts` (archive) | TinyFish recordings are WebM today. Confirm the codec, typical size, provider retention, and that local archival and authenticated replay are permitted. |
 | `lib/tinyfishRuns.ts` (video_url) | The run-detail `video_url` is a presigned recording. Confirm its lifetime and the provider's permission to archive a copy locally. |
+| `lib/venue/runner.ts` (limits) | 75s job, 45s recovery, 255s run budget, three concurrent browsers, and `max_duration_seconds: 90` against current TinyFish limits and billing; confirm one venue pass fits the 300s route. |
+| `lib/venue/goals.ts` (schemas) | The menu and hotel schemas use only object, array, string, number, and nullable fields with every property required; confirm against the provider's structured-output rules. |
+| `lib/cache/venueCache.ts` (TTL) | Seven-day menu and twelve-hour room-rate freshness are product choices; revisit them with measured venue change rates and provider retention terms. |
 | `lib/model/model.json` (artifact) | The committed artifact is trained on synthetic trips. Never use it for a live plan. Replace it only with an artifact whose `source` is `outcomes` and whose tier is `pooled` or `condition`. |
 | `docs/MODEL_CARD.md` (metrics) | Regenerate after every training run; confirm Brier, ECE, AUROC, and the calibration slope match `lib/model/model.json`. |
 
@@ -967,6 +1045,24 @@ Planner events are the second SSE contract. Every frame carries `ts` and optiona
 Planner headers are the same `text/event-stream`, no-cache, and `X-Accel-Buffering: no` set;
 keep-alive comments go out about every 15s. Disconnect aborts the event subscription and
 interrupts sessions. `/api/agent-plan` declares `maxDuration = 900`.
+
+Venue research is the third SSE contract. Every frame carries `worker`, a monotonic per-worker
+`seq`, `ts`, and optional `cached`; `venue_done` is always last.
+
+| Event | Fields | When |
+| --- | --- | --- |
+| `venue_started` | `workers` (id, name, category, kind, sourceUrl) | Once before the browser jobs. |
+| `venue_status` | `status`, `message?` | Preparing, reading, checked, or failed. |
+| `venue_activity` | `kind`, `text`, `offsetSec?` | One accepted search, read, note, or note/error line. |
+| `venue_streaming_url` | `streamingUrl` | A live TinyFish preview URL arrives. |
+| `venue_sources` | `items: [{url?, title?, api}]` | The source ledger grows, including the checked page. |
+| `venue_result` | `evidence` | One validated menu or hotel snapshot. |
+| `venue_error` | `code`, `message` | Missing key, timeout, blocked, invalid input, or upstream. |
+| `venue_done` | `completed`, `failed`, `summary` | Once after every venue run. |
+
+Headers are the same SSE set; `/api/venue-research` declares `maxDuration = 300`, requires
+Clerk auth, and validates the body before it touches TinyFish. Cached replays keep the real
+recorded activity, sources, and evidence, and carry `cached: true`.
 
 Geocoding: `geocodePlan` calls `${NOMINATIM_URL}?format=jsonv2&limit=1&q=...` with a custom
 User-Agent, at most ten places per plan, sequentially, one second apart, and 7s per request.
@@ -1049,7 +1145,7 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 597 tests. Database-backed
+`npm test` runs Vitest once in a Node environment. The suite has 627 tests. Database-backed
 files skip when `DATABASE_URL` is absent. `tests/mocks/clerk-server.ts` replaces
 `@clerk/nextjs/server` in Vitest so route handlers can run outside Next's server boundary;
 proxy and Clerk provider behavior are covered by a production build and live request checks,
@@ -1096,6 +1192,11 @@ not by the unit suite.
   verification reads, recorded telemetry replay, terminal-frame order, a full route cache hit
   with no live session, and PostgreSQL exact/related and worker-set reads. The database file
   skips without `DATABASE_URL`.
+- `lib/venue/*.test.ts`, `hooks/venueFrames.test.ts`, `lib/cache/venueCache.test.ts`, and
+  `tests/venue-route.test.ts` cover menu and hotel request bounds, evidence normalisation,
+  price and date rules, grouping and checked stamps, reducer transitions, recorded activity
+  offsets, cache collisions on a shared listing URL, legacy evidence rows, fallback to the
+  plan source page, preview URL rejection, and the authenticated venue SSE route.
 - `lib/savedTrips.test.ts` covers saved-trip request bounds, normalisation, mock-plan rejection,
   and saved-trip id validation. `lib/db/savedTrips.test.ts` covers account-scoped upsert,
   list, read, delete, and cross-account isolation; it skips without `DATABASE_URL`. Route
@@ -1196,6 +1297,31 @@ exempting lines.
   no per-destination purge UI; rows expire after 30 days (plan) or 14 days (verification), and
   `npm run cache:seed` can replace a demo row. Archived recordings are local files with no
   automatic retention sweep yet; confirm storage, privacy, and deletion policy before a pilot.
+- Venue evidence loads after `plan_ready` and does not yet feed the concierge before it
+  chooses places. The deck can check the selected venues, but a hotel with no rate or a
+  restaurant with no priced menu cannot cause the planner to choose a different place. Routing
+  a bounded evidence summary into a later synthesis or re-rank step is the next product move.
+- A 2026-11-22 London pass initially checked three of four pages: The Park Hotel London at
+  CA$199.00 a night through Synxis, Udupi Dosa at 12 Toast menu items, and Organique Cafe at 12
+  menu items. Locomotive Espresso failed after its HappyCow listing and official site exposed
+  no priced menu; the tile kept a retry and the other facts stayed usable. A later retry found
+  `locomotiveespressonorth.restaurants-us.com/menu` and returned 12 priced items from CA$3.00
+  to CA$5.00, shown with that third-party source. The final cached state has all four pages, 36
+  items, 10 sources, and 45 recorded actions. A hotel page may state only a nightly rate, so
+  total and taxes remain "Not stated"; a listing page may produce a zero-item menu with its own
+  explanation.
+- The TinyFish venue preview redirects to the provider's `tetra-streaming.tinyfish.io` DevTools
+  inspector. It is a live page, not a recording. Headless screenshot tooling showed the
+  inspector surface as blank while the remote page target was attached; a normal browser is
+  the acceptance check. The venue route never archives a preview or asks for a recording.
+- Venue cache rows are keyed by kind, URL, place id, and for hotels the dates and party, so a
+  shared city listing cannot collide across restaurants. Menus expire after 7 days and rates
+  after 12 hours; there is no purge UI yet. A re-run refreshes only the missing or failed
+  pages and returns cached facts immediately. Venue evidence is not stored in a saved trip
+  snapshot; the saved page runs a fresh check.
+- A full venue pass can open up to five real browsers. Live calls must be budgeted and rate
+  limited before a public pilot; the route has per-job and per-run timeouts but no per-user
+  quota.
 - Location autocomplete, current location, and the map picker depend on browser permission
   and the configured geocoder. A denied permission or a provider outage leaves the typed city
   usable; the UI never fills an unverified place. Destination current location resolves to a

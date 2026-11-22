@@ -6,6 +6,8 @@ import { DeleteSavedTripButton } from "@/components/DeleteSavedTripButton";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { CareCardButton, ItineraryBoard } from "@/components/ItineraryBoard";
 import { Callout, LinkButton, type CalloutTone } from "@/components/ui";
+import { VenueMissionControl } from "@/components/venue/VenueMissionControl";
+import { useVenueResearch } from "@/hooks/useVenueResearch";
 import { describeTrip } from "@/lib/describeTrip";
 import {
   buildHealthTripPlan,
@@ -46,6 +48,14 @@ export function SavedTripView({ saved }: { saved: SavedTrip }) {
   const [activeDay, setActiveDay] = useState<number | null>(
     saved.plan.days[0]?.day ?? null,
   );
+  const venue = useVenueResearch({
+    plan: saved.plan,
+    destination: saved.trip.destination,
+    checkIn: saved.trip.checkIn ?? "",
+    days: saved.trip.days,
+    travelers: saved.trip.travelers ?? 1,
+    enabled: true,
+  });
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -87,6 +97,12 @@ export function SavedTripView({ saved }: { saved: SavedTrip }) {
               transport={saved.trip.transport}
               activeDay={activeDay}
               onSelectDay={setActiveDay}
+              venue={venue.evidence}
+            />
+            <VenueMissionControl
+              state={venue.state}
+              checkIn={saved.trip.checkIn ?? ""}
+              onRetry={venue.retry}
             />
           </div>
         </section>
@@ -127,8 +143,9 @@ export function SavedTripView({ saved }: { saved: SavedTrip }) {
         </section>
 
         <p className="t-small measure mt-12 border-t border-hairline pt-4 text-muted">
-          This is a saved plan snapshot. Live verification and source freshness are not
-          rechecked here. Confirm hours, access, and safety details before booking.
+          This is a saved plan snapshot. Venue menus and rates may be refreshed separately;
+          the saved plan itself is unchanged. Confirm hours, access, and safety details
+          before booking.
         </p>
       </main>
       <SiteFooter />

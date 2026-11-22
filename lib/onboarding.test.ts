@@ -13,6 +13,8 @@ describe("onboarding draft", () => {
     expect(DEFAULT_TRIP.condition).toBe("asthma_respiratory");
     expect(DEFAULT_TRIP.budget).toBe("balanced");
     expect(DEFAULT_TRIP.transport).toBe("mixed");
+    expect(DEFAULT_TRIP.checkIn).toBe("");
+    expect(DEFAULT_TRIP.travelers).toBe(1);
     expect(DEFAULT_TRIP.hasSunLifeTravelCoverage).toBe(false);
   });
 
@@ -29,6 +31,8 @@ describe("onboarding draft", () => {
         destination: "  Lisbon,   Portugal  ",
         origin: "  Toronto,   ON ",
         days: 20,
+        checkIn: " 2026-12-10 ",
+        travelers: 3,
         medication: "  albuterol  ",
         interests: "  quiet food  ",
       }),
@@ -36,17 +40,31 @@ describe("onboarding draft", () => {
       destination: "Lisbon, Portugal",
       origin: "Toronto, ON",
       days: 20,
+      checkIn: "2026-12-10",
+      travelers: 3,
       medication: "albuterol",
       interests: "quiet food",
     });
     expect(normalizeTripConfig({ ...DEFAULT_TRIP, days: 1 }).days).toBe(2);
     expect(normalizeTripConfig({ ...DEFAULT_TRIP, days: 30 }).days).toBe(20);
+    expect(normalizeTripConfig({ ...DEFAULT_TRIP, checkIn: "2026-02-30" }).checkIn).toBe("");
+    expect(normalizeTripConfig({ ...DEFAULT_TRIP, travelers: 0 }).travelers).toBe(1);
+    expect(normalizeTripConfig({ ...DEFAULT_TRIP, travelers: 12 }).travelers).toBe(8);
   });
 
   it("keeps the selected transport", () => {
     expect(
       normalizeTripConfig({ ...DEFAULT_TRIP, transport: "walk" }).transport,
     ).toBe("walk");
+  });
+
+  it("normalizes a saved draft written before dates and travellers", () => {
+    const legacy = { ...DEFAULT_TRIP } as Record<string, unknown>;
+    delete legacy.checkIn;
+    delete legacy.travelers;
+    const normalized = normalizeTripConfig(legacy as unknown as typeof DEFAULT_TRIP);
+    expect(normalized.checkIn).toBe("");
+    expect(normalized.travelers).toBe(1);
   });
 
   it("bounds long labels to the API limits", () => {
