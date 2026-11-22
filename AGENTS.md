@@ -65,6 +65,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 29. Location autocomplete and map picker | [x] | `feat(onboarding): add location autocomplete and map picker` |
 | 30. Starting-point location tools | [x] | `feat(onboarding): add location tools to starting point` |
 | 31. Numeric duration and budget slider | [x] | `feat(onboarding): use a day field and budget slider` |
+| 32. Consistent TinyFish recovery | [x] | `fix(api): recover interrupted TinyFish runs and retry once` |
 
 ## 3. Commands
 
@@ -169,7 +170,7 @@ public/pitch/  index.html, deck.css, deck.js, basil.jpg, fonts/
 scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts, seed-cache.ts
 data/  synthetic-trips.jsonl
 docs/  ML.md, MODEL_CARD.md, PITCH.md, ROUTE.md, AUTH.md
-tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, model-artifact.test.ts, data-loop.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-abort.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, cache-route.test.ts, geocode-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts, mocks/clerk-server.ts
+tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, model-artifact.test.ts, data-loop.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-isolation.test.ts, swarm-recovery.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, cache-route.test.ts, geocode-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts, mocks/clerk-server.ts
 module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, planMotion.test.ts, savedTrips.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmTypes.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/cache/: cacheKey.test.ts, planCache.test.ts, swarmCache.test.ts, cachedEvents.test.ts; lib/geocode/: types.test.ts, search.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts, plannerStage.test.ts; lib/route/: geometry.test.ts, legs.test.ts, optimizer.test.ts, routePlan.test.ts, mapsLink.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts, savedTrips.test.ts, tripCache.test.ts; lib/model/: artifact.test.ts, calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts, numberInput.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts
 root  proxy.ts, package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, instrumentation.ts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
 ```
@@ -563,10 +564,13 @@ Worker events are accepted only from queued or running; `run_started` is the onl
 idle. Progress keeps the last three purposes. `streaming_url` accepts only https on
 `mock.invalid`, `*.unikraft.app`, or `*.tinyfish.io` (VERIFY) in `lib/swarmState.ts` and
 `hooks/swarmFrames.ts`, plus the dev-only same-origin `/mock-browser/<worker>` path; all other
-hosts are rejected. Live workers abort after 120s and TinyFish stops them at 100s or its default step ceiling,
-so one run fits the route budget; `/api/travel-swarm` declares `maxDuration = 120`. `swarm_done`
-stores completed and failed lists. Any `mock: true` payload shows the "Mock data" caution
-Callout; a full run clears it.
+hosts are rejected. A live worker has a 280s client budget inside a 300s route. TinyFish caps
+each browser run at 100s or its default step ceiling, but queue delay and recording
+finalization can push the wall clock near three minutes. If the SSE stream ends before
+COMPLETE, the runner polls `GET /v1/runs/{id}` and uses the authoritative run record. A
+transient failure retries once, a worker failure never aborts its siblings, and
+`/api/travel-swarm` declares `maxDuration = 300`. `swarm_done` stores completed and failed
+lists. Any `mock: true` payload shows the "Mock data" caution Callout; a full run clears it.
 
 The frame sets `referrerPolicy="no-referrer"` and
 `sandbox="allow-scripts allow-same-origin"`. Preparing shows a static explanation, never a
@@ -733,6 +737,11 @@ and vanilla JavaScript; do not rebuild it in React.
   to another day, so the plan, the dose, and the dossier stay identical. Transport changes
   movement and time, never a condition ceiling. Cross-day rebalancing needs its own
   capture-aware step.
+- **Recover the run, not the stream:** an SSE disconnect is not a failed browser run. TinyFish
+  keeps the run and exposes `/v1/runs/{id}`, so the worker polls that record and emits the real
+  completion. Transient errors retry once, and each worker owns its own timeout so one failure
+  never cancels the other two. The 280s worker budget covers provider queue delay and the
+  100s browser cap inside a 300s route.
 - **Warm at server start:** `instrumentation.ts` starts the memoized OpenCode runtime warmup so
   the first trip does not pay service, workspace, and agent-registration latency. A failed
   warmup is never cached and never blocks readiness.
@@ -886,7 +895,7 @@ Regenerate with `grep -rn "VERIFY:" app lib components`; there are 25 entries.
 | `lib/sunLifeRules.ts` (stability placeholder) | The window is `null`; confirm the real value with the plan administrator. Never invent a number. |
 | `lib/sunLifeRules.ts` (rules) | 60-day cap, Allianz 24/7 pre-authorization, and stability window against current group policy; record source and checked date. |
 | `lib/swarmState.ts` (preview allowlist) | Docs list `*.unikraft.app`; a live production run on 2026-11-21 returned `*.tetra-data.production.tinyfish.io`, so both provider domains are allowlisted. Recheck if TinyFish introduces another host family. |
-| `lib/swarmConfig.ts` (limits) | Custom `max_steps` is beta-gated on this account and returns 403 FORBIDDEN, so it must stay omitted. Confirm `max_duration_seconds: 100` and `cursor_style: "standard"` are accepted and one worker fits the 120s route budget; the provider default is 150 steps. |
+| `lib/swarmConfig.ts` (limits) | Custom `max_steps` is beta-gated on this account and returns 403 FORBIDDEN, so it must stay omitted. Confirm `max_duration_seconds: 100` and `cursor_style: "standard"` are accepted and one worker fits the 280s client/300s route budget after queue delay; the provider default is 150 steps. |
 | `lib/swarmRunner.ts` (stealth retry) | Confirm a `SITE_BLOCKED` retry with `browser_profile: "stealth"` is accepted, does not double-bill, and does not repeat a side effect. |
 | `lib/tinyfishEvents.ts` (TF_API_RESULT) | The provider documents an array but not its item shape. This build reads only direct string `url` and `title`; confirm the real shape on a live run before widening it. |
 | `components/mission/FocusView.tsx` (iframe multi-viewer) | Confirm three distinct TinyFish previews can be embedded at once with two hidden but mounted. A concurrent-viewer limit would require pausing hidden frames. |
@@ -972,7 +981,7 @@ read only in the route; never log or echo it. `output_schema` is a top-level obj
 sends `agent_config` with `cursor_style: "standard"` and `max_duration_seconds: 100`. Custom
 `max_steps` is deliberately omitted because the account is not enabled for it; the provider
 default is 150 steps. The limits live in `lib/swarmConfig.ts` and keep one worker inside the
-120s route budget. When `TINYFISH_RECORDING=1`, the request also carries
+280s client budget and 300s route. When `TINYFISH_RECORDING=1`, the request also carries
 `capture_config: { recording: true }`; after completion, `GET /v1/runs/{id}` supplies the
 presigned `video_url` that `lib/tinyfishRuns.ts` reads and `lib/cache/recordings.ts` archives.
 
@@ -1007,7 +1016,9 @@ Headers are `text/event-stream; charset=utf-8`, `Cache-Control: no-cache, no-tra
 `X-Accel-Buffering: no`; a keep-alive comment goes out about every 15s. Disconnect aborts
 upstreams. Error codes: `missing_api_key`, `timeout`, `site_blocked`, `max_steps_exceeded`,
 `rate_limit`, `insufficient_credits`, `invalid_input`, `forbidden`, `cancelled`, `upstream_error`; invalid
-bodies 400 JSON. `/api/travel-swarm` declares `maxDuration = 120`.
+bodies 400 JSON. `/api/travel-swarm` declares `maxDuration = 300`. A stream that ends before
+`COMPLETE` is reconciled through `GET /v1/runs/{id}`; transient failures retry once, and one
+worker's failure never aborts its siblings.
 
 Mock mode needs no key or network; every payload carries `mock: true`, preview URLs use the
 dev-only `/mock-browser/<worker>` page, and the timeline is seeded. `SWARM_MOCK_SPEED`
@@ -1029,7 +1040,7 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 525 tests. Database-backed
+`npm test` runs Vitest once in a Node environment. The suite has 528 tests. Database-backed
 files skip when `DATABASE_URL` is absent. `tests/mocks/clerk-server.ts` replaces
 `@clerk/nextjs/server` in Vitest so route handlers can run outside Next's server boundary;
 proxy and Clerk provider behavior are covered by a production build and live request checks,
@@ -1044,6 +1055,10 @@ not by the unit suite.
   `tests/swarm-route*.test.ts`, and `tests/swarm-runner*.test.ts` cover parsing, mapping,
   schemas, normalisation, bounded upstream text, request bounds, missing key, isolation,
   retries, mock, timeout, abort, and swarm_done. All network is mocked.
+- `tests/swarm-recovery.test.ts` proves a stream that ends after STARTED recovers the
+  authoritative COMPLETED run record, a recovered FAILED result retries once and then
+  completes, and two failures produce one final error. `tests/swarm-runner-isolation.test.ts`
+  proves an unexpected worker throw does not stop its sibling.
 - `lib/swarmReducer*.test.ts`, `lib/swarmTelemetry.test.ts`, `hooks/swarmFrames.test.ts`,
   `hooks/swarmBatch.test.ts`, `lib/swarmMock.test.ts`, `tests/swarm-retry.test.ts`,
   `lib/swarmErrors.test.ts`, `lib/pacingStrip.test.ts`, `lib/careCard.test.ts`,
@@ -1111,10 +1126,13 @@ exempting lines.
   Retry; the page keeps the failed column visible with its source and retry action. The new
   mission control was exercised in mock mode only: three iframes rendered, the fail path
   reached `SITE_BLOCKED`, and reduced motion switched every named class off. A 2026-11-22
-  London, Ontario run completed all three workers in 110.1s under the 120s/100s limits with
+  London, Ontario run completed all three workers in 110.1s under the older 120s/100s limits with
   recording enabled; three WebM recordings were archived and served from the authenticated
   route. The cached replay returned the same 25 steps, 10 sources, and 3 findings in about
-  50-120 ms. A live production run with the stealth retry and the multi-viewer frames still
+  50-120 ms. A later provider run took 107s after a 65s queue delay, which exceeded the old
+  120s client budget even though TinyFish completed it; the current 280s client budget and
+  run-record recovery address that case. A live production run with the new budget, the
+  recovery poller, the stealth retry, and the multi-viewer frames still
   needs to be run, and clipboard permissions remain unverified.
 - The route tolerates unknown events, stringified `result` values, and partial payloads.
 - The preview allowlist covers `mock.invalid`, `*.unikraft.app` (docs), and `*.tinyfish.io`

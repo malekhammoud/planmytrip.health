@@ -24,7 +24,10 @@ import { TinyfishHttpError, streamTinyfishRun } from "@/lib/tinyfish";
 import {
   mapTinyfishErrorCode,
   mapTinyfishEvent,
+  normalizeCompleteResult,
+  type NormalizedComplete,
 } from "@/lib/tinyfishEvents";
+import { fetchTinyfishRun } from "@/lib/tinyfishRuns";
 import type {
   SwarmDoneSummary,
   SwarmErrorCode,
@@ -48,6 +51,9 @@ const MISSING_KEY_MESSAGE =
 const TIMEOUT_MESSAGE = "The agent did not finish in time. Retry this check.";
 const END_MESSAGE = "The agent stream ended before it reported a result. Retry this check.";
 const NETWORK_MESSAGE = "The agent service could not be reached. Retry this check.";
+const RECOVERY_POLL_MS = 2_000;
+const RECOVERY_TIMEOUT_MS = 120_000;
+const RATE_LIMIT_RETRY_MS = 15_000;
 
 /** Wraps a destination string into the exact error copy for one code. */
 const ERROR_MESSAGES: Record<SwarmErrorCode, string> = {
@@ -69,8 +75,6 @@ export interface SwarmRunContext {
   apiKey: string;
   emit: (event: SwarmEvent) => void;
   signal: AbortSignal;
-  /** Live worker controllers, so a rejected worker can abort its siblings. */
-  workerControllers?: Set<AbortController>;
   /** Called once for every upstream event type this build does not know. */
   onUnknownEvent?: () => void;
 }
@@ -157,11 +161,90 @@ interface AttemptOptions {
   browserProfile?: "lite" | "stealth";
 }
 
+interface AttemptError {
+  code: SwarmErrorCode;
+  message: string;
+  retryable: boolean;
+  retryAfterMs?: number;
+}
+
 type AttemptResult =
   | { kind: "completed" }
-  | { kind: "error" }
+  | { kind: "error"; error: AttemptError }
   | { kind: "aborted" }
   | { kind: "retry"; retry: "schema" | "stealth" };
+
+type RecoveryResult =
+  | ({ kind: "completed" } & NormalizedComplete)
+  | { kind: "failed"; code: SwarmErrorCode }
+  | { kind: "timeout" }
+  | { kind: "aborted" };
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function attemptError(
+  code: SwarmErrorCode,
+  message: string = ERROR_MESSAGES[code],
+): AttemptError {
+  const retryable =
+    code === "upstream_error" ||
+    code === "timeout" ||
+    code === "cancelled" ||
+    code === "rate_limit" ||
+    code === "max_steps_exceeded";
+  return {
+    code,
+    message,
+    retryable,
+    ...(code === "rate_limit" ? { retryAfterMs: RATE_LIMIT_RETRY_MS } : {}),
+  };
+}
+
+function runErrorText(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (typeof value !== "object" || value === null) return null;
+  const record = value as Record<string, unknown>;
+  if (typeof record.code === "string") return record.code;
+  if (typeof record.message === "string") return record.message;
+  return null;
+}
+
+/**
+ * A dropped SSE stream is not proof the browser run failed. TinyFish keeps the run and
+ * publishes the authoritative result through GET /v1/runs/{id}, so poll that record before
+ * surfacing an error.
+ */
+async function recoverRunCompletion(
+  runId: string,
+  worker: WorkerId,
+  sourceUrl: string,
+  apiKey: string,
+  signal: AbortSignal,
+): Promise<RecoveryResult> {
+  const deadline = Date.now() + RECOVERY_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    if (signal.aborted) return { kind: "aborted" };
+    const detail = await fetchTinyfishRun(runId, apiKey);
+    if (detail !== null) {
+      const status = typeof detail.status === "string" ? detail.status.toUpperCase() : "";
+      if (status === "COMPLETED") {
+        const normalized = normalizeCompleteResult(detail.result, worker, sourceUrl);
+        return { kind: "completed", ...normalized };
+      }
+      if (status === "FAILED" || status === "CANCELLED") {
+        const code =
+          status === "CANCELLED"
+            ? "cancelled"
+            : mapTinyfishErrorCode(runErrorText(detail.error) ?? "FAILED");
+        return { kind: "failed", code };
+      }
+    }
+    await wait(RECOVERY_POLL_MS);
+  }
+  return { kind: "timeout" };
+}
 
 async function runAttempt(
   worker: WorkerId,
@@ -173,13 +256,12 @@ async function runAttempt(
   controller: AbortController,
   externalAbort: { reason: "none" | "timeout" | "client" },
 ): Promise<AttemptResult> {
-  context.workerControllers?.add(controller);
   let settled = false;
+  let runId: string | null = null;
   return new Promise<AttemptResult>((resolve) => {
     const finish = (result: AttemptResult): void => {
       if (settled) return;
       settled = true;
-      context.workerControllers?.delete(controller);
       resolve(result);
     };
     const emitMapped = (event: Parameters<typeof mapTinyfishEvent>[0]): SwarmEvent | null => {
@@ -189,53 +271,115 @@ async function runAttempt(
         now: nowIso,
         nextSeq: () => seq(worker),
       });
+      if (mapped?.event === "worker_started" && mapped.data.runId !== null) {
+        runId = mapped.data.runId;
+      }
       if (mapped !== null) context.emit(mapped);
       return mapped;
     };
+    const emitRecoveredComplete = (normalized: NormalizedComplete): void => {
+      if (settled) return;
+      context.emit({
+        event: "worker_complete",
+        data: {
+          worker,
+          seq: seq(worker),
+          ts: nowIso(),
+          findings: normalized.findings,
+          sourceUrl: normalized.sourceUrl,
+          retrievedAt: nowIso(),
+          ...(normalized.rawResult === undefined
+            ? {}
+            : { rawResult: normalized.rawResult }),
+          ...(normalized.parseError === undefined
+            ? {}
+            : { parseError: normalized.parseError }),
+        },
+      });
+      finish({ kind: "completed" });
+    };
+    const recover = async (): Promise<void> => {
+      if (runId === null) {
+        finish({ kind: "error", error: attemptError("upstream_error", END_MESSAGE) });
+        return;
+      }
+      console.warn("[swarm] stream ended before COMPLETE; checking the run record", worker);
+      const recovered = await recoverRunCompletion(
+        runId,
+        worker,
+        sourceUrl,
+        context.apiKey,
+        controller.signal,
+      );
+      if (settled) return;
+      if (recovered.kind === "completed") {
+        emitRecoveredComplete(recovered);
+        return;
+      }
+      if (recovered.kind === "aborted") {
+        finish({ kind: "aborted" });
+        return;
+      }
+      if (recovered.kind === "failed") {
+        console.warn("[swarm] recovered run failed", worker, recovered.code);
+        finish({ kind: "error", error: attemptError(recovered.code) });
+        return;
+      }
+      console.warn("[swarm] run record did not settle", worker);
+      finish({ kind: "error", error: attemptError("upstream_error", END_MESSAGE) });
+    };
 
-    void streamTinyfishRun({
-      apiKey: context.apiKey,
-      url: sourceUrl,
-      goal,
-      outputSchema: options.withSchema ? WORKER_SCHEMAS[worker] : undefined,
-      browserProfile: options.browserProfile,
-      agentConfig: {
-        cursorStyle: SWARM_RUN_LIMITS.cursorStyle,
-        maxDurationSeconds: SWARM_RUN_LIMITS.maxDurationSeconds,
-      },
-      captureRecording: process.env.TINYFISH_RECORDING === "1",
-      signal: controller.signal,
-      onUnknownEvent: () => context.onUnknownEvent?.(),
-      onEvent: (event) => {
-        if (settled) return;
-        if (event.type === "COMPLETE" && event.status !== "COMPLETED") {
-          const code = mapTinyfishErrorCode(event.error ?? event.status);
-          if (code === "site_blocked" && options.browserProfile !== "stealth") {
-            finish({ kind: "retry", retry: "stealth" });
-            controller.abort();
-            return;
-          }
-          emitMapped(event);
-          finish({ kind: "error" });
-          return;
-        }
-        const mapped = emitMapped(event);
-        if (mapped?.event === "worker_complete") finish({ kind: "completed" });
-      },
-    }).then(
+    void Promise.resolve()
+      .then(() =>
+        streamTinyfishRun({
+          apiKey: context.apiKey,
+          url: sourceUrl,
+          goal,
+          outputSchema: options.withSchema ? WORKER_SCHEMAS[worker] : undefined,
+          browserProfile: options.browserProfile,
+          agentConfig: {
+            cursorStyle: SWARM_RUN_LIMITS.cursorStyle,
+            maxDurationSeconds: SWARM_RUN_LIMITS.maxDurationSeconds,
+          },
+          captureRecording: process.env.TINYFISH_RECORDING === "1",
+          signal: controller.signal,
+          onUnknownEvent: () => context.onUnknownEvent?.(),
+          onEvent: (event) => {
+            if (settled) return;
+            if (event.type === "COMPLETE" && event.status !== "COMPLETED") {
+              const code = mapTinyfishErrorCode(event.error ?? event.status);
+              if (code === "site_blocked" && options.browserProfile !== "stealth") {
+                finish({ kind: "retry", retry: "stealth" });
+                controller.abort();
+                return;
+              }
+              if (code === "invalid_input" && options.withSchema) {
+                finish({ kind: "retry", retry: "schema" });
+                controller.abort();
+                return;
+              }
+              finish({ kind: "error", error: attemptError(code) });
+              return;
+            }
+            const mapped = emitMapped(event);
+            if (mapped?.event === "worker_complete") finish({ kind: "completed" });
+          },
+        }),
+      )
+      .then(
       () => {
         if (settled) return;
-        if (!controller.signal.aborted) {
-          context.emit(workerError(worker, "upstream_error", END_MESSAGE, seq));
+        if (controller.signal.aborted) {
+          finish({ kind: "aborted" });
+          return;
         }
-        finish({ kind: "error" });
+        void recover();
       },
       (error: unknown) => {
         if (settled) return;
         if (controller.signal.aborted) {
           if (externalAbort.reason === "none") {
-            context.emit(workerError(worker, "upstream_error", ERROR_MESSAGES.upstream_error, seq));
-            finish({ kind: "error" });
+            void recover();
             return;
           }
           finish({ kind: "aborted" });
@@ -245,18 +389,22 @@ async function runAttempt(
           const code = mapTinyfishErrorCode(error.code);
           if (code === "invalid_input" && options.withSchema) {
             finish({ kind: "retry", retry: "schema" });
+            controller.abort();
             return;
           }
           if (code === "site_blocked" && options.browserProfile !== "stealth") {
             finish({ kind: "retry", retry: "stealth" });
+            controller.abort();
             return;
           }
-          context.emit(workerError(worker, code, ERROR_MESSAGES[code], seq));
-          finish({ kind: "error" });
+          finish({ kind: "error", error: attemptError(code) });
           return;
         }
-        context.emit(workerError(worker, "upstream_error", NETWORK_MESSAGE, seq));
-        finish({ kind: "error" });
+        if (runId !== null) {
+          void recover();
+          return;
+        }
+        finish({ kind: "error", error: attemptError("upstream_error", NETWORK_MESSAGE) });
       },
     );
   });
@@ -307,6 +455,7 @@ async function runLiveWorker(
     let options: AttemptOptions = { withSchema: true };
     let schemaRetried = false;
     let stealthRetried = false;
+    let transientRetried = false;
 
     while (terminal === null) {
       const controller = new AbortController();
@@ -317,23 +466,63 @@ async function runLiveWorker(
       ]);
       if (terminal !== null) break;
       if (result.kind === "retry") {
-        if (result.retry === "schema" && !schemaRetried) {
+        if (result.retry === "schema") {
+          if (schemaRetried) {
+            context.emit(
+              workerError(worker, "invalid_input", ERROR_MESSAGES.invalid_input, seq),
+            );
+            terminal = false;
+            break;
+          }
           schemaRetried = true;
           context.emit(note(worker, SWARM_RETRY_NOTES.schema, seq, false));
           options = { ...options, withSchema: false };
           continue;
         }
-        if (result.retry === "stealth" && !stealthRetried) {
+        if (stealthRetried) {
+          context.emit(workerError(worker, "site_blocked", ERROR_MESSAGES.site_blocked, seq));
+          terminal = false;
+          break;
+        }
+        stealthRetried = true;
+        context.emit(note(worker, SWARM_RETRY_NOTES.stealth, seq, false));
+        options = { ...options, browserProfile: "stealth" };
+        continue;
+      }
+      if (result.kind === "aborted") {
+        terminal = false;
+        break;
+      }
+      if (result.kind === "error") {
+        if (result.error.code === "site_blocked" && !stealthRetried) {
           stealthRetried = true;
           context.emit(note(worker, SWARM_RETRY_NOTES.stealth, seq, false));
           options = { ...options, browserProfile: "stealth" };
           continue;
         }
-        context.emit(workerError(worker, "site_blocked", ERROR_MESSAGES.site_blocked, seq));
-        terminal = false;
-        break;
-      }
-      if (result.kind === "aborted") {
+        if (
+          result.error.code === "invalid_input" &&
+          options.withSchema &&
+          !schemaRetried
+        ) {
+          schemaRetried = true;
+          context.emit(note(worker, SWARM_RETRY_NOTES.schema, seq, false));
+          options = { ...options, withSchema: false };
+          continue;
+        }
+        if (result.error.retryable && !transientRetried) {
+          transientRetried = true;
+          context.emit(note(worker, SWARM_RETRY_NOTES.transient, seq, false));
+          if (result.error.retryAfterMs !== undefined) {
+            await wait(result.error.retryAfterMs);
+          }
+          if (terminal !== null) break;
+          continue;
+        }
+        console.warn("[swarm] worker failed", worker, result.error.code);
+        context.emit(
+          workerError(worker, result.error.code, result.error.message, seq),
+        );
         terminal = false;
         break;
       }
@@ -357,8 +546,8 @@ async function runLiveWorker(
 }
 
 /**
- * Runs every worker with a per-worker catch. A rejected worker emits one upstream_error,
- * returns a failed outcome, and calls onRejected immediately so siblings are aborted.
+ * Runs every worker with a per-worker catch. A rejected worker emits one upstream_error and
+ * returns a failed outcome; its siblings keep running and can still complete.
  */
 async function runAll(
   workers: WorkerId[],
@@ -366,14 +555,12 @@ async function runAll(
   seq: Seq,
   run: (worker: WorkerId) => Promise<WorkerOutcome>,
   mock: boolean,
-  onRejected?: () => void,
 ): Promise<WorkerOutcome[]> {
   return Promise.all(
     workers.map(async (worker): Promise<WorkerOutcome> => {
       try {
         return await run(worker);
       } catch {
-        onRejected?.();
         context.emit(workerError(worker, "upstream_error", ERROR_MESSAGES.upstream_error, seq, mock));
         return { worker, ok: false };
       }
@@ -459,17 +646,12 @@ export async function runSwarm(
     }
 
     for (const worker of workers) emit(queued(worker, seq, false));
-    const controllers = new Set<AbortController>();
-    const liveContext: SwarmRunContext = { ...runContext, workerControllers: controllers };
     const outcomes = await runAll(
       workers,
-      liveContext,
+      runContext,
       seq,
-      (worker) => runLiveWorker(worker, liveContext, seq),
+      (worker) => runLiveWorker(worker, runContext, seq),
       false,
-      () => {
-        for (const controller of controllers) controller.abort();
-      },
     );
     const result = summarize(outcomes);
     emit(swarmDone(result.completed, result.failed, summary(), seq));

@@ -883,7 +883,39 @@ thresholds and Sun Life stability window remain VERIFY.
   `aria-valuetext`.
 - Added `clampInteger` and three unit tests for in-range, clamping, rounding, and non-finite
   input.
+- Production browser check: duration rendered as `input[type=number]` with value 4, min 2,
+  max 7; typing 1 clamped to 2 and 9 to 7; 5 stayed. Budget rendered as a range with
+  Value/Balanced/Premium ticks, and Premium announced as `Premium budget`. The step-two review
+  read "5 days in London, Ontario" and "Mixed · Premium". No horizontal overflow at 390.
 - Gate: typecheck, 525 tests, lint, and production build pass.
+
+### Step 32: consistent TinyFish recovery
+
+- Diagnosis: the provider records showed recent runs COMPLETED, including the 04:12 pharmacy
+  run created at 04:12:36, started at 04:13:41 after a 65-second queue delay, and finished at
+  04:15:28 after a 107-second browser run. The app's old 120-second timer started at request
+  time, so it ended before that run finished. A stream that closed before `COMPLETE` was also
+  treated as a worker failure even though TinyFish had the authoritative result. The UI then
+  replaced either cause with the generic `upstream_error` copy.
+- Added run-record recovery: when the SSE stream ends or rejects after `STARTED`, the runner
+  polls `GET /v1/runs/{id}` for the authoritative COMPLETED/FAILED record and emits the real
+  completion or failure. Recording is not required for recovery.
+- Added one automatic transient retry per worker for interrupted streams, network errors,
+  timeouts, cancellation, rate limits, and step limits. Schema and stealth retries remain.
+  A worker failure no longer aborts its siblings; each worker owns its timeout.
+- Raised the client budget to 280s inside a 300s route, below the server request timeout and
+  nginx's 360s read timeout. Provider queue delay and recording finalization now fit.
+- The mission control shows the server's specific calm error message when a worker still fails
+  after retry, instead of the generic stopped-unexpectedly line.
+- Added `tests/swarm-recovery.test.ts` for early-stream recovery, recovered-failure retry, and
+  one final error after two failures. Replaced the sibling-abort test with
+  `tests/swarm-runner-isolation.test.ts`, proving one worker throw leaves its sibling running.
+- Live worker check after deploy: the pharmacy worker for London, Ontario, albuterol started at
+  04:33:41, emitted 17 progress steps, and completed at 04:35:40 (118.7s) with one finding and
+  no error or retry. That sits well inside the new 280s budget. Recovery, retry, and final-error
+  behavior are covered by the mocked recovery tests; a real provider stream was not forced to
+  drop.
+- Gate: typecheck, 528 tests, lint, and production build pass.
 
 ## Next action
 
@@ -893,8 +925,10 @@ and the dated cache labels. Seed another demo destination or duration with a liv
 pitch needs it. Run one uncached trip after the Photon fallback to confirm new places geocode,
 and confirm the Photon and TinyFish recording terms before a paid launch. Try the location
 controls on a real phone: the permission prompt, current-location reverse lookup, map pin, and
-the autocomplete dropdown at 390px. Enable Google in the Clerk dashboard with a production
-Google OAuth client ID and secret, then
+the autocomplete dropdown at 390px. During the next live verification, watch
+`/var/log/planmytrip.log` for `[swarm]` recovery, retry, and failure lines; a recovered run
+should show a run-record check rather than a worker error. Enable Google in the Clerk
+dashboard with a production Google OAuth client ID and secret, then
 verify the Google button and a real sign-up. Have the first user sign up, save a plan, reopen
 it from `/trips`, and delete it. Confirm the Clerk email and account-portal DNS records. Run a
 consented pilot cohort against

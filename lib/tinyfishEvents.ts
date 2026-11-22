@@ -110,14 +110,16 @@ export function mapTinyfishErrorCode(code: string | null | undefined): SwarmErro
   return "upstream_error";
 }
 
-interface NormalizedComplete {
+/** A worker completion rebuilt from a COMPLETE event or a recovered run detail. */
+export interface NormalizedComplete {
   findings: ReturnType<typeof emptyFindings>;
   sourceUrl: string;
   rawResult?: string;
   parseError?: string;
 }
 
-function normalizeCompleteResult(
+/** Rebuilds typed findings from an untrusted COMPLETE result. */
+export function normalizeCompleteResult(
   result: unknown,
   worker: WorkerId,
   fallbackSourceUrl: string,

@@ -31,7 +31,7 @@ import {
 } from "@/lib/swarmTypes";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const SSE_HEADERS = {
   "Content-Type": "text/event-stream; charset=utf-8",

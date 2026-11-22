@@ -138,7 +138,7 @@ export function FocusView({ worker, state, visible, onRetry }: FocusViewProps) {
           <div className="flex h-full flex-col items-start justify-center gap-3 p-6">
             <p className="t-heading text-ink">This check did not finish</p>
             <p className="t-small measure text-risk">
-              {swarmErrorCopy(state.errorCode).message}
+              {state.errorMessage ?? swarmErrorCopy(state.errorCode).message}
             </p>
             {swarmErrorCopy(state.errorCode).retryable ? (
               <Button variant="secondary" onClick={onRetry}>

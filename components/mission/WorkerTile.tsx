@@ -80,7 +80,7 @@ export function WorkerTile({ worker, state, selected, onSelect }: WorkerTileProp
       </div>
       {state.phase === "error" ? (
         <p className="t-small mt-3 measure text-risk">
-          {swarmErrorCopy(state.errorCode).message}
+          {state.errorMessage ?? swarmErrorCopy(state.errorCode).message}
         </p>
       ) : null}
     </div>
