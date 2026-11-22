@@ -620,6 +620,36 @@ thresholds and Sun Life stability window remain VERIFY.
 - Gate: typecheck, 345 passed with 16 PostgreSQL tests skipped because no `DATABASE_URL` is
   configured in this environment, lint, and a production build.
 
+### Pitch deck aligned with main (2026-11-21)
+
+- Fast-forwarded `feat/pitch-deck` to main; the deck already existed on main through the
+  `merge: add Paper and Ink pitch deck` commit.
+- Updated the demo slide for the one-page workspace: Mission, Route, Safety, Verification.
+  The architecture line adds PostgreSQL and the 466-test gate; impact now reads seven minutes,
+  the measured production run.
+- Rewrote the demo runbook to scroll the one page instead of switching tabs. The copy, problem
+  statistics, comparison, and close are unchanged.
+- Gate: typecheck, 466 tests (439 passed, 27 database tests skipped without `DATABASE_URL`),
+  lint, production build pass.
+
+### Pitch deck architecture and ML pass (2026-11-21)
+
+- Rebuilt the architecture slide as two loops: the live run (seven OpenCode agents, the route
+  optimizer, engine caps plus the tighten-only overlay, three TinyFish browsers) and the data
+  loop (dossier, outcome, PostgreSQL, the calibration model).
+- Added two appendix slides: the nested calibration model (prior offset, residual, isotonic,
+  tiers, ship gate) and the data asset (record, consent, scale ladder).
+- Removed tab language from the demo materials; the workspace is one page. Impact now reads
+  "Hours of research become seven minutes."
+- Gate: typecheck, 466 tests (439 passed, 27 skipped), lint, production build pass.
+
+### Pitch deck plain section titles (2026-11-21)
+
+- Replaced the assertion headlines with the presenter's section names: Problem, Solution,
+  Demo, Architecture, Comparison, Impact, Model, Data. The close keeps its memorial line.
+- Impact now carries "Hours of research become seven minutes" in the body; the architecture
+  slide keeps "Generation is probabilistic. The ceiling is not." with one accent.
+- Gate: typecheck, 466 tests (439 passed, 27 skipped), lint, production build pass.
 
 ### Step 23: live command surface
 

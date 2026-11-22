@@ -414,6 +414,11 @@ body {
 
 /* ---------- 07 Impact ---------- */
 
+.impact-line {
+  max-width: 1400px;
+  margin-bottom: 56px;
+}
+
 .list-label {
   margin: 0;
 }
@@ -459,37 +464,89 @@ body {
   left: 120px;
 }
 
-/* ---------- 09 Appendix ---------- */
+/* ---------- 09 Appendix: calibration model ---------- */
 
-.moat {
+.model-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 80px;
+  align-items: start;
+}
+
+.formula {
+  margin: 0;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 22px;
+  line-height: 34px;
+  letter-spacing: 0;
+  color: var(--ink);
+  white-space: pre;
+}
+
+.tiers {
   width: 100%;
   border-collapse: collapse;
 }
 
-.moat th,
-.moat td {
-  padding: 18px 24px 18px 0;
+.tiers th,
+.tiers td {
+  padding: 14px 0;
   text-align: left;
-  vertical-align: top;
+  vertical-align: baseline;
   font-weight: 400;
-}
-
-.moat thead th {
-  padding-top: 18px;
-  border-top: 1px solid var(--ink);
-}
-
-.moat tbody th,
-.moat tbody td {
   border-top: 1px solid var(--hairline);
 }
 
-.moat .rowhead {
-  width: 220px;
+.tiers thead th {
+  border-top: 1px solid var(--ink);
 }
 
-.moat-line {
-  margin-top: 64px;
+.model-note {
+  max-width: 1500px;
+  margin-top: 48px;
+}
+
+/* ---------- 10 Appendix: data asset ---------- */
+
+.asset-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  column-gap: 80px;
+  align-items: start;
+}
+
+.record,
+.scale {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.record th,
+.record td,
+.scale th,
+.scale td {
+  padding: 14px 0;
+  text-align: left;
+  vertical-align: baseline;
+  font-weight: 400;
+  border-top: 1px solid var(--hairline);
+}
+
+.record tr:first-child th,
+.record tr:first-child td {
+  border-top: 1px solid var(--ink);
+}
+
+.scale thead th {
+  border-top: 1px solid var(--ink);
+}
+
+.record .rowhead {
+  width: 180px;
+}
+
+.asset-line {
+  margin-top: 56px;
 }
 
 /* ---------- Motion and print ---------- */

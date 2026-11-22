@@ -561,9 +561,10 @@ off restores the engine plan exactly.
 
 `public/pitch/` is a static 1920×1080 Paper and Ink deck served at `/pitch` by a rewrite in
 `next.config.ts`. It is presentation-only: not an app route, not covered by the design guard,
-and it adds no application code. It has nine slides (eight presented, one appendix), local
-woff2 fonts under `public/pitch/fonts`, an inline SVG architecture diagram, and one raster
-asset, `basil.jpg`, a personal photograph used with the family's consent. Arrow keys advance,
+and it adds no application code. It has ten slides (eight presented, two appendix), local
+woff2 fonts under `public/pitch/fonts`, inline SVG diagrams, and one raster asset, `basil.jpg`,
+a personal photograph used with the family's consent. The appendix carries the calibration model
+and the data asset; the presented path stays at eight slides. Arrow keys advance,
 `F` toggles fullscreen, `Home` / `End` jump, and the page prints to PDF. `docs/PITCH.md` holds
 the three-minute script, demo runbook, sources, and rubric check. Edit the deck as HTML, CSS,
 and vanilla JavaScript; do not rebuild it in React.

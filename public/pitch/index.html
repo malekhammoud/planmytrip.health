@@ -11,7 +11,7 @@
     <div class="stage-wrap">
       <main class="stage" id="stage">
         <!-- 01 — Cover. The photograph is the only raster asset in the deck. -->
-        <section class="slide cover is-active" aria-label="1 of 9">
+        <section class="slide cover is-active" aria-label="1 of 10">
           <div class="cover-copy">
             <h1 class="display">Basil.</h1>
             <p class="small dates">July 5, 1990 — February 27, 2024</p>
@@ -33,10 +33,10 @@
         </section>
 
         <!-- 02 — Problem -->
-        <section class="slide" aria-label="2 of 9">
+        <section class="slide" aria-label="2 of 10">
           <header class="head">
             <div class="rule-ink"></div>
-            <h2 class="title">No major trip planner asks what you’re living with.</h2>
+            <h2 class="title">Problem</h2>
           </header>
           <div class="content problem">
             <div class="metric-col">
@@ -69,15 +69,15 @@
           </div>
           <footer class="foot">
             <span class="label">PlanMyTrip.health</span>
-            <span class="label">02 / 09</span>
+            <span class="label">02 / 10</span>
           </footer>
         </section>
 
         <!-- 03 — Solution -->
-        <section class="slide" aria-label="3 of 9">
+        <section class="slide" aria-label="3 of 10">
           <header class="head">
             <div class="rule-ink"></div>
-            <h2 class="title">A real trip, paced to your body, checked live.</h2>
+            <h2 class="title">Solution</h2>
           </header>
           <div class="content">
             <div class="rows">
@@ -107,37 +107,37 @@
           </div>
           <footer class="foot">
             <span class="label">PlanMyTrip.health</span>
-            <span class="label">03 / 09</span>
+            <span class="label">03 / 10</span>
           </footer>
         </section>
 
         <!-- 04 — Demo cue -->
-        <section class="slide" aria-label="4 of 9">
+        <section class="slide" aria-label="4 of 10">
           <header class="head">
             <div class="rule-ink"></div>
-            <h2 class="title">Four tabs. One trip. Nothing cached.</h2>
+            <h2 class="title">Demo</h2>
           </header>
           <div class="content">
             <div class="rows rows-tight">
               <div class="row">
                 <span class="label num">01</span>
-                <span class="label row-label">Plan</span>
-                <p class="body row-text">Seven agents, one route.</p>
+                <span class="label row-label">Mission</span>
+                <p class="body row-text">Live stage, elapsed time, seven agents.</p>
               </div>
               <div class="row">
                 <span class="label num">02</span>
-                <span class="label row-label">Pacing</span>
-                <p class="body row-text">The engine’s ceilings.</p>
+                <span class="label row-label">Route</span>
+                <p class="body row-text">The plan, forming.</p>
               </div>
               <div class="row">
                 <span class="label num">03</span>
-                <span class="label row-label">Verification</span>
-                <p class="body row-text">Three live browsers.</p>
+                <span class="label row-label">Safety</span>
+                <p class="body row-text">The engine’s caps.</p>
               </div>
               <div class="row">
                 <span class="label num">04</span>
-                <span class="label row-label">Team</span>
-                <p class="body row-text">The full roster and log.</p>
+                <span class="label row-label">Verification</span>
+                <p class="body row-text">Three live browsers.</p>
               </div>
             </div>
             <p class="small closing">
@@ -146,28 +146,29 @@
           </div>
           <footer class="foot">
             <span class="label">PlanMyTrip.health</span>
-            <span class="label">04 / 09</span>
+            <span class="label">04 / 10</span>
           </footer>
         </section>
 
         <!-- 05 — Architecture -->
-        <section class="slide" aria-label="5 of 9">
+        <section class="slide" aria-label="5 of 10">
           <header class="head">
             <div class="rule-ink"></div>
-            <h2 class="title">Agents plan. The engine sets the ceiling.</h2>
+            <h2 class="title">Architecture</h2>
           </header>
           <div class="content">
             <svg
               class="arch-svg"
-              viewBox="0 0 1680 420"
+              viewBox="0 0 1680 450"
               role="img"
-              aria-label="Three lanes. Plan: six specialists to a lead concierge. Pace: condition profile to daily caps to itinerary. Prove: three browsers to cited findings."
+              aria-label="Two loops. The live run: seven OpenCode agents stream over SSE; the route orders stops with 2-opt and a Maps link; safety uses the engine caps and a tighten-only overlay; three TinyFish browsers stream over SSE. The data loop: a consented dossier stores the plan, computed dose and features; an explicit outcome stores flare, care and adherence; PostgreSQL stores it scoped to the install; the model uses nested folds and isotonic calibration."
             >
               <g stroke="var(--hairline)" stroke-width="1">
-                <line x1="0" y1="0" x2="1680" y2="0" />
+                <line x1="0" y1="50" x2="1680" y2="50" />
                 <line x1="0" y1="140" x2="1680" y2="140" />
-                <line x1="0" y1="280" x2="1680" y2="280" />
-                <line x1="0" y1="420" x2="1680" y2="420" />
+                <line x1="0" y1="230" x2="1680" y2="230" />
+                <line x1="0" y1="320" x2="1680" y2="320" />
+                <line x1="0" y1="410" x2="1680" y2="410" />
               </g>
 
               <g
@@ -177,61 +178,61 @@
                 font-weight="500"
                 letter-spacing="1.7"
               >
-                <text x="0" y="76">PLAN</text>
-                <text x="0" y="216">PACE</text>
-                <text x="0" y="356">PROVE</text>
+                <text x="0" y="30">LIVE RUN</text>
+                <text x="880" y="30">DATA LOOP</text>
               </g>
 
-              <g fill="none" stroke="var(--ink)" stroke-width="1">
-                <rect x="180" y="26" width="300" height="88" rx="4" />
-                <rect x="540" y="26" width="320" height="88" rx="4" />
-                <rect x="180" y="166" width="300" height="88" rx="4" />
-                <rect x="540" y="166" width="260" height="88" rx="4" />
-                <rect x="860" y="166" width="260" height="88" rx="4" />
-                <rect x="180" y="306" width="300" height="88" rx="4" />
-                <rect x="540" y="306" width="300" height="88" rx="4" />
-              </g>
-
-              <g stroke="var(--ink)" stroke-width="1.5">
-                <line x1="480" y1="70" x2="540" y2="70" />
-                <line x1="480" y1="210" x2="540" y2="210" />
-                <line x1="800" y1="210" x2="860" y2="210" />
-                <line x1="480" y1="350" x2="540" y2="350" />
+              <g
+                fill="var(--muted)"
+                font-family="IBM Plex Mono, ui-monospace, monospace"
+                font-size="22"
+                font-weight="500"
+                letter-spacing="1.7"
+              >
+                <text x="0" y="90">MISSION</text>
+                <text x="0" y="180">ROUTE</text>
+                <text x="0" y="270">SAFETY</text>
+                <text x="0" y="360">VERIFY</text>
+                <text x="880" y="90">DOSSIER</text>
+                <text x="880" y="180">OUTCOME</text>
+                <text x="880" y="270">STORE</text>
+                <text x="880" y="360">MODEL</text>
               </g>
 
               <g
                 fill="var(--ink)"
                 font-family="IBM Plex Mono, ui-monospace, monospace"
                 font-size="22"
-                font-weight="500"
+                font-weight="400"
               >
-                <text x="204" y="78">6 SPECIALISTS</text>
-                <text x="564" y="78">LEAD CONCIERGE</text>
-                <text x="204" y="218">CONDITION PROFILE</text>
-                <text x="564" y="218">DAILY CAPS</text>
-                <text x="884" y="218">ITINERARY</text>
-                <text x="204" y="358">3 BROWSERS</text>
-                <text x="564" y="358">CITED FINDINGS</text>
+                <text x="180" y="90">7 OpenCode agents · SSE</text>
+                <text x="180" y="180">stops · 2-opt · Maps link</text>
+                <text x="180" y="270">engine caps + tighten-only overlay</text>
+                <text x="180" y="360">3 TinyFish browsers · SSE</text>
+                <text x="1060" y="90">plan · dose · features</text>
+                <text x="1060" y="180">flare · care · adherence</text>
+                <text x="1060" y="270">Postgres · consented · scoped</text>
+                <text x="1060" y="360">nested folds · isotonic</text>
               </g>
             </svg>
             <p class="body arch-line">
               Generation is probabilistic. The ceiling is <span class="accent">not</span>.
             </p>
             <p class="label stack">
-              Next.js 16 · React 19 · TypeScript · OpenCode · TinyFish · Leaflet · 286 tests
+              Next.js 16 · React 19 · TypeScript · OpenCode · TinyFish · Postgres · 466 tests
             </p>
           </div>
           <footer class="foot">
             <span class="label">PlanMyTrip.health</span>
-            <span class="label">05 / 09</span>
+            <span class="label">05 / 10</span>
           </footer>
         </section>
 
         <!-- 06 — Comparison -->
-        <section class="slide" aria-label="6 of 9">
+        <section class="slide" aria-label="6 of 10">
           <header class="head">
             <div class="rule-ink"></div>
-            <h2 class="title">They plan the trip. We plan for the body taking it.</h2>
+            <h2 class="title">Comparison</h2>
           </header>
           <div class="content">
             <table class="compare">
@@ -295,37 +296,35 @@
           </div>
           <footer class="foot">
             <span class="label">PlanMyTrip.health</span>
-            <span class="label">06 / 09</span>
+            <span class="label">06 / 10</span>
           </footer>
         </section>
 
         <!-- 07 — Who it helps / impact -->
-        <section class="slide" aria-label="7 of 9">
+        <section class="slide" aria-label="7 of 10">
           <header class="head">
             <div class="rule-ink"></div>
-            <h2 class="title">
-              Hours of browser tabs become <span class="accent">twelve</span> minutes.
-            </h2>
+            <h2 class="title">Impact</h2>
           </header>
           <div class="content">
+            <p class="body impact-line">
+              Hours of research become <span class="accent">seven</span> minutes.
+            </p>
             <p class="label list-label">Who it helps</p>
             <ul class="plain-list">
               <li>People managing a condition.</li>
               <li>Caregivers researching at 2 a.m.</li>
               <li>Clinicians who get a summary, not a guess.</li>
             </ul>
-            <p class="small closing">
-              Every plan ends as one card: the days, the caps, the checkpoints.
-            </p>
           </div>
           <footer class="foot">
             <span class="label">PlanMyTrip.health</span>
-            <span class="label">07 / 09</span>
+            <span class="label">07 / 10</span>
           </footer>
         </section>
 
         <!-- 08 — Close -->
-        <section class="slide" aria-label="8 of 9">
+        <section class="slide" aria-label="8 of 10">
           <div class="rule-ink close-rule"></div>
           <div class="close-block">
             <h2 class="display">Basil would have gone anyway.</h2>
@@ -336,59 +335,146 @@
           <p class="body close-url accent">planmytrip.health</p>
           <footer class="foot">
             <span class="label">PlanMyTrip.health</span>
-            <span class="label">08 / 09</span>
+            <span class="label">08 / 10</span>
           </footer>
         </section>
 
-        <!-- 09 — Appendix: the data moat -->
-        <section class="slide" aria-label="9 of 9">
+        <!-- 09 — Appendix: the calibration model -->
+        <section class="slide" aria-label="9 of 10">
           <header class="head">
             <div class="rule-ink"></div>
-            <h2 class="title">Every trip is a dose. Every follow-up is a label.</h2>
+            <h2 class="title">Model</h2>
           </header>
           <div class="content">
-            <table class="moat">
-              <thead>
-                <tr>
-                  <th class="label rowhead">The model</th>
-                  <th class="label">Today, synthetic</th>
-                  <th class="label">50 real trips</th>
-                  <th class="label"><span class="accent">1,000+</span> real trips</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th class="label rowhead">Fit</th>
-                  <td class="small">Engine offset only</td>
-                  <td class="small">Pooled isotonic</td>
-                  <td class="small">Condition intercepts</td>
-                </tr>
-                <tr>
-                  <th class="label rowhead">Proves</th>
-                  <td class="small">The pipeline</td>
-                  <td class="small">Real calibration</td>
-                  <td class="small">Adherence, heat, altitude</td>
-                </tr>
-                <tr>
-                  <th class="label rowhead">Gate</th>
-                  <td class="small">Never used live</td>
-                  <td class="small">ECE under 0.05</td>
-                  <td class="small">Finer personalization</td>
-                </tr>
-              </tbody>
-            </table>
-            <p class="body moat-line">
-              The asset is the dose and outcome pair. It cannot be scraped.
+            <div class="model-grid">
+              <pre class="formula">p_engine = (100 - score) / 100
+offset   = logit(p_engine)
+
+eta = offset
+    + b0
+    + b1 * peak exposure
+    + b2 * recovery coverage
+    + b3 * trip length
+
+p = isotonic(sigmoid(eta))</pre>
+              <table class="tiers">
+                <thead>
+                  <tr>
+                    <th class="label">Labels</th>
+                    <th class="label">Tier</th>
+                    <th class="label">What changes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="small">&lt;50</td>
+                    <td class="small">Engine</td>
+                    <td class="small">b = 0; same as today</td>
+                  </tr>
+                  <tr>
+                    <td class="small">50+</td>
+                    <td class="small">Pooled</td>
+                    <td class="small">Isotonic calibration</td>
+                  </tr>
+                  <tr>
+                    <td class="small">200+ / condition</td>
+                    <td class="small">Condition</td>
+                    <td class="small">Condition intercepts</td>
+                  </tr>
+                  <tr>
+                    <td class="small">1,000+</td>
+                    <td class="small">Residual</td>
+                    <td class="small">Adherence, heat, altitude</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="small model-note">
+              Ship gate: Brier beats the engine, ECE under 0.05, slope near 1.
+              Synthetic proves the pipeline, <span class="accent">never</span> the risk.
             </p>
             <p class="label sources">
-              Source: docs/ML.md · no real trip has contributed a label yet
+              Source: docs/ML.md · pipeline 2 · synthetic Brier 0.1612 vs engine 0.1674 ·
+              ECE 0.0238
             </p>
           </div>
           <footer class="foot">
             <span class="label">PlanMyTrip.health</span>
-            <span class="label">09 / 09</span>
+            <span class="label">09 / 10</span>
           </footer>
         </section>
+
+        <!-- 10 — Appendix: the data asset -->
+        <section class="slide" aria-label="10 of 10">
+          <header class="head">
+            <div class="rule-ink"></div>
+            <h2 class="title">Data</h2>
+          </header>
+          <div class="content">
+            <div class="asset-grid">
+              <table class="record">
+                <tbody>
+                  <tr>
+                    <th class="label rowhead">Request</th>
+                    <td class="small">where · days · condition · medication</td>
+                  </tr>
+                  <tr>
+                    <th class="label rowhead">Engine</th>
+                    <td class="small">score · ceiling · dose</td>
+                  </tr>
+                  <tr>
+                    <th class="label rowhead">Plan</th>
+                    <td class="small">concierge or fallback · computed dose</td>
+                  </tr>
+                  <tr>
+                    <th class="label rowhead">Verify</th>
+                    <td class="small">specialist summaries · TinyFish findings</td>
+                  </tr>
+                  <tr>
+                    <th class="label rowhead">Consent</th>
+                    <td class="small">opt-in · random install id</td>
+                  </tr>
+                  <tr>
+                    <th class="label rowhead">Outcome</th>
+                    <td class="small">flare · care · adherence</td>
+                  </tr>
+                </tbody>
+              </table>
+              <table class="scale">
+                <thead>
+                  <tr>
+                    <th class="label">Evidence</th>
+                    <th class="label">Unlocks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td class="small">0 trips</td><td class="small">Engine only</td></tr>
+                  <tr><td class="small">50+ trips</td><td class="small">Pooled calibration</td></tr>
+                  <tr>
+                    <td class="small">200+ / condition</td>
+                    <td class="small">Condition intercepts</td>
+                  </tr>
+                  <tr>
+                    <td class="small">1,000+ trips</td>
+                    <td class="small">Adherence, heat, altitude</td>
+                  </tr>
+                  <tr><td class="small">2,000+ person-days</td><td class="small">Daily hazard</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="body asset-line">
+              The prescribed <span class="accent">dose</span> is the part nobody else owns.
+            </p>
+            <p class="label sources">
+              PostgreSQL · consented · no free text · install-scoped
+            </p>
+          </div>
+          <footer class="foot">
+            <span class="label">PlanMyTrip.health</span>
+            <span class="label">10 / 10</span>
+          </footer>
+        </section>
+
       </main>
     </div>
     <script src="/pitch/deck.js"></script>
