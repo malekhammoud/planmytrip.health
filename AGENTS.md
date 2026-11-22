@@ -68,6 +68,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 32. Consistent TinyFish recovery | [x] | `fix(api): recover interrupted TinyFish runs and retry once` |
 | 33. Exact current starting point | [x] | `fix(onboarding): use exact current location for starting point` |
 | 34. Trips up to 20 days | [x] | `feat(engine): support trips up to 20 days` |
+| 35. Cached agent recordings | [x] | `feat(ui): surface cached agent recordings` |
 
 ## 3. Commands
 
@@ -165,7 +166,7 @@ lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditi
       geocode: types.ts (place contracts), search.ts (Photon/Nominatim search and reverse)
       mapTiles.ts (shared tile URL and attribution)
 hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, swarmBatch.ts, useNow.ts, useElapsed.ts, useReducedMotion.ts, usePhaseAnnouncement.ts, usePlanMotion.ts, useAgentPlan.ts, plannerStream.ts, plannerFrames.ts
-components/  Onboarding.tsx, LocationField.tsx, LocationPickerDialog.tsx, PlannerHome.tsx, PlanWorkspace.tsx, WorkspaceSection.tsx, SiteChrome.tsx, CommandBar.tsx, CommandDock.tsx, LiveRail.tsx, PlanPanel.tsx, DayFocus.tsx, SaveTripButton.tsx, SavedTripView.tsx, DeleteSavedTripButton.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, RoutePanel.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, VerificationAdjustments.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
+components/  Onboarding.tsx, LocationField.tsx, LocationPickerDialog.tsx, CachedRecordings.tsx, PlannerHome.tsx, PlanWorkspace.tsx, WorkspaceSection.tsx, SiteChrome.tsx, CommandBar.tsx, CommandDock.tsx, LiveRail.tsx, PlanPanel.tsx, DayFocus.tsx, SaveTripButton.tsx, SavedTripView.tsx, DeleteSavedTripButton.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, RoutePanel.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, VerificationAdjustments.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
 components/mission/  MissionControl.tsx, StatusBar.tsx, FocusView.tsx, WorkerTile.tsx, ActivityFeed.tsx, TempoStrip.tsx, SourcesList.tsx, FindingsReveal.tsx, PreRun.tsx, ConnectionStatus.tsx, Elapsed.tsx, missionMeta.ts
 components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Disclosure.tsx, Field.tsx, LinkButton.tsx, Metric.tsx, NumberInput.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, numberInput.ts (clampInteger), sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
 public/pitch/  index.html, deck.css, deck.js, basil.jpg, fonts/
@@ -222,7 +223,10 @@ A live miss writes the finished result after the terminal frame. When `TINYFISH_
 the swarm runner asks TinyFish for a recording; `tinyfishRuns.ts` reads the run-detail
 `video_url`, `recordings.ts` archives the WebM under `PLANMYTRIP_RECORDINGS_DIR`, and
 `/api/recordings/[id]` serves it only to a signed-in user. `FocusView` plays the recording
-after the live frame ends. Cache keys exclude origin, run id, install id, and Clerk identity;
+after the live frame ends. A cached plan also renders `CachedRecordings` under its cache
+callout, a closed-by-default archive of the same videos, so recordings are discoverable
+without opening the verification section. Both players use `preload="none"` and load only
+when played. Cache keys exclude origin, run id, install id, and Clerk identity;
 the cache writes no training label and never runs for mock data. `npm run cache:seed` can seed
 a verification row from an existing capture or a planner row from a saved JSON file.
 
@@ -526,8 +530,8 @@ focused `FocusView` is a 16:10 surface frame with a 32px chrome bar: phase glyph
 preview host, a pulsing LIVE marker, elapsed time, `step n of 150 max`, and an Expand action
 using the Fullscreen API. Beneath it the "Now" line crossfades on a real purpose change and
 the tempo strip draws five-second buckets from accepted steps. Completion shows "Run complete"
-for one second, auto-follows the next active worker, and replaces the iframe with a static
-"Stream ended" frame after 1.5s.
+for one second, auto-follows the next active worker, and replaces the iframe with the
+archived recording when one exists, or a static "Stream ended" frame after 1.5s.
 
 `ActivityFeed` is a 320px internal scroller with All, Advisory, Pharmacy, and Coverage filters.
 Lines carry `+MM:SS`, a worker tag, and the real purpose. The newest line types at about 40

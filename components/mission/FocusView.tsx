@@ -158,7 +158,7 @@ export function FocusView({ worker, state, visible, onRetry }: FocusViewProps) {
           <video
             controls
             playsInline
-            preload="metadata"
+            preload="none"
             aria-label={`${meta.name} recorded browser run`}
             className="h-full w-full bg-ink object-contain"
           >

@@ -122,6 +122,10 @@ export function PlanWorkspace({
     [plan, trip.condition, verificationFindings, adjustmentMaster, disabledAdjustments],
   );
   const verification = swarmSummary(swarm.state);
+  const recordedRuns = WORKER_IDS.flatMap((worker) => {
+    const recordingUrl = swarm.state.workers[worker].recordingUrl;
+    return recordingUrl === null ? [] : [{ worker, url: recordingUrl }];
+  });
   const checksLive = isSwarmLive(swarm.state);
   const stage = missionStage(state);
   const mode = surfaceMode(stage);
@@ -234,6 +238,7 @@ export function PlanWorkspace({
               onRetry={retry}
               activeDay={activeDay}
               onSelectDay={setActiveDay}
+              recordings={recordedRuns}
             />
           </WorkspaceSection>
 
@@ -260,6 +265,9 @@ export function PlanWorkspace({
                 />
                 {verification.running} running · {verification.steps} steps ·{" "}
                 {verification.sources} sources · {verification.findings}/3 findings
+                {recordedRuns.length > 0
+                  ? ` · ${recordedRuns.length} recordings`
+                  : ""}
               </span>
             }
             active={checksActive}

@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { AgentPlanView } from "@/components/AgentPlanView";
+import { CachedRecordings, type CachedRecording } from "@/components/CachedRecordings";
 import { Button, Callout, Skeleton } from "@/components/ui";
 import {
   PLANNER_AGENTS,
@@ -31,6 +32,8 @@ export interface PlanPanelProps {
   /** The day highlighted on the map and in the route, owned by the workspace. */
   activeDay: number | null;
   onSelectDay: (day: number | null) => void;
+  /** Recorded worker runs carried by a cached verification. */
+  recordings?: readonly CachedRecording[];
 }
 
 const ROUTE_PATH =
@@ -171,6 +174,7 @@ export function PlanPanel({
   onRetry,
   activeDay,
   onSelectDay,
+  recordings = [],
 }: PlanPanelProps) {
   const mockNote = state.mock ? (
     <div className="mb-4">
@@ -205,6 +209,7 @@ export function PlanPanel({
       <div>
         {mockNote}
         {cachedNote}
+        <CachedRecordings recordings={recordings} />
         <AgentPlanView
           plan={state.plan}
           visible={visible}

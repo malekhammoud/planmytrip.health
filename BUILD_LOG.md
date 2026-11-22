@@ -949,6 +949,22 @@ thresholds and Sun Life stability window remain VERIFY.
   review read "20 days in London, Ontario". No horizontal overflow at 390.
 - Gate: typecheck, 597 tests, lint, and production build pass.
 
+### Step 35: cached agent recordings
+
+- Cached plans now render `CachedRecordings` under the cached-plan callout: a closed-by-default
+  archive listing the archived browser runs with one native video player per worker. The
+  disclosure summary reads "3 videos · cached", so the recordings are discoverable even when
+  the verification section is folded.
+- The verification summary also names the recording count, and the full mission control keeps
+  its existing recorded-run players. Both caches use `preload="none"`, so the archive does not
+  duplicate recording requests until a reader presses play.
+- Recordings remain authenticated same-origin WebM files; no live preview URL is reused.
+- Production check on the cached London plan: "Recorded agent runs · 3 videos · cached" was
+  visible under the cached-plan callout, the verification summary read "3 recordings", and
+  opening the archive listed all three authenticated WebM sources. The first recording played
+  to 2.5s with `readyState` 4 and no media error.
+- Gate: typecheck, 597 tests, lint, and production build pass.
+
 ## Next action
 
 Rehearse the cached London, Ontario demo end to end: sign in, enter London (try both "London,
