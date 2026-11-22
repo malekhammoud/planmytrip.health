@@ -35,6 +35,7 @@ import {
   type SpecialistResult,
 } from "./agentParse";
 import { reconcileDayCaps } from "@/lib/data/dose";
+import { TRIP_DAYS_MAX } from "@/lib/healthTripTypes";
 
 const DAY_BLOCK_KINDS: readonly PlanBlockKind[] = [
   "transit",
@@ -354,7 +355,7 @@ export function normalizeWirePlan(value: unknown): AgentTripPlan | null {
     ? reconcileDayCaps(
         value.days
           .map((day, index) => asPlanDay(day, index, caps, lookup))
-          .slice(0, 7),
+          .slice(0, TRIP_DAYS_MAX),
         places,
       )
 

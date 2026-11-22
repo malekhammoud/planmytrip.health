@@ -75,7 +75,7 @@ describe("POST /api/agent-plan", () => {
       new Request("http://localhost:3000/api/agent-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...body, days: 20 }),
+        body: JSON.stringify({ ...body, days: 21 }),
       }),
     );
     expect(response.status).toBe(400);

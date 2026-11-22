@@ -35,11 +35,12 @@ describe("onboarding draft", () => {
     ).toMatchObject({
       destination: "Lisbon, Portugal",
       origin: "Toronto, ON",
-      days: 7,
+      days: 20,
       medication: "albuterol",
       interests: "quiet food",
     });
     expect(normalizeTripConfig({ ...DEFAULT_TRIP, days: 1 }).days).toBe(2);
+    expect(normalizeTripConfig({ ...DEFAULT_TRIP, days: 30 }).days).toBe(20);
   });
 
   it("keeps the selected transport", () => {

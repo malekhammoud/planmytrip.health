@@ -46,7 +46,7 @@ export const SUN_LIFE_RULES = {
 
 /**
  * Check trip length against the modeled Sun Life rules. Accepts any positive integer
- * tripDays so the 60-day cap is testable beyond the planner's 2-7 day range.
+ * tripDays so the 60-day cap is testable beyond the planner's 2-20 day range.
  */
 export function checkSunLifeCoverage(
   tripDays: number,

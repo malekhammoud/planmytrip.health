@@ -110,7 +110,7 @@ describe("input validation", () => {
       { input: { ...BASE_INPUT, destination: "" }, code: "invalid_destination", field: "destination" },
       { input: { ...BASE_INPUT, destination: "   " }, code: "invalid_destination", field: "destination" },
       { input: { ...BASE_INPUT, days: 1 }, code: "invalid_days", field: "days" },
-      { input: { ...BASE_INPUT, days: 8 }, code: "invalid_days", field: "days" },
+      { input: { ...BASE_INPUT, days: 21 }, code: "invalid_days", field: "days" },
       { input: { ...BASE_INPUT, days: 2.5 }, code: "invalid_days", field: "days" },
       {
         input: { ...BASE_INPUT, condition: "diabetes" as unknown as Condition },
@@ -199,7 +199,7 @@ describe("module boundaries and re-exports", () => {
     expect(computeHealthScores).toBe(computeHealthScoresModule);
     expect(PACING_POLICY).toBe(PACING_POLICY_MODULE);
     expect(TRIP_DAYS_MIN).toBe(2);
-    expect(TRIP_DAYS_MAX).toBe(7);
+    expect(TRIP_DAYS_MAX).toBe(20);
   });
 
   it("uses the documented pacing policy", () => {
@@ -230,7 +230,7 @@ describe("module boundaries and re-exports", () => {
   it("rejects out-of-range days through the builder boundary", () => {
     const error = captureInputError(() =>
       buildItinerary(
-        8,
+        21,
         CONDITION_PROFILES.asthma_respiratory,
         "asthma_respiratory",
         "Tokyo, Japan",

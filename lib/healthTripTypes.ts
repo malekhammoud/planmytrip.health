@@ -12,7 +12,7 @@ import type { Condition } from "./types";
 export const TRIP_DAYS_MIN = 2;
 
 /** Inclusive upper bound for a supported trip length. */
-export const TRIP_DAYS_MAX = 7;
+export const TRIP_DAYS_MAX = 20;
 
 /** Caller-supplied plan inputs. Destination and medication are labels only. */
 export interface HealthTripInput {

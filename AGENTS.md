@@ -67,6 +67,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 31. Numeric duration and budget slider | [x] | `feat(onboarding): use a day field and budget slider` |
 | 32. Consistent TinyFish recovery | [x] | `fix(api): recover interrupted TinyFish runs and retry once` |
 | 33. Exact current starting point | [x] | `fix(onboarding): use exact current location for starting point` |
+| 34. Trips up to 20 days | [x] | `feat(engine): support trips up to 20 days` |
 
 ## 3. Commands
 
@@ -475,7 +476,7 @@ pin. `Pick on map` opens `LocationPickerDialog`, a mounted-only modal Leaflet ma
 pin, reverse-geocodes the exact point, and fills the field only after a place is named.
 Suggestions, current location, and the map all write a canonical label into the controlled
 text, and the map picker returns focus to its field. Duration is a bounded integer field
-(2-7 days), not a slider. Budget is a three-stop slider over Value, Balanced, and Premium.
+(2-20 days), not a slider. Budget is a three-stop slider over Value, Balanced, and Premium.
 Step 02 collects condition, medication (name only), Sun Life coverage, the anonymous capture
 opt-in, the live coverage alert, and a review sentence.
 The left column explains the three jobs; the right column is a 420px form on desktop and stacks
@@ -1042,7 +1043,7 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 528 tests. Database-backed
+`npm test` runs Vitest once in a Node environment. The suite has 597 tests. Database-backed
 files skip when `DATABASE_URL` is absent. `tests/mocks/clerk-server.ts` replaces
 `@clerk/nextjs/server` in Vitest so route handlers can run outside Next's server boundary;
 proxy and Clerk provider behavior are covered by a production build and live request checks,
@@ -1050,7 +1051,7 @@ not by the unit suite.
 
 - `tests/design-guard.test.ts` and `tests/contrast.test.ts` guard styles and 13 WCAG AA token
   pairs; `tests/smoke.test.ts` covers the five conditions.
-- `lib/healthTripEngine*.test.ts` covers every condition x 2-7 days, caps, invariants,
+- `lib/healthTripEngine*.test.ts` covers every condition x 2-20 days, caps, invariants,
   recovery, scores, determinism, Sun Life, validation, docs, and re-exports. Shared input is
   in `tests/healthTripFixtures.ts`.
 - `lib/tinyfish*.test.ts`, `lib/swarmGoals.test.ts`, `lib/swarmTypes.test.ts`,
@@ -1156,6 +1157,12 @@ exempting lines.
   the exact cache hit returned in 269 ms and the signed-in onboarding click reached a ready
   plan in 582 ms. If the OpenCode service itself is still starting, the first request still
   waits; the mission band names that wait but cannot shorten it.
+- Trips are supported from 2 to 20 days. The modeled trip-length pressure saturates at seven
+  days, so an 8-20 day trip carries the same length pressure as a seven-day trip rather than a
+  new, unvalidated curve. The daily pacing factors stay the same for every middle day; a
+  clinician should review cumulative load and rest-day spacing before a long-trip pilot. The
+  synthetic model cohort was trained on shorter trips, so long-trip predictions are an
+  extrapolation.
 - The workspace is intentionally one long page. On a phone, live verification sits below the
   full safety envelope; both streams keep running while the reader scrolls. Do not reintroduce
   tabs to shorten it.

@@ -54,10 +54,14 @@ describe("parsePlannerRequest", () => {
     });
   });
 
+  it("accepts a 20-day trip", () => {
+    expect(parsePlannerRequest({ ...valid, days: 20 })).toMatchObject({ days: 20 });
+  });
+
   it.each([
     ["destination", { ...valid, destination: "   " }],
     ["days low", { ...valid, days: 1 }],
-    ["days high", { ...valid, days: 8 }],
+    ["days high", { ...valid, days: 21 }],
     ["days fraction", { ...valid, days: 3.5 }],
     ["condition", { ...valid, condition: "unknown" }],
     ["medication", { ...valid, medication: 3 }],

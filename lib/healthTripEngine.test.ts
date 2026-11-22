@@ -152,6 +152,13 @@ describe("determinism and score variation", () => {
     }
   });
 
+  it("saturates trip-length pressure at seven days", () => {
+    const seven = planFor("asthma_respiratory", 7);
+    const twenty = planFor("asthma_respiratory", 20);
+    expect(twenty.healthSafetyScore).toBe(seven.healthSafetyScore);
+    expect(twenty.itinerary).toHaveLength(20);
+  });
+
   it("lowers the score when exposure rises and recovery disappears", () => {
     const profile = CONDITION_PROFILES.asthma_respiratory;
     const baseDay: HealthTripDay = {

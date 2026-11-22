@@ -138,7 +138,7 @@ export type AdherenceLevel = "less" | "same" | "more";
 
 /**
  * The post-trip label. `flare` is required: a missing answer is not a negative.
- * `flareDay` is 1-7 during the trip, or 0 for after return.
+ * `flareDay` is 1-20 during the trip, or 0 for after return.
  */
 export interface OutcomeRecord {
   flare: boolean;

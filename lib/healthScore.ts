@@ -8,7 +8,6 @@
 
 import {
   ItineraryInvariantError,
-  TRIP_DAYS_MAX,
   TRIP_DAYS_MIN,
   type ConditionProfile,
   type DayLoad,
@@ -22,6 +21,9 @@ import {
  * conservative 0.5 m stride used only to convert modeled steps to distance, not a
  * clinical measure.
  */
+/** The trip length at which modeled trip-length pressure saturates. */
+const TRIP_LENGTH_PRESSURE_DAYS = 7;
+
 export const MODELED_LOAD_ASSUMPTIONS = {
   stepsPerExertionMinute: { 1: 6, 2: 26, 3: 55 },
   kmPerStep: 0.0005,
@@ -101,7 +103,8 @@ function clampScore(value: number): number {
  * ceiling. Exertion load is duration-weighted 1-3, normalized from rest to hard; the
  * condition ceiling is enforced through the step and walking exposure. Recovery
  * coverage compares planned recovery minutes with recoveryMinutes x days.
- * Trip-length pressure rises from 0 at 2 days to 1 at 7 days. Planned pressure weights
+ * Trip-length pressure rises from 0 at 2 days to 1 at 7 days and stays saturated for
+ * longer supported trips. Planned pressure weights
  * exposure 45%, exertion 20%, recovery gap 20%, and trip length 15%. Safety =
  * 100 - (residualRiskFloor + (100 - floor) * pressure). Baseline uses weights
  * 55/20/15/10, the same floor, and no recovery. riskReductionPct =
@@ -131,8 +134,10 @@ export function computeHealthScores(
       loads.reduce((sum, load) => sum + load.recoveryMinutes, 0) /
         Math.max(1, profile.recoveryMinutes * days),
     );
-  const tripLengthPressure =
-    (days - TRIP_DAYS_MIN) / (TRIP_DAYS_MAX - TRIP_DAYS_MIN);
+  const tripLengthPressure = clampRatio(
+    (Math.min(days, TRIP_LENGTH_PRESSURE_DAYS) - TRIP_DAYS_MIN) /
+      (TRIP_LENGTH_PRESSURE_DAYS - TRIP_DAYS_MIN),
+  );
   const plannedPressure = clampRatio(
     assumptions.plannedWeights.exposure * exposurePressure +
       assumptions.plannedWeights.exertion * exertionPressure +

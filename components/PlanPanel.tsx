@@ -131,6 +131,11 @@ function RouteForming({
         })}
       </div>
 
+      {days > slots.length ? (
+        <p className="t-data-sm mt-4 text-muted">
+          Showing the first {slots.length} of {days} day slots.
+        </p>
+      ) : null}
       <div className="mt-2 grid grid-cols-1 gap-6 border-t border-hairline pt-5 sm:grid-cols-3">
         {slots.map((day) => (
           <div key={day}>

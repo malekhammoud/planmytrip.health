@@ -310,6 +310,24 @@ describe("normalizeWirePlan", () => {
     expect(wire?.places[0]?.sourceUrl).toBe("https://example.com/hotel-a");
   });
 
+  it("keeps all 20 supported days", () => {
+    const longCaps: PlannerCapInput[] = Array.from({ length: 20 }, (_, index) => ({
+      day: index + 1,
+      stepCap: 3150,
+      walkingCapKm: 1.8,
+      checkpoint: "Checkpoint",
+    }));
+    const plan = buildConciergePlan(
+      raw,
+      { ...request, days: 20 },
+      research(),
+      longCaps,
+      "2026-11-21T10:00:00.000Z",
+    );
+    const wire = normalizeWirePlan(JSON.parse(JSON.stringify(plan)));
+    expect(wire?.days).toHaveLength(20);
+  });
+
   it("keeps block place ids across the wire so the map and day links survive", () => {
     const plan = buildConciergePlan(raw, request, research(), caps, "2026-11-21T10:00:00.000Z");
     const wire = normalizeWirePlan(JSON.parse(JSON.stringify(plan)));

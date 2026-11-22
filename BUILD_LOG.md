@@ -927,8 +927,27 @@ thresholds and Sun Life stability window remain VERIFY.
 - The starting-point status now reads "Using your current location."; the destination keeps
   "Using your current city." A failed reverse lookup tells the reader to type the location
   instead, and the map picker remains the precise fallback.
-- Gate: typecheck, 528 tests, lint, and production build pass. Production browser checks are
-  recorded below after the deploy.
+- Production check after deploy: with the simulated position at Museum London, Starting from
+  filled `Museum London, London, Ontario, Canada` and showed "Using your current location.",
+  rather than the city label. The destination field still uses city mode.
+- Gate: typecheck, 528 tests, lint, and production build pass.
+
+### Step 34: trips up to 20 days
+
+- Raised `TRIP_DAYS_MAX` from 7 to 20 in the engine, planner request parser, onboarding
+  normalization, and wire-plan normalizer. The duration field now accepts and clamps 2-20.
+- Kept the health-score trip-length pressure saturated at seven days, so existing 2-7 day
+  scores are unchanged and longer trips do not receive a new unvalidated curve. The daily
+  pacing factors, recovery blocks, and per-day caps are unchanged.
+- Extended the outcome contract to keep a flare day up to 20; the public form still asks only
+  whether a flare occurred within seven days after the trip.
+- Expanded the engine matrix to every condition x 2-20 days, updated validation and parser
+  tests, and added a 20-day flare-day boundary case. The long-trip caveat is recorded in
+  AGENTS.md section 12.
+- Production check: the duration field rendered min 2 and max 20, the hint read "2 to 20
+  days.", and typing 25 clamped to 20. With 20 days and a London destination, the step-two
+  review read "20 days in London, Ontario". No horizontal overflow at 390.
+- Gate: typecheck, 597 tests, lint, and production build pass.
 
 ## Next action
 
@@ -940,8 +959,10 @@ and confirm the Photon and TinyFish recording terms before a paid launch. Try th
 controls on a real phone: the permission prompt, current-location reverse lookup, map pin, and
 the autocomplete dropdown at 390px. During the next live verification, watch
 `/var/log/planmytrip.log` for `[swarm]` recovery, retry, and failure lines; a recovered run
-should show a run-record check rather than a worker error. Enable Google in the Clerk
-dashboard with a production Google OAuth client ID and secret, then
+should show a run-record check rather than a worker error. Before offering 20-day trips in a
+pilot, have a clinician review cumulative load and rest-day spacing; the health-score trip
+pressure saturates at seven days and the synthetic cohort is shorter. Enable Google in the
+Clerk dashboard with a production Google OAuth client ID and secret, then
 verify the Google button and a real sign-up. Have the first user sign up, save a plan, reopen
 it from `/trips`, and delete it. Confirm the Clerk email and account-portal DNS records. Run a
 consented pilot cohort against

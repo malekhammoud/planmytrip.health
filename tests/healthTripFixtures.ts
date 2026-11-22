@@ -22,7 +22,7 @@ export const BASE_INPUT: HealthTripInput = {
 };
 
 /** Every supported trip length, in the required order. */
-export const TRIP_LENGTHS = [2, 3, 4, 5, 6, 7] as const;
+export const TRIP_LENGTHS = Array.from({ length: 19 }, (_, index) => index + 2);
 
 /** Build a plan with a valid default medication for the requested condition. */
 export function planFor(

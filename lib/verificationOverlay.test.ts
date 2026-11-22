@@ -59,7 +59,7 @@ function recoveryMinutes(plan: HealthTripPlan, dayIndex: number): number {
 describe("applyVerification", () => {
   it("only tightens recovery and never changes caps or scores for every condition and length", () => {
     for (const condition of CONDITIONS) {
-      for (let days = 2; days <= 7; days += 1) {
+      for (let days = 2; days <= 20; days += 1) {
         const base = build(condition, days);
         const result = applyVerification(base, { condition }, [advisory, coverage]);
         expect(result.plan.healthSafetyScore).toBe(base.healthSafetyScore);

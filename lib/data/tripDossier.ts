@@ -9,7 +9,7 @@
 
 import { CONDITION_PROFILES } from "../conditionProfiles";
 import type { AgentTripPlan } from "../agent/agentTypes";
-import type { HealthTripPlan } from "../healthTripTypes";
+import { TRIP_DAYS_MAX, type HealthTripPlan } from "../healthTripTypes";
 import { computeEngineDose, computePlannerDose, computeTripFeatures } from "./dose";
 import {
   CONSENT_VERSION,
@@ -120,7 +120,7 @@ export function parseOutcome(
     typeof rawDay === "number" &&
     Number.isInteger(rawDay) &&
     rawDay >= 0 &&
-    rawDay <= 7
+    rawDay <= TRIP_DAYS_MAX
       ? rawDay
       : null;
   const severity = oneOf(body.severity, SEVERITIES);

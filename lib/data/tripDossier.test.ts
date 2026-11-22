@@ -185,6 +185,19 @@ describe("parseOutcome", () => {
     expect(outcome?.notes).toBeNull();
   });
 
+  it("accepts a flare day up to 20 and drops a day beyond it", () => {
+    const kept = parseOutcome(
+      { flare: true, flareDay: 20 },
+      "2026-11-21T10:00:00.000Z",
+    );
+    const dropped = parseOutcome(
+      { flare: true, flareDay: 21 },
+      "2026-11-21T10:00:00.000Z",
+    );
+    expect(kept?.flareDay).toBe(20);
+    expect(dropped?.flareDay).toBeNull();
+  });
+
   it("drops free text on the public contract", () => {
     const outcome = parseOutcome(
       { flare: false, notes: "A private detail." },

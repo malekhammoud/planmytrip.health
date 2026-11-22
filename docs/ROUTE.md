@@ -46,7 +46,7 @@ slots in optimized order.
 ### 2. Ordering
 
 The problem is an open-path TSP per day: start at the base, visit each stop once, end at the
-last stop. With at most 32 places and 7 days it is solved with heuristics, not a solver
+last stop. With at most 32 places and 20 days it is solved with heuristics, not a solver
 dependency:
 
 1. **Nearest-neighbour seed** — greedily visit the closest unvisited stop. O(n²). Ties break on
