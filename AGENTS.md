@@ -66,6 +66,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 30. Starting-point location tools | [x] | `feat(onboarding): add location tools to starting point` |
 | 31. Numeric duration and budget slider | [x] | `feat(onboarding): use a day field and budget slider` |
 | 32. Consistent TinyFish recovery | [x] | `fix(api): recover interrupted TinyFish runs and retry once` |
+| 33. Exact current starting point | [x] | `fix(onboarding): use exact current location for starting point` |
 
 ## 3. Commands
 
@@ -468,14 +469,15 @@ aborts older streams.
 gate), duration, budget, and optional preferences. Destination and the optional starting point
 are both `LocationField` comboboxes: typing searches `/api/geocode/search` after a 220ms
 debounce and offers at most six city or place rows. `Use current location` reads the browser
-position and reverse-geocodes it to a city label through `/api/geocode/reverse`; `Pick on map`
-opens `LocationPickerDialog`, a mounted-only modal Leaflet map that places a pin,
-reverse-geocodes the exact point, and fills the field only after a place is named. Suggestions,
-current location, and the map all write a canonical label into the controlled text, and the
-map picker returns focus to its field. Duration is a bounded integer field (2-7 days), not a
-slider. Budget is a three-stop slider over Value, Balanced, and Premium. Step 02 collects
-condition, medication (name only), Sun Life coverage, the anonymous capture opt-in, the live
-coverage alert, and a review sentence.
+position through `/api/geocode/reverse`. Destination asks for the city label; starting point
+asks for the exact place and enables high-accuracy positioning, so it is as specific as a map
+pin. `Pick on map` opens `LocationPickerDialog`, a mounted-only modal Leaflet map that places a
+pin, reverse-geocodes the exact point, and fills the field only after a place is named.
+Suggestions, current location, and the map all write a canonical label into the controlled
+text, and the map picker returns focus to its field. Duration is a bounded integer field
+(2-7 days), not a slider. Budget is a three-stop slider over Value, Balanced, and Premium.
+Step 02 collects condition, medication (name only), Sun Life coverage, the anonymous capture
+opt-in, the live coverage alert, and a review sentence.
 The left column explains the three jobs; the right column is a 420px form on desktop and stacks
 below at 1024. There is no deploy action before the form is complete. The draft helpers live in
 `lib/onboarding.ts` and are pure-tested.
@@ -1183,10 +1185,13 @@ exempting lines.
   automatic retention sweep yet; confirm storage, privacy, and deletion policy before a pilot.
 - Location autocomplete, current location, and the map picker depend on browser permission
   and the configured geocoder. A denied permission or a provider outage leaves the typed city
-  usable; the UI never fills an unverified place. The map pin becomes a destination label, not
-  a stored coordinate, so the itinerary still derives venue points from verified research.
-  Production currently uses Photon's public endpoint; confirm its quota, attribution, and
-  retention terms, and verify the permission copy with real users before a pilot.
+  usable; the UI never fills an unverified place. Destination current location resolves to a
+  city; starting point asks for the exact place and requests high-accuracy positioning. A
+  desktop browser without GPS can still be approximate, so the map picker remains the precise
+  fallback. The map pin becomes a destination label, not a stored coordinate; the itinerary
+  still derives venue points from verified research. Production currently uses Photon's public
+  endpoint; confirm its quota, attribution, and retention terms, and verify the permission copy
+  with real users before a pilot.
 - Consent and privacy: the destination, condition, medication name, and preferences are sent
   to the configured OpenCode model provider; place queries and a current-location coordinate
   go to the configured geocoder (Nominatim or Photon). Account identity and sessions are

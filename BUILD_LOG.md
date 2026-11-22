@@ -919,6 +919,17 @@ thresholds and Sun Life stability window remain VERIFY.
   mocked recovery tests; a real provider stream was not forced to drop.
 - Gate: typecheck, 528 tests, lint, and production build pass.
 
+### Step 33: exact current starting point
+
+- Split the current-location behavior by field. Destination still resolves to the nearest city
+  label; Starting from now calls the same reverse-geocode `mode=place` path as the map picker,
+  writes the exact named place, and requests high-accuracy positioning with a fresh fix.
+- The starting-point status now reads "Using your current location."; the destination keeps
+  "Using your current city." A failed reverse lookup tells the reader to type the location
+  instead, and the map picker remains the precise fallback.
+- Gate: typecheck, 528 tests, lint, and production build pass. Production browser checks are
+  recorded below after the deploy.
+
 ## Next action
 
 Rehearse the cached London, Ontario demo end to end: sign in, enter London (try both "London,

@@ -31,6 +31,11 @@ export interface LocationFieldProps {
   placeholder?: string;
   /** Field noun used in the list label, status copy, and map dialog, e.g. "destination". */
   label?: string;
+  /**
+   * What "use current location" writes. `city` fills the nearest city (destination);
+   * `place` fills the exact reverse-geocoded place (starting point, same as a map pin).
+   */
+  currentLocationMode?: "city" | "place";
 }
 
 type StatusTone = "muted" | "risk";
@@ -54,6 +59,7 @@ export function LocationField({
   "aria-invalid": invalid,
   placeholder,
   label = "destination",
+  currentLocationMode = "city",
 }: LocationFieldProps) {
   const [suggestions, setSuggestions] = useState<readonly GeocodePlace[]>([]);
   const [open, setOpen] = useState(false);
@@ -202,7 +208,7 @@ export function LocationField({
         void (async () => {
           try {
             const response = await fetch(
-              `/api/geocode/reverse?lat=${position.coords.latitude.toFixed(6)}&lon=${position.coords.longitude.toFixed(6)}&mode=city`,
+              `/api/geocode/reverse?lat=${position.coords.latitude.toFixed(6)}&lon=${position.coords.longitude.toFixed(6)}&mode=${currentLocationMode}`,
               { headers: { Accept: "application/json" } },
             );
             const body: unknown = await response.json();
@@ -210,14 +216,28 @@ export function LocationField({
             if (!mountedRef.current) return;
             if (place === null) {
               setTone("risk");
-              setStatus("We found your position but could not name the city. Type it instead.");
+              setStatus(
+                currentLocationMode === "place"
+                  ? "We found your position but could not name the location. Type it instead."
+                  : "We found your position but could not name the city. Type it instead.",
+              );
               return;
             }
-            selectPlace(place, place.cityLabel, "Using your current city.");
+            selectPlace(
+              place,
+              currentLocationMode === "place" ? place.label : place.cityLabel,
+              currentLocationMode === "place"
+                ? "Using your current location."
+                : "Using your current city.",
+            );
           } catch {
             if (mountedRef.current) {
               setTone("risk");
-              setStatus("We found your position but could not name the city. Type it instead.");
+              setStatus(
+                currentLocationMode === "place"
+                  ? "We found your position but could not name the location. Type it instead."
+                  : "We found your position but could not name the city. Type it instead.",
+              );
             }
           } finally {
             if (mountedRef.current) setGeolocating(false);
@@ -230,7 +250,11 @@ export function LocationField({
         setTone("risk");
         setStatus(statusForLocationError(error));
       },
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 300_000 },
+      {
+        enableHighAccuracy: currentLocationMode === "place",
+        timeout: 15_000,
+        maximumAge: currentLocationMode === "place" ? 0 : 300_000,
+      },
     );
   }
 

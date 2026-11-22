@@ -210,6 +210,7 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
                       <LocationField
                         id={control.id}
                         label="starting point"
+                        currentLocationMode="place"
                         value={config.origin}
                         onChange={(value) => update("origin", value)}
                         aria-describedby={control["aria-describedby"]}
