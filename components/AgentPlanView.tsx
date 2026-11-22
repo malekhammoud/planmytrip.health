@@ -7,7 +7,7 @@ import { DayFocus } from "@/components/DayFocus";
 import { RoutePanel } from "@/components/RoutePanel";
 import { TripMap } from "@/components/TripMap";
 import { TripOutcomePanel } from "@/components/TripOutcomePanel";
-import { Callout } from "@/components/ui";
+import { Callout, LinkButton } from "@/components/ui";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { BUDGET_LABELS, type AgentTripPlan } from "@/lib/agent/agentTypes";
 import type { TripCaptureContext } from "@/lib/data/types";
@@ -105,10 +105,20 @@ export function AgentPlanView({
         </p>
         <p className="t-data-sm text-muted">Generated {generated(plan.generatedAt)}</p>
         {venue.length > 0 ? (
-          <p className="t-data-sm text-muted">
-            Live venue checks: {venue.filter((item) => item.kind === "menu").length} menus ·{" "}
-            {venue.filter((item) => item.kind === "hotel").length} room quotes
-          </p>
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="t-data-sm text-muted">
+              Live venue checks: {venue.filter((item) => item.kind === "menu").length} menus ·{" "}
+              {venue.filter((item) => item.kind === "hotel").length} room quotes
+            </span>
+            <LinkButton
+              variant="ghost"
+              size="sm"
+              href="#venue-deck-heading"
+              external={false}
+            >
+              View checks
+            </LinkButton>
+          </span>
         ) : null}
       </div>
 

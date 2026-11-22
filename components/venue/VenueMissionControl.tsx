@@ -227,7 +227,7 @@ export function VenueMissionControl({
   return (
     <section
       aria-labelledby="venue-deck-heading"
-      className="mt-10 border-t border-solid border-ink pt-4"
+      className="mt-10 scroll-mt-36 border-t border-solid border-ink pt-4"
     >
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">

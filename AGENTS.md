@@ -72,6 +72,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 35. Cached agent recordings | [x] | `feat(ui): surface cached agent recordings` |
 | 36. Lean onboarding headline | [x] | `feat(ui): remove onboarding explainer copy` |
 | 37. TinyFish venue evidence | [x] | `feat(venue): add live menu and hotel evidence` |
+| 38. Venue deck handoff | [x] | `fix(venue): link the plan to the venue deck` |
 
 ## 3. Commands
 

@@ -1020,6 +1020,14 @@ thresholds and Sun Life stability window remain VERIFY.
 - Docs: `docs/VENUE.md`; register gained three venue timing/schema/TTL entries.
 - Gate: typecheck, 627 tests, lint, and production build pass.
 
+### Step 38: venue deck handoff
+
+- The plan summary now shows the live venue counts with a "View checks" link to the venue
+  deck, so the TinyFish surface is discoverable without scrolling through the whole route.
+- The venue section carries scroll margin for the sticky command bar, so the jump lands with
+  the heading visible.
+- Gate: typecheck, 627 tests, lint, and production build pass.
+
 ## Next action
 
 Rehearse the TinyFish challenge demo end to end: sign in, enter London, Ontario with a start
