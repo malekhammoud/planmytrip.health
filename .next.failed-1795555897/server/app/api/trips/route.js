@@ -1,0 +1,13 @@
+var R=require("../../../chunks/[turbopack]_runtime.js")("server/app/api/trips/route.js")
+R.c("server/chunks/[root-of-the-server]__1aj73qsi8ilic._.js")
+R.c("server/chunks/lib_db_postgres_ts_1rc4e2egzwpoe._.js")
+R.c("server/chunks/lib_1yc2y5nkiqows._.js")
+R.c("server/chunks/[root-of-the-server]__1n-j3llv1u2_4._.js")
+R.c("server/chunks/node_modules_0psauw8skwdw6._.js")
+R.c("server/chunks/[root-of-the-server]__1r01cl_lxmyse._.js")
+R.c("server/chunks/node_modules_next_dist_0uh83i21o9szg._.js")
+R.c("server/chunks/_1lehfuuf72dh_._.js")
+R.c("server/chunks/lib_0m44r98wf5qoo._.js")
+R.c("server/chunks/_next-internal_server_app_api_trips_route_actions_0dhf3qewv3-0b.js")
+R.m(49617)
+module.exports=R.m(49617).exports

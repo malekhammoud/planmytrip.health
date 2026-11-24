@@ -1,0 +1,3 @@
+{
+  "/api/geocode/search/route": "app/api/geocode/search/route.js"
+}

@@ -1,0 +1,98 @@
+{
+  "node": {
+    "00125ae425c4b09830bdb1fa4440d690ef13700e41": {
+      "workers": {
+        "app/_not-found/page": {
+          "moduleId": 9101,
+          "async": false
+        },
+        "app/account/[[...account]]/page": {
+          "moduleId": 88418,
+          "async": false
+        },
+        "app/mock-browser/[worker]/page": {
+          "moduleId": 47378,
+          "async": false
+        },
+        "app/model/page": {
+          "moduleId": 81739,
+          "async": false
+        },
+        "app/page": {
+          "moduleId": 63731,
+          "async": false
+        },
+        "app/pricing/page": {
+          "moduleId": 22476,
+          "async": false
+        },
+        "app/sign-in/[[...sign-in]]/page": {
+          "moduleId": 68459,
+          "async": false
+        },
+        "app/sign-up/[[...sign-up]]/page": {
+          "moduleId": 91415,
+          "async": false
+        },
+        "app/trips/[id]/page": {
+          "moduleId": 61077,
+          "async": false
+        },
+        "app/trips/page": {
+          "moduleId": 74493,
+          "async": false
+        }
+      },
+      "filename": "node_modules/@clerk/nextjs/dist/esm/app-router/server-actions.js",
+      "exportedName": "invalidateCacheAction"
+    },
+    "00c89910949dafb6cd5e2b7af240b856140bc18ce0": {
+      "workers": {
+        "app/_not-found/page": {
+          "moduleId": 9101,
+          "async": false
+        },
+        "app/account/[[...account]]/page": {
+          "moduleId": 88418,
+          "async": false
+        },
+        "app/mock-browser/[worker]/page": {
+          "moduleId": 47378,
+          "async": false
+        },
+        "app/model/page": {
+          "moduleId": 81739,
+          "async": false
+        },
+        "app/page": {
+          "moduleId": 63731,
+          "async": false
+        },
+        "app/pricing/page": {
+          "moduleId": 22476,
+          "async": false
+        },
+        "app/sign-in/[[...sign-in]]/page": {
+          "moduleId": 68459,
+          "async": false
+        },
+        "app/sign-up/[[...sign-up]]/page": {
+          "moduleId": 91415,
+          "async": false
+        },
+        "app/trips/[id]/page": {
+          "moduleId": 61077,
+          "async": false
+        },
+        "app/trips/page": {
+          "moduleId": 74493,
+          "async": false
+        }
+      },
+      "filename": "node_modules/@clerk/nextjs/dist/esm/app-router/keyless-actions.js",
+      "exportedName": "deleteKeylessAction"
+    }
+  },
+  "edge": {},
+  "encryptionKey": "ujHlGHH8U+BIsU4br8Iru6S00a8yv0WG3B+SdwFbDio="
+}

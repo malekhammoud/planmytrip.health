@@ -1,0 +1,17 @@
+{
+  "app": {
+    "[project]/app/_not-found/page": [],
+    "[project]/app/account/[[...account]]/page": [],
+    "[project]/app/mock-browser/[worker]/page": [],
+    "[project]/app/model/page": [],
+    "[project]/app/page": [],
+    "[project]/app/pricing/page": [],
+    "[project]/app/sign-in/[[...sign-in]]/page": [],
+    "[project]/app/sign-up/[[...sign-up]]/page": [],
+    "[project]/app/trips/[id]/page": [],
+    "[project]/app/trips/page": []
+  },
+  "appUsingSizeAdjust": true,
+  "pages": {},
+  "pagesUsingSizeAdjust": false
+}

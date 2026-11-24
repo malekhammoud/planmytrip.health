@@ -23,13 +23,19 @@ const clerk = clerkMiddleware({
  * Forward only the Clerk auth headers and any response cookies; the rest of the
  * request is left untouched.
  */
-function forwardClerkResponse(result: Response): Response {
+function forwardClerkResponse(result: Response, request: NextRequest): Response {
   if (!result.headers.has("x-middleware-rewrite")) return result;
   const auth = new Headers();
   for (const [key, value] of result.headers.entries()) {
     if (key.startsWith("x-middleware-request-x-clerk-")) {
       auth.append(key.slice("x-middleware-request-".length), value);
     }
+  }
+  // Internal ops headers must survive the Clerk rewrite. They are never trusted for
+  // browser auth; the health route compares the token itself.
+  for (const key of ["x-ops-token", "x-request-id"] as const) {
+    const value = request.headers.get(key);
+    if (value !== null) auth.set(key, value);
   }
   const next = NextResponse.next({ request: { headers: auth } });
   for (const [key, value] of result.headers.entries()) {
@@ -45,5 +51,5 @@ export default async function proxy(
 ): Promise<Response> {
   const result = await clerk(request, event);
   if (!(result instanceof Response)) return NextResponse.next();
-  return forwardClerkResponse(result);
+  return forwardClerkResponse(result, request);
 }
