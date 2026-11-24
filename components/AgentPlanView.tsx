@@ -63,6 +63,8 @@ export function AgentPlanView({
 }: AgentPlanViewProps) {
   const reduced = useReducedMotion();
   const outside = plan.days.filter((day) => !day.withinCaps);
+  const menuCount = venue.filter((item) => item.kind === "menu").length;
+  const hotelCount = venue.filter((item) => item.kind === "hotel").length;
   const route = useMemo(
     () =>
       buildTripRoute({
@@ -107,8 +109,8 @@ export function AgentPlanView({
         {venue.length > 0 ? (
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="t-data-sm text-muted">
-              Live venue checks: {venue.filter((item) => item.kind === "menu").length} menus ·{" "}
-              {venue.filter((item) => item.kind === "hotel").length} room quotes
+              Live venue checks: {menuCount} {menuCount === 1 ? "menu" : "menus"} ·{" "}
+              {hotelCount} {hotelCount === 1 ? "room quote" : "room quotes"}
             </span>
             <LinkButton
               variant="ghost"

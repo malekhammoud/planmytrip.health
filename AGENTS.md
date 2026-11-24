@@ -21,7 +21,8 @@ The data loop is part of the product, not analytics: one consented dossier per r
 explicit outcome per trip, and a versioned calibration artifact. The computed dose is the
 asset; an agent's self-reported step count never enters a training row. See `docs/ML.md`.
 Planning requires a Clerk account. Saved trips are account-owned snapshots; the consented
-research capture stays anonymous and separate. See `docs/AUTH.md`.
+research capture stays anonymous and separate. See `docs/AUTH.md`. Clerk Billing sells the
+Care Circle plan; the safety envelope and care card stay free. See `docs/BILLING.md`.
 
 Sister product [IsMyTripSafe.com](https://ismytripsafe.com) is photo-led (hero photography,
 destination grid, flag emoji, score cards, stoplight metaphor, search-first landing). This
@@ -74,6 +75,9 @@ and this file agree at that commit. Only the orchestrator commits.
 | 37. TinyFish venue evidence | [x] | `feat(venue): add live menu and hotel evidence` |
 | 38. Venue deck handoff | [x] | `fix(venue): link the plan to the venue deck` |
 | 39. Venue heading scroll offset | [x] | `fix(venue): keep the venue heading below the sticky bar` |
+| 40. Public landing page and brand mark | [x] | `feat(landing): add public landing page and brand mark` |
+| 41. Clerk Billing and Care Circle | [x] | `feat(billing): add Clerk Billing plans and entitlements` |
+| 42. Reliable account links | [x] | `fix(ui): make account links use full navigation` |
 
 ## 3. Commands
 
@@ -157,12 +161,13 @@ Every tracked source file, annotated; `package-lock.json` and generated files
 (`next-env.d.ts`, `.next`, `tsconfig.tsbuildinfo`) are omitted by category.
 
 ```text
-app/  globals.css, layout.tsx, page.tsx, model/page.tsx, sign-in/[[...sign-in]]/, sign-up/[[...sign-up]]/, trips/, trips/[id]/, mock-browser/[worker]/, api/travel-swarm/route.ts, api/agent-plan/route.ts, api/recordings/[id]/route.ts, api/geocode/search/route.ts, api/geocode/reverse/route.ts, api/venue-research/route.ts, api/saved-trips/route.ts, api/saved-trips/[id]/route.ts, api/trips/route.ts, api/trips/outcome/route.ts
+app/  globals.css, layout.tsx, page.tsx, icon.svg, apple-icon.png, model/page.tsx, pricing/page.tsx, account/[[...account]]/, sign-in/[[...sign-in]]/, sign-up/[[...sign-up]]/, trips/, trips/[id]/, mock-browser/[worker]/, api/travel-swarm/route.ts, api/agent-plan/route.ts, api/recordings/[id]/route.ts, api/geocode/search/route.ts, api/geocode/reverse/route.ts, api/venue-research/route.ts, api/saved-trips/route.ts, api/saved-trips/[id]/route.ts, api/trips/route.ts, api/trips/outcome/route.ts
 lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditionProfiles.ts, sunLifeRules.ts, healthScore.ts, itineraryBuilder.ts
       swarm: swarmTypes.ts (wire contracts), swarmConfig.ts, swarmState.ts, swarmReducer.ts, swarmRunner.ts, swarmGoals.ts, swarmMock.ts, swarmTelemetry.ts, swarmErrors.ts, sse.ts, tinyfish.ts, tinyfishEvents.ts
       agent: agentTypes.ts (wire contracts), agentRequest.ts, agentProfiles.ts, agentPrompts.ts, agentConfig.ts, agentClient.ts, agentWarmup.ts, agentRunner.ts, agentSession.ts, agentParse.ts, agentPlanParse.ts, agentFallback.ts, agentGeocode.ts, agentEvents.ts, agentMock.ts, plannerReducer.ts, plannerStage.ts
       data: types.ts (versioned contract), dose.ts, tripDossier.ts, capture.ts, validation.ts, savedTrips.ts (account contract)
-      db: postgres.ts (pg pool + schema), trips.ts (capture repository), savedTrips.ts (account repository)
+      db: postgres.ts (pg pool + schema), trips.ts (capture repository), savedTrips.ts (account repository), billingUsage.ts (allowance-period plan counter)
+      billing: plans.ts (plan and feature contract), server.ts (request entitlement snapshot)
       model: types.ts, math.ts, features.ts, logistic.ts, calibration.ts, train.ts, predict.ts, artifact.ts, model.json
       output: describeTrip.ts, pacingStrip.ts, careCard.ts, planMotion.ts
       verification: verificationOverlay.ts
@@ -172,16 +177,18 @@ lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditi
       venue: types.ts (evidence and request contracts), goals.ts (menu and hotel schemas), runner.ts
       mapTiles.ts (shared tile URL and attribution)
 hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, swarmBatch.ts, useNow.ts, useElapsed.ts, useReducedMotion.ts, usePhaseAnnouncement.ts, usePlanMotion.ts, useAgentPlan.ts, useVenueResearch.ts, venueFrames.ts, plannerStream.ts, plannerFrames.ts
-components/  Onboarding.tsx, LocationField.tsx, LocationPickerDialog.tsx, CachedRecordings.tsx, PlannerHome.tsx, PlanWorkspace.tsx, WorkspaceSection.tsx, SiteChrome.tsx, CommandBar.tsx, CommandDock.tsx, LiveRail.tsx, PlanPanel.tsx, DayFocus.tsx, SaveTripButton.tsx, SavedTripView.tsx, DeleteSavedTripButton.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, RoutePanel.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, VerificationAdjustments.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
+components/  Logo.tsx, Onboarding.tsx, LocationField.tsx, LocationPickerDialog.tsx, CachedRecordings.tsx, PlannerHome.tsx, PlanWorkspace.tsx, WorkspaceSection.tsx, SiteChrome.tsx, CommandBar.tsx, CommandDock.tsx, LiveRail.tsx, PlanPanel.tsx, DayFocus.tsx, SaveTripButton.tsx, SavedTripView.tsx, DeleteSavedTripButton.tsx, UpgradeCallout.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, RoutePanel.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, VerificationAdjustments.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
+components/landing/  LandingPage.tsx, ProductShot.tsx
 components/venue/  VenueMissionControl.tsx (run bar, tabs, activity, source ledger), VenueWorkerTile.tsx, VenueLiveView.tsx (iframe, clock, fullscreen), VenueEvidencePreview.tsx, VenueEvidenceCards.tsx
 components/mission/  MissionControl.tsx, StatusBar.tsx, FocusView.tsx, WorkerTile.tsx, ActivityFeed.tsx, TempoStrip.tsx, SourcesList.tsx, FindingsReveal.tsx, PreRun.tsx, ConnectionStatus.tsx, Elapsed.tsx, missionMeta.ts
 components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Disclosure.tsx, Field.tsx, LinkButton.tsx, Metric.tsx, NumberInput.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, numberInput.ts (clampInteger), sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
 public/pitch/  index.html, deck.css, deck.js, basil.jpg, fonts/
-scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts, seed-cache.ts
+public/landing/  route-detail.webp, venue-detail.webp, safety-envelope.webp
+scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts, seed-cache.ts, clerk-billing.json
 data/  synthetic-trips.jsonl
-docs/  ML.md, MODEL_CARD.md, PITCH.md, ROUTE.md, VENUE.md, AUTH.md
-tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, model-artifact.test.ts, data-loop.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-isolation.test.ts, swarm-recovery.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, cache-route.test.ts, geocode-route.test.ts, venue-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts, mocks/clerk-server.ts
-module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, planMotion.test.ts, savedTrips.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmTypes.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/cache/: cacheKey.test.ts, planCache.test.ts, swarmCache.test.ts, cachedEvents.test.ts, venueCache.test.ts; lib/geocode/: types.test.ts, search.test.ts; lib/venue/: types.test.ts, format.test.ts, venueState.test.ts, runner.test.ts; lib/dates.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts, plannerStage.test.ts; lib/route/: geometry.test.ts, legs.test.ts, optimizer.test.ts, routePlan.test.ts, mapsLink.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts, savedTrips.test.ts, tripCache.test.ts; lib/model/: artifact.test.ts, calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts, numberInput.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts, venueFrames.test.ts
+docs/  ML.md, MODEL_CARD.md, PITCH.md, ROUTE.md, VENUE.md, AUTH.md, BILLING.md
+tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, model-artifact.test.ts, data-loop.test.ts, billing-gates.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-isolation.test.ts, swarm-recovery.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, cache-route.test.ts, geocode-route.test.ts, venue-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts, mocks/clerk-server.ts
+module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, planMotion.test.ts, savedTrips.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmTypes.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/billing/: plans.test.ts; lib/cache/: cacheKey.test.ts, planCache.test.ts, swarmCache.test.ts, cachedEvents.test.ts, venueCache.test.ts; lib/geocode/: types.test.ts, search.test.ts; lib/venue/: types.test.ts, format.test.ts, venueState.test.ts, runner.test.ts; lib/dates.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts, plannerStage.test.ts; lib/route/: geometry.test.ts, legs.test.ts, optimizer.test.ts, routePlan.test.ts, mapsLink.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts, savedTrips.test.ts, tripCache.test.ts, billingUsage.test.ts; lib/model/: artifact.test.ts, calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts, numberInput.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts, venueFrames.test.ts
 root  proxy.ts, package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, instrumentation.ts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
 ```
 
@@ -205,9 +212,10 @@ The page also owns a random install id and a per-run id; both agent POSTs carry 
 dossier; on `swarm_done` the swarm route writes bounded findings. The finished plan posts one
 explicit outcome. A missing outcome is excluded from training, never read as a negative.
 
-`app/page.tsx` is account-only: it reads `auth()` and redirects a signed-out visitor to
-`/sign-in`. The planner remains a client component under `PlannerHome`; the header carries
-`Saved trips` and the Clerk `UserButton`. `/trips` lists account-owned snapshots and
+`app/page.tsx` reads `auth()`. A signed-out visitor sees the public landing page, which
+explains the product, shows real captures, and routes to `/sign-up`; a signed-in visitor sees
+the planner under `PlannerHome`. Planning still requires an account. The signed-in header
+carries `Saved trips` and the Clerk `UserButton`. `/trips` lists account-owned snapshots and
 `/trips/[id]` reopens one. The install id and the consented research capture remain anonymous
 and are not linked to the Clerk account.
 
@@ -266,6 +274,31 @@ use `npx -y clerk@latest auth login` on the host before account-level CLI comman
 prebuilt form reads literal Paper and Ink values from `lib/clerkAppearance.ts`; Clerk does not
 resolve `var(--token)` in its own color variables. Full schema, privacy, and rollout notes are
 in `docs/AUTH.md`.
+
+### Billing and entitlements
+
+Clerk Billing is enabled for the production application. The launch catalog is
+`free_user` ("Free Preview", $0) and `care_circle` ("Care Circle", $9/month or $60/year).
+Annual is the intended plan. The instance is not opted into Clerk's separate "Annual-only
+plans" update, so the monthly interval is visible; once that update is enabled, set
+`amount` to `0` in `scripts/clerk-billing.json` and re-apply to remove it. Clerk Billing
+supports recurring subscriptions only, so the research-recommended one-time Trip Pass needs
+Stripe Checkout outside Clerk Billing.
+
+`lib/billing/plans.ts` maps Clerk plan and feature claims to explicit limits:
+`free_user` gets one live plan per calendar year, 7 days, one saved trip, no live
+verification, and no venue research. `care_circle` gets two live plans per calendar month,
+20 days, unlimited saved trips, and both live layers. The safety envelope and care card are
+always free. `lib/billing/server.ts` reads `auth()` once; every paid API enforces its feature
+server-side before work starts. `lib/db/billingUsage.ts` counts live planner runs by Clerk
+user, metric, allowance period, and run id; cache hits and mock runs do not consume a plan.
+
+`/pricing` renders Clerk's `PricingTable`, `/account` renders `UserProfile` for plan and
+invoice management, and the header/footer link both. `UpgradeCallout` replaces a paid
+surface on the free plan. `SaveTripButton` handles the server's `saved_trip_limit` response.
+Two live plans a month is 24 live plans a year; at $2-$4 of compute per live trip, heavy
+use can exceed the $60 annual price. Monitor p95 cost before promoting the plan. The full
+catalog, commands, caveats, and pilot plan are in `docs/BILLING.md`.
 
 ### Agentic concierge
 
@@ -737,6 +770,26 @@ and vanilla JavaScript; do not rebuild it in React.
   `clerk_user_id` and stores a validated trip and plan snapshot. `trip_captures` remains
   consent-gated, keyed by the random install id, and never stores the Clerk user id. Deleting a
   saved trip never deletes a research capture.
+- **Free safety, paid proof:** the safety envelope, caps, caution copy, and care card are free
+  for every account. Care Circle sells the expensive proof and capacity: live verification,
+  live venue menus and rates, 20-day trips, two live plans a month, and unlimited saved trips.
+  The free tier is one live 7-day plan a year and one saved trip. Every gate is enforced in a
+  server route, not only in the client.
+- **Clerk Billing, not a local billing table:** the active plan and features come from the
+  Clerk session; `billing_usage` is only the fair-use counter. `/account` delegates payment
+  method, invoice, cancellation, and plan switching to `UserProfile`. Billing webhooks are not
+  required for access and are not implemented yet.
+- **Account chrome uses full navigation:** the brand lockup, header, footer, model-page, and
+  saved-trip account links are native anchors, not client `Link` transitions. A stale client
+  router must never trap a pricing, sign-in, or saved-trip click; the page reloads cleanly.
+  `LinkButton` detects an internal `href` (`/` or `#`) and keeps it in the same tab even when
+  the default `external` prop is true. Header link hit areas are padded and carry their own
+  stacking context.
+- **Fair launch price, annual-first:** the research target was $79/year, but the shipped launch
+  price is $9/month or $60/year to stay fair for patients and caregivers. Clerk's
+  monthly-equivalent field produces $60/year. The production instance does not have the
+  annual-only update enabled, so the $9 monthly option is visible as a flexibility option.
+  Enable the update and set the monthly amount to zero to remove it.
 - **Scaffold in place:** `.git` and a user-owned `README.md` existed; the README is untouched.
   Generated `cacheComponents` and `partialPrefetching` were removed.
 - **Sun Life:** the stability window was not supplied and stays `null`; alerts say so. Never
@@ -759,8 +812,9 @@ and vanilla JavaScript; do not rebuild it in React.
   picker all resolve to a bounded destination string. No coordinate, permission state, or
   geolocation trace is added to `TripConfig`, the capture dossier, or the cache key. The map
   pin is a UI aid; the itinerary still derives place coordinates from verified research.
-- **PostgreSQL, not SQLite:** `pg` with a parameterized pool is the capture, saved-trip, and
-  model-run store. `saved_trips` carries the account-owned snapshot; `trip_captures` and
+- **PostgreSQL, not SQLite:** `pg` with a parameterized pool is the capture, saved-trip,
+  usage, and model-run store. `saved_trips` carries the account-owned snapshot;
+  `billing_usage` carries the calendar-year live-plan counter; `trip_captures` and
   `model_runs` carry the anonymous research loop. The schema is idempotent and applied by
   `npm run db:init`; production, development, and tests use separate databases. No SQLite file
   or binary demo database is committed. Database writes are awaited before the SSE stream
@@ -823,6 +877,14 @@ and vanilla JavaScript; do not rebuild it in React.
 - **Legacy verification remains mounted:** the video verification layer is legacy product
   direction, but it is still compiled and its cached-recording path still works. Retire it in
   its own step after the venue surface is stable; do not leave a half-removed section.
+- **Public landing, private planner:** `/` shows the landing page to a signed-out visitor and
+  `PlannerHome` to a signed-in one. Planning, saved trips, and the workspace still require
+  Clerk. The landing uses real captures of this app with the London sample trip; they are the
+  only raster assets, never stock photography, and are confined to
+  `components/landing/ProductShot.tsx` under a narrow guard exception.
+- **One brand mark:** a pin and pulse read as travel and health. The inline SVG is the header,
+  sign-in, sign-up, footer, and watermark; `app/icon.svg` and `app/apple-icon.png` are the
+  favicon and touch icon. No second logo direction.
 - **Recover the run, not the stream:** an SSE disconnect is not a failed browser run. TinyFish
   keeps the run and exposes `/v1/runs/{id}`, so the worker polls that record and emits the real
   completion. Transient errors retry once, and each worker owns its own timeout so one failure
@@ -930,10 +992,11 @@ or emoji; sentences stay under 20 words. Numbers carry units. `healthSafetyScore
 hex/rgb/hsl and arbitrary colors, default and arbitrary text sizes, unapproved weights, shadows
 except `shadow-none`, gradients and blur, radii outside `none`/`frame`/`control`, pill radii
 outside `components/ui`, raw form controls outside `components/ui`, Tailwind
-`animate-spin|ping|pulse|bounce`, `transition-all`, emoji, flags, images, and banned marketing
-copy. A separate motion guard requires all six named motion classes and a reduced-motion block
-that switches them off. `design-guard-ignore` exempts a line. Twenty-two banned and four
-allowed fixtures prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.5:1 or better.
+`animate-spin|ping|pulse|bounce`, `transition-all`, emoji, flags, images except the real
+product captures in `components/landing/ProductShot.tsx`, and banned marketing copy. A separate
+motion guard requires all six named motion classes and a reduced-motion block that switches
+them off. `design-guard-ignore` exempts a line. Twenty-two banned and five allowed fixtures
+prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.5:1 or better.
 
 ## 8. Medical safety rules
 
@@ -1013,6 +1076,16 @@ https://planmytrip.health/__clerk`; `clerkMiddleware` handles the Frontend API p
 hangs when Clerk's full request-header override set (including `host` and `connection`) is
 returned; the filter is load-bearing. Clerk's Dashboard sign-in is not CLI authentication;
 run `npx -y clerk@latest auth login` on the host before changing account-level settings.
+
+Clerk Billing: production has `free_user` ("Free Preview") and `care_circle`
+("Care Circle", $9/month or $60/year). Annual is the intended plan. The instance is not
+opted into the separate annual-only update, so monthly remains visible; set `amount: 0` in
+`scripts/clerk-billing.json` and re-apply after enabling it. `lib/billing/plans.ts` maps
+`long_trips`, `live_verification`, `venue_research`, and `saved_trips_unlimited` to product
+limits. `/pricing` renders `PricingTable`, `/account` renders `UserProfile`, and every paid
+route checks `auth().has()` before work. Live planner runs are counted in `billing_usage` by
+allowance period and run id. Clerk Billing is recurring-only, USD-only, has no tax/3DS/refunds,
+and adds 0.7% plus Stripe fees. The full catalog and commands are in `docs/BILLING.md`.
 
 The nginx snippet `planmytrip-proxy.conf` sets `proxy_buffer_size 64k`, `proxy_buffers 8 32k`,
 and `proxy_busy_buffers_size 64k` while keeping `proxy_buffering off` for SSE. Clerk's sign-in
@@ -1147,7 +1220,7 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 627 tests. Database-backed
+`npm test` runs Vitest once in a Node environment. The suite has 640 tests. Database-backed
 files skip when `DATABASE_URL` is absent. `tests/mocks/clerk-server.ts` replaces
 `@clerk/nextjs/server` in Vitest so route handlers can run outside Next's server boundary;
 proxy and Clerk provider behavior are covered by a production build and live request checks,
@@ -1203,6 +1276,12 @@ not by the unit suite.
   and saved-trip id validation. `lib/db/savedTrips.test.ts` covers account-scoped upsert,
   list, read, delete, and cross-account isolation; it skips without `DATABASE_URL`. Route
   handlers require a Clerk user through the shared auth check and never touch data signed out.
+- `lib/billing/plans.test.ts` covers free fallback, Care Circle feature mapping, paid plan
+  detection, missing-feature caps, a throwing `has()`, and monthly/yearly allowance starts.
+  `tests/billing-gates.test.ts` exercises the free-plan 403 responses for a 20-day trip,
+  live verification, and venue research. `lib/db/billingUsage.test.ts` covers run-id
+  idempotence and cross-user isolation; it skips without `DATABASE_URL`. The billing tests
+  never call Clerk or Stripe.
 - `lib/data/*.test.ts`, `lib/db/trips.test.ts`, and `lib/model/*.test.ts` cover computed dose,
   empty and over-cap days, block-level cap reconciliation, hike exertion, dossier and outcome
   parsing, free-text rejection, isotonic monotonicity, coefficient recovery, grouped folds,
@@ -1356,7 +1435,17 @@ exempting lines.
 - The production Clerk custom domain is routed through the same-origin proxy, not the
   `clerk.planmytrip.health` CNAME. The Dashboard domain's required CNAME records for email and
   account portal may still be pending; confirm DNS and sign-in methods after the first user
-  signs up. The Clerk CLI is not authenticated on this host.
+  signs up. The Clerk CLI session is root-only and can expire; re-run `auth login` before
+  account-level config commands.
+- Care Circle is $9/month or $60/year because Clerk's annual-only update is not enabled.
+  The one-time $29 Trip Pass from market research needs Stripe Checkout; Clerk Billing cannot
+  sell one-time products. The free plan is one live 7-day plan per year and one saved trip.
+  `billing_usage` resets monthly for Care Circle and yearly for Free, not on subscription
+  anniversary, and verification and venue runs are not separately metered; the paid feature
+  and cache remain the cost guard.
+- Billing has no webhook or invoice archive in the app. `has()` session claims are the
+  authorization source, and `UserProfile` owns payment and cancellation. Clerk Billing is
+  USD-only, does not calculate GST/HST, cannot complete 3-D Secure, and does not issue refunds.
 - The learned model does not change live caps yet. When it does, it may only tighten inside the
   engine ceiling; widening requires clinical review.
 - Agent copy is model-generated and varies. The engine caps, over-cap caution, source links,

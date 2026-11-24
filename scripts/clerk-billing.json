@@ -1,0 +1,96 @@
+{
+  "billing": {
+    "features": {
+      "safety_envelope": {
+        "name": "Safety envelope and care card",
+        "description": "Daily step and walking ceilings, the pacing strip, and a copyable care card.",
+        "publicly_visible": true,
+        "include_in_jwt": true
+      },
+      "preview_live_plan": {
+        "name": "One live preview plan a year",
+        "description": "One live concierge run, up to seven days.",
+        "publicly_visible": true,
+        "include_in_jwt": true
+      },
+      "one_saved_trip": {
+        "name": "One saved trip",
+        "description": "Keep one plan in your account.",
+        "publicly_visible": true,
+        "include_in_jwt": true
+      },
+      "long_trips": {
+        "name": "Trips up to 20 days",
+        "description": "Plan longer trips inside the same daily safety ceilings.",
+        "publicly_visible": true,
+        "include_in_jwt": true
+      },
+      "live_verification": {
+        "name": "Live browser verification",
+        "description": "Run the three browser checks for advisory, medication, and coverage details.",
+        "publicly_visible": true,
+        "include_in_jwt": true
+      },
+      "venue_research": {
+        "name": "Live menus and room rates",
+        "description": "Open the selected venue pages for current menu items and hotel rates.",
+        "publicly_visible": true,
+        "include_in_jwt": true
+      },
+      "two_live_plans": {
+        "name": "Two live plans a month",
+        "description": "Two fresh concierge runs each calendar month; cached plans stay available.",
+        "publicly_visible": true,
+        "include_in_jwt": true
+      },
+      "saved_trips_unlimited": {
+        "name": "Unlimited saved trips",
+        "description": "Keep every trip you save.",
+        "publicly_visible": true,
+        "include_in_jwt": true
+      }
+    },
+    "free_trial_requires_payment_method": true,
+    "organization_enabled": false,
+    "plans": {
+      "free_user": {
+        "amount": 0,
+        "annual_monthly_amount": 0,
+        "currency": "",
+        "description": "Preview the safety envelope and one live 7-day plan.",
+        "features": [
+          "safety_envelope",
+          "preview_live_plan",
+          "one_saved_trip"
+        ],
+        "free_trial_days": 0,
+        "free_trial_enabled": false,
+        "is_recurring": true,
+        "name": "Free Preview",
+        "payer_type": "user",
+        "publicly_visible": true
+      },
+      "care_circle": {
+        "amount": 900,
+        "annual_monthly_amount": 500,
+        "currency": "usd",
+        "description": "For patients and caregivers planning up to two trips a month, with live checks and unlimited saved trips. Annual is the intended plan; monthly is the flexible option.",
+        "features": [
+          "safety_envelope",
+          "long_trips",
+          "live_verification",
+          "venue_research",
+          "two_live_plans",
+          "saved_trips_unlimited"
+        ],
+        "free_trial_days": 0,
+        "free_trial_enabled": false,
+        "is_recurring": true,
+        "name": "Care Circle",
+        "payer_type": "user",
+        "publicly_visible": true
+      }
+    },
+    "user_enabled": true
+  }
+}

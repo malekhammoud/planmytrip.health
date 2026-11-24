@@ -42,15 +42,25 @@ export function canContinueTripStep(config: TripConfig): boolean {
   return config.destination.trim().length > 0;
 }
 
-/** Trims labels and clamps the duration to the engine's supported range. */
-export function normalizeTripConfig(config: TripConfig): TripConfig {
+/**
+ * Trims labels and clamps the duration to the engine's supported range and the account's
+ * plan ceiling. The default preserves the engine maximum for callers without a plan.
+ */
+export function normalizeTripConfig(
+  config: TripConfig,
+  maxDays = TRIP_DAYS_MAX,
+): TripConfig {
   // Saved rows written before the date and party fields existed still normalize safely.
   const checkIn = typeof config.checkIn === "string" ? config.checkIn.trim() : "";
   const travelers = Number.isFinite(config.travelers) ? Math.round(config.travelers) : 1;
+  const dayCeiling = Math.max(
+    TRIP_DAYS_MIN,
+    Math.min(TRIP_DAYS_MAX, Math.round(maxDays)),
+  );
   return {
     destination: clampText(config.destination, DESTINATION_MAX),
     origin: clampText(config.origin, ORIGIN_MAX),
-    days: Math.max(TRIP_DAYS_MIN, Math.min(TRIP_DAYS_MAX, Math.round(config.days))),
+    days: Math.max(TRIP_DAYS_MIN, Math.min(dayCeiling, Math.round(config.days))),
     condition: config.condition,
     medication: clampText(config.medication, MEDICATION_MAX),
     interests: clampText(config.interests, INTERESTS_MAX),

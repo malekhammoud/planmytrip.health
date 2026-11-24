@@ -102,6 +102,7 @@ does not delete a consented research capture.
   `clerk.planmytrip.health` CNAME. Confirm the domain's required email and account-portal
   CNAME records in the Clerk Dashboard, and confirm the sign-in methods you want before
   announcing the feature.
-- The Clerk CLI is not authenticated on this host. Run
-  `npx -y clerk@latest auth login` before `config pull`, `env pull`, `deploy status`, or any
-  other account-level command.
+- The Clerk CLI session is stored for the root user and can expire. If `clerk whoami` reports
+  `auth_required`, run `npx -y clerk@latest auth login` before `config pull`, `env pull`,
+  `deploy status`, or any other account-level command. See `docs/BILLING.md` for the plan
+  catalog commands.

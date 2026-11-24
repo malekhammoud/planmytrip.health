@@ -5,9 +5,11 @@ import { AgentPlanView } from "@/components/AgentPlanView";
 import { DeleteSavedTripButton } from "@/components/DeleteSavedTripButton";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { CareCardButton, ItineraryBoard } from "@/components/ItineraryBoard";
+import { UpgradeCallout } from "@/components/UpgradeCallout";
 import { Callout, LinkButton, type CalloutTone } from "@/components/ui";
 import { VenueMissionControl } from "@/components/venue/VenueMissionControl";
 import { useVenueResearch } from "@/hooks/useVenueResearch";
+import type { BillingEntitlements } from "@/lib/billing/plans";
 import { describeTrip } from "@/lib/describeTrip";
 import {
   buildHealthTripPlan,
@@ -33,7 +35,13 @@ function savedDate(value: string): string {
  * trip, so the pacing envelope is always current with the documented engine, while the
  * concierge plan and its caps remain exactly as captured.
  */
-export function SavedTripView({ saved }: { saved: SavedTrip }) {
+export function SavedTripView({
+  saved,
+  entitlements,
+}: {
+  saved: SavedTrip;
+  entitlements: BillingEntitlements;
+}) {
   const enginePlan = useMemo(
     () =>
       buildHealthTripPlan({
@@ -54,7 +62,7 @@ export function SavedTripView({ saved }: { saved: SavedTrip }) {
     checkIn: saved.trip.checkIn ?? "",
     days: saved.trip.days,
     travelers: saved.trip.travelers ?? 1,
-    enabled: true,
+    enabled: entitlements.venueResearch,
   });
 
   return (
@@ -99,11 +107,17 @@ export function SavedTripView({ saved }: { saved: SavedTrip }) {
               onSelectDay={setActiveDay}
               venue={venue.evidence}
             />
-            <VenueMissionControl
-              state={venue.state}
-              checkIn={saved.trip.checkIn ?? ""}
-              onRetry={venue.retry}
-            />
+            {entitlements.venueResearch ? (
+              <VenueMissionControl
+                state={venue.state}
+                checkIn={saved.trip.checkIn ?? ""}
+                onRetry={venue.retry}
+              />
+            ) : (
+              <div className="mt-10">
+                <UpgradeCallout feature="Live menus and room rates" />
+              </div>
+            )}
           </div>
         </section>
 

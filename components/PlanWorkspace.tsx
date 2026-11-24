@@ -10,6 +10,7 @@ import { MissionControl } from "@/components/mission/MissionControl";
 import { PlanPanel } from "@/components/PlanPanel";
 import { AdjustmentsPanel } from "@/components/VerificationAdjustments";
 import { WorkspaceSection } from "@/components/WorkspaceSection";
+import { UpgradeCallout } from "@/components/UpgradeCallout";
 import { Callout, type CalloutTone } from "@/components/ui";
 import { useAgentPlan } from "@/hooks/useAgentPlan";
 import { useSwarm } from "@/hooks/useSwarm";
@@ -23,6 +24,7 @@ import {
 import { WORKER_IDS } from "@/lib/swarmTypes";
 import type { HealthTripPlan, SunLifeSeverity } from "@/lib/healthTripEngine";
 import type { TripConfig } from "@/lib/agent/agentTypes";
+import type { BillingEntitlements } from "@/lib/billing/plans";
 
 /** Props for {@link PlanWorkspace}. */
 export interface PlanWorkspaceProps {
@@ -33,6 +35,8 @@ export interface PlanWorkspaceProps {
   runId: string;
   /** Anonymous install id scoped to this browser. */
   installId: string;
+  /** Current plan limits and paid feature flags. */
+  entitlements: BillingEntitlements;
   /** False while onboarding covers the workspace; keeps the map sized correctly. */
   visible: boolean;
   onEditTrip: () => void;
@@ -63,6 +67,7 @@ export function PlanWorkspace({
   runToken,
   runId,
   installId,
+  entitlements,
   visible,
   onEditTrip,
   onReplan,
@@ -91,7 +96,7 @@ export function PlanWorkspace({
     checkIn: trip.checkIn,
     days: trip.days,
     travelers: trip.travelers,
-    enabled: state.plan !== null,
+    enabled: state.plan !== null && entitlements.venueResearch,
   });
 
   const swarm = useSwarm({
@@ -101,6 +106,7 @@ export function PlanWorkspace({
     runId,
     installId,
     captureConsent: trip.captureConsent,
+    enabled: entitlements.liveVerification,
     runToken,
   });
 
@@ -252,6 +258,7 @@ export function PlanWorkspace({
               onSelectDay={setActiveDay}
               recordings={recordedRuns}
               venue={venue}
+              venueEnabled={entitlements.venueResearch}
               checkIn={trip.checkIn}
             />
           </WorkspaceSection>
@@ -270,33 +277,41 @@ export function PlanWorkspace({
             id="live-verification"
             title="Live verification"
             summary={
-              <span className="flex items-center gap-2">
-                <span
-                  aria-hidden="true"
-                  className={`block h-1.5 w-1.5 ${
-                    checksLive ? "anim-pulse-dot bg-accent" : "bg-ink"
-                  }`}
-                />
-                {verification.running} running · {verification.steps} steps ·{" "}
-                {verification.sources} sources · {verification.findings}/3 findings
-                {recordedRuns.length > 0
-                  ? ` · ${recordedRuns.length} recordings`
-                  : ""}
-              </span>
+              entitlements.liveVerification ? (
+                <span className="flex items-center gap-2">
+                  <span
+                    aria-hidden="true"
+                    className={`block h-1.5 w-1.5 ${
+                      checksLive ? "anim-pulse-dot bg-accent" : "bg-ink"
+                    }`}
+                  />
+                  {verification.running} running · {verification.steps} steps ·{" "}
+                  {verification.sources} sources · {verification.findings}/3 findings
+                  {recordedRuns.length > 0
+                    ? ` · ${recordedRuns.length} recordings`
+                    : ""}
+                </span>
+              ) : (
+                "Included in Care Circle"
+              )
             }
             active={checksActive}
             className={`cg-verify ${pulse}`}
           >
-            <MissionControl
-              state={swarm.state}
-              runInput={swarm.runInput}
-              destination={trip.destination}
-              condition={trip.condition}
-              medication={trip.medication}
-              onRetry={swarm.retry}
-              onRerun={swarm.rerun}
-              expanded={stage === "ready"}
-            />
+            {entitlements.liveVerification ? (
+              <MissionControl
+                state={swarm.state}
+                runInput={swarm.runInput}
+                destination={trip.destination}
+                condition={trip.condition}
+                medication={trip.medication}
+                onRetry={swarm.retry}
+                onRerun={swarm.rerun}
+                expanded={stage === "ready"}
+              />
+            ) : (
+              <UpgradeCallout feature="Live verification" />
+            )}
           </WorkspaceSection>
 
           <WorkspaceSection

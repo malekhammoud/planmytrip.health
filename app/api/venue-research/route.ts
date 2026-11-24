@@ -9,7 +9,7 @@
  * replayed instantly; no raw provider body is echoed.
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { readBilling } from "@/lib/billing/server";
 import { runVenueResearch } from "@/lib/venue/runner";
 import { encodeVenueEvent, parseVenueResearchRequest, type VenueEvent } from "@/lib/venue/types";
 
@@ -18,8 +18,8 @@ export const maxDuration = 300;
 
 const KEEP_ALIVE_MS = 15_000;
 
-function jsonError(status: number, message: string): Response {
-  return new Response(JSON.stringify({ error: message }), {
+function jsonError(status: number, message: string, code?: string): Response {
+  return new Response(JSON.stringify({ error: message, ...(code ? { code } : {}) }), {
     status,
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
@@ -27,8 +27,15 @@ function jsonError(status: number, message: string): Response {
 
 /** Handles one venue-research stream. */
 export async function POST(request: Request): Promise<Response> {
-  const { userId } = await auth();
+  const { userId, entitlements } = await readBilling();
   if (userId === null) return jsonError(401, "Sign in to check venue details.");
+  if (!entitlements.venueResearch) {
+    return jsonError(
+      403,
+      "Live menus and room rates are included in Care Circle. Upgrade to check venue details.",
+      "upgrade_required",
+    );
+  }
 
   let body: unknown;
   try {

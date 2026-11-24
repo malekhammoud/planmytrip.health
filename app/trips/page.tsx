@@ -1,4 +1,5 @@
-import { auth } from "@clerk/nextjs/server";
+import { readBilling } from "@/lib/billing/server";
+import { planLabel } from "@/lib/billing/plans";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
@@ -20,7 +21,7 @@ function savedDate(value: string): string {
 
 /** The account-owned trip list. Only summaries are read here. */
 export default async function SavedTripsPage() {
-  const { userId } = await auth();
+  const { userId, entitlements } = await readBilling();
   if (userId === null) redirect("/sign-in");
 
   let trips: Awaited<ReturnType<typeof listSavedTrips>> = [];
@@ -41,11 +42,21 @@ export default async function SavedTripsPage() {
           These are the plans you saved while signed in. The snapshot keeps the trip,
           the concierge plan, and the safety envelope. Live verification is not stored.
         </p>
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-6 flex flex-wrap items-center gap-3">
           <LinkButton href="/" variant="secondary">
             Plan a new trip
           </LinkButton>
+          <LinkButton href="/pricing" variant="ghost">
+            {planLabel(entitlements.plan)} plan · See plans
+          </LinkButton>
         </div>
+        {entitlements.savedTripLimit !== null &&
+        trips.length >= entitlements.savedTripLimit ? (
+          <p className="t-small mt-3 text-muted">
+            The Free Preview includes {entitlements.savedTripLimit} saved trip. Upgrade to
+            keep more than one plan.
+          </p>
+        ) : null}
 
         {failed ? (
           <div className="mt-10">

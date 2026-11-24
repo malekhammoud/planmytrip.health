@@ -9,12 +9,17 @@
 /** Test account used by authenticated route-handler tests. */
 export const TEST_USER_ID = "test-user";
 
-/** Returns the test account for every request. */
+/** Returns the test account for every request, with all paid features enabled. */
 export async function auth(): Promise<{
   userId: string;
   isAuthenticated: true;
+  has: (params: { plan?: string; feature?: string }) => boolean;
 }> {
-  return { userId: TEST_USER_ID, isAuthenticated: true };
+  return {
+    userId: TEST_USER_ID,
+    isAuthenticated: true,
+    has: () => true,
+  };
 }
 
 /** Minimal middleware stand-in; proxy behavior is covered by Next's build. */

@@ -47,6 +47,8 @@ describe("onboarding draft", () => {
     });
     expect(normalizeTripConfig({ ...DEFAULT_TRIP, days: 1 }).days).toBe(2);
     expect(normalizeTripConfig({ ...DEFAULT_TRIP, days: 30 }).days).toBe(20);
+    expect(normalizeTripConfig({ ...DEFAULT_TRIP, days: 20 }, 7).days).toBe(7);
+    expect(normalizeTripConfig({ ...DEFAULT_TRIP, days: 4 }, 7).days).toBe(4);
     expect(normalizeTripConfig({ ...DEFAULT_TRIP, checkIn: "2026-02-30" }).checkIn).toBe("");
     expect(normalizeTripConfig({ ...DEFAULT_TRIP, travelers: 0 }).travelers).toBe(1);
     expect(normalizeTripConfig({ ...DEFAULT_TRIP, travelers: 12 }).travelers).toBe(8);

@@ -6,6 +6,7 @@ import { PlanWorkspace } from "@/components/PlanWorkspace";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { buildHealthTripPlan, type HealthTripPlan } from "@/lib/healthTripEngine";
 import type { TripConfig } from "@/lib/agent/agentTypes";
+import type { BillingEntitlements } from "@/lib/billing/plans";
 import { DEFAULT_TRIP } from "@/lib/onboarding";
 import { parseInstallId } from "@/lib/data/validation";
 
@@ -35,7 +36,11 @@ function readInstallId(): string {
  * the traveler moves through it. Editing returns to onboarding without discarding a
  * running workspace, so Back to plan restores it exactly.
  */
-export function PlannerHome() {
+export function PlannerHome({
+  entitlements,
+}: {
+  entitlements: BillingEntitlements;
+}) {
   const [view, setView] = useState<"onboarding" | "workspace">("onboarding");
   const [trip, setTrip] = useState<TripConfig | null>(null);
   const [deployNonce, setDeployNonce] = useState(0);
@@ -73,6 +78,7 @@ export function PlannerHome() {
         <div id="onboarding-screen" hidden={view !== "onboarding"}>
           <Onboarding
             initial={trip ?? DEFAULT_TRIP}
+            maxDays={entitlements.maxTripDays}
             onComplete={handleBuild}
             onCancel={trip === null ? undefined : () => setView("workspace")}
           />
@@ -87,6 +93,7 @@ export function PlannerHome() {
               runToken={deployNonce}
               runId={runId}
               installId={installId}
+              entitlements={entitlements}
               visible={view === "workspace"}
               onEditTrip={() => setView("onboarding")}
               onReplan={handleReplan}

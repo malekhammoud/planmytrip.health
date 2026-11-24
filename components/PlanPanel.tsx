@@ -3,8 +3,9 @@
 import type { CSSProperties } from "react";
 import { AgentPlanView } from "@/components/AgentPlanView";
 import { CachedRecordings, type CachedRecording } from "@/components/CachedRecordings";
+import { UpgradeCallout } from "@/components/UpgradeCallout";
 import { VenueMissionControl } from "@/components/venue/VenueMissionControl";
-import { Button, Callout, Skeleton } from "@/components/ui";
+import { Button, Callout, LinkButton, Skeleton } from "@/components/ui";
 import {
   PLANNER_AGENTS,
   type PlannerAgentId,
@@ -38,6 +39,8 @@ export interface PlanPanelProps {
   recordings?: readonly CachedRecording[];
   /** Live menu and hotel evidence for this plan. */
   venue: UseVenueResearchResult;
+  /** Whether the current plan includes live venue research. */
+  venueEnabled: boolean;
   /** Trip start date, used by the hotel-rate note. */
   checkIn: string;
 }
@@ -182,6 +185,7 @@ export function PlanPanel({
   onSelectDay,
   recordings = [],
   venue,
+  venueEnabled,
   checkIn,
 }: PlanPanelProps) {
   const mockNote = state.mock ? (
@@ -228,12 +232,18 @@ export function PlanPanel({
           onSelectDay={onSelectDay}
           venue={venue.evidence}
         />
-        <VenueMissionControl
-          state={venue.state}
-          checkIn={checkIn}
-          onRetry={venue.retry}
-          mock={state.mock}
-        />
+        {venueEnabled ? (
+          <VenueMissionControl
+            state={venue.state}
+            checkIn={checkIn}
+            onRetry={venue.retry}
+            mock={state.mock}
+          />
+        ) : (
+          <div className="mt-10">
+            <UpgradeCallout feature="Live menus and room rates" />
+          </div>
+        )}
       </div>
     );
   }
@@ -250,10 +260,13 @@ export function PlanPanel({
           <p className="mt-2">
             The safety envelope and live verification keep running.
           </p>
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button variant="secondary" onClick={onRetry}>
               Try the concierge again
             </Button>
+            <LinkButton href="/pricing" variant="ghost">
+              See plans
+            </LinkButton>
           </div>
         </Callout>
       </div>

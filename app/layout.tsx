@@ -10,9 +10,9 @@ import "leaflet/dist/leaflet.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PlanMyTrip.health",
+  title: "PlanMyTrip.health — the health-first trip planner",
   description:
-    "A health-first travel planner that paces each day to a medical condition and verifies live travel risk.",
+    "Plan a trip around a medical condition. A deterministic pacing engine, seven specialist agents, and TinyFish browser checks for live menus, room rates, and travel risk.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

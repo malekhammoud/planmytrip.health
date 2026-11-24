@@ -1034,18 +1034,88 @@ thresholds and Sun Life stability window remain VERIFY.
   it. The section and heading both carry scroll margin for the fixed header.
 - Gate: typecheck, 627 tests, lint, and production build pass.
 
+### Step 40: public landing page and brand mark
+
+- `/` now gives a signed-out visitor a public landing page and a signed-in visitor the planner.
+  The landing leads with the health-first position, real product captures, the condition-gap
+  statistics, the three product pillars, the route and safety views, how it works, and a
+  sign-up close. Planning still requires Clerk.
+- Added a pin-and-pulse brand mark in `components/Logo.tsx`, used in the header, sign-in,
+  sign-up, footer, and close watermark. Added `app/icon.svg` and the generated
+  `app/apple-icon.png` so the favicon and touch icon share the mark.
+- Added the public header actions, the landing metadata, and real screenshots of the London
+  sample trip: venue evidence, route detail, and the safety envelope. The captures are the
+  only raster assets; the design guard permits them only in `components/landing/ProductShot.tsx`.
+- Fixed the plan summary plural so the captured route reads "1 room quote".
+- Production check: signed-out `/` returns 200 with the landing, a signed-in session still
+  reaches onboarding, `/icon.svg` and `/apple-icon.png` return 200, images load, and there is
+  no horizontal overflow at 1440px or 390px.
+- Gate: typecheck, 628 tests, lint, and production build pass; deployed and service active.
+
+### Step 41: Clerk Billing and Care Circle
+
+- Market research recommended an annual-first hybrid: free safety, a $29 one-time Trip Pass,
+  and a $79/year Care Circle subscription. Clerk Billing supports recurring plans only and
+  this production instance does not have Clerk's separate annual-only update enabled, so the
+  shipped catalog is **Free Preview ($0)** and **Care Circle ($9/month or $60/year)**.
+  The lower launch price keeps the product fair for anxious patients and caregivers; $79/year
+  remains a later price test.
+  Annual is the default in the PricingTable and the intended plan. A true one-time Trip Pass
+  remains a Stripe Checkout follow-up.
+- Added the production Clerk Billing catalog via `clerk config patch`: `free_user` renamed
+  Free Preview with three display features; `care_circle` with `long_trips`,
+  `live_verification`, `venue_research`, `two_live_plans`, and `saved_trips_unlimited`.
+  The reproducible catalog is `scripts/clerk-billing.json`.
+- Added `lib/billing/plans.ts` and `lib/billing/server.ts`. Free accounts get one live plan a
+  calendar year, seven days, one saved trip, no live verification, and no venue research.
+  Care Circle gets two live plans a month, twenty days, unlimited saved trips, and both live
+  layers. Safety, caps, cautions, and the care card stay free. Two live plans a month is 24 a
+  year, so at $2-$4 of compute per live trip, heavy use can exceed the $60 annual price; the
+  p95 cost needs monitoring before promotion.
+- Enforced entitlements server-side in `/api/agent-plan`, `/api/travel-swarm`,
+  `/api/venue-research`, and `/api/saved-trips`; the client hides or replaces paid surfaces
+  with `UpgradeCallout`. Added `billing_usage` and `lib/db/billingUsage.ts` to count live
+  planner runs by Clerk user, allowance period, and run id. Cache hits and mock runs do not
+  consume a plan.
+- Added `/pricing` with Clerk's `PricingTable`, `/account` with `UserProfile`, header/footer
+  plan links, and checkout success copy. The landing hero and close now link to plans.
+- Fixed a time-dependent venue-cache test that used a fixed November 22 timestamp; the
+  hotel quote expired before the test ran on November 23.
+- Tests: 640 total. Added entitlement mapping, paid-plan detection, missing-feature caps,
+  throwing-`has()` fallback, monthly and yearly period starts, run-id idempotence, and
+  cross-user isolation. Database usage tests skip without `DATABASE_URL`.
+- Gate: typecheck, 605 passed / 35 skipped, lint, and production build pass. Applied the
+  `billing_usage` schema to production. Production smoke: `/` 200 landing, `/pricing` 200,
+  `/account` redirects signed-out users to `/sign-in`, `/api/saved-trips` 401, and the Clerk
+  Frontend API 200. A headless browser rendered Free Preview and Care Circle, annual selected
+  by default ($5.00/month billed annually, $60/year), with no console errors.
+- Unverified: a real paid checkout with a card, a signed-in Care Circle session exercising
+  all three gates, invoice/cancellation flow, and the annual-only cleanup after the Dashboard
+  update is enabled.
+
+### Step 42: reliable account links
+
+- Pricing, sign-in, saved-trip, model, and brand links now use full-page anchors instead of
+  client-side `Link` transitions. A stale client router or a Clerk billing chunk can no longer
+  trap a click; opening the destination in a new tab was the workaround, not the intended UX.
+- `LinkButton` now detects internal targets (`/` or `#`) and keeps them in the same tab even
+  when the caller leaves `external` at its default. This fixes internal account, pricing, and
+  saved-trip buttons that previously opened a new tab.
+- Header links gained padded hit areas, `whitespace-nowrap`, and a local stacking context.
+- Verified with a real pointer click: the Pricing header link navigates to `/pricing` in the
+  same tab with no target attribute.
+- Gate: typecheck, 640 tests, lint, and production build pass; deployed and service active.
+
 ## Next action
 
-Rehearse the TinyFish challenge demo end to end: sign in, enter London, Ontario with a start
-date and two travellers, open the cached plan, and watch the venue deck replay the checked
-London facts and open only the failed Locomotive page. Then show a fresh date or destination
-with menu and booking URLs so all three browsers run live, including the hotel rate extraction,
-the activity feed, the source ledger, and the checked menu cards. Add or verify a third
-restaurant menu URL with prices; the cached demo now includes a third-party Locomotive menu
-source, so decide whether that source is acceptable or seed an official page.
-Confirm the live preview iframe in a normal browser, not only headless screenshot tooling, and
-check the Fullscreen action, keyboard venue tabs, and the mobile stacking at 390px. Then route
-a bounded venue-evidence summary into the concierge synthesis so a missing rate or menu can
-influence place choice, and decide when to retire the legacy video-verification section. Live
-calls still need per-user rate limiting and a budget before a public pilot. Keep the engine's
-ceilings, the computed dose, and the capped-day warning as the safety authority.
+Run a real production checkout for Care Circle with a card and verify the session plan
+switches to `care_circle`, a 20-day plan is accepted, live verification and venue research
+run, and unlimited saved trips are allowed. Confirm the monthly toggle is acceptable or
+enable Clerk's Annual-only plans update and set `amount` to `0` in
+`scripts/clerk-billing.json`. Decide whether to add the $29 one-time Trip Pass through Stripe
+Checkout. A real paid pilot should measure conversion, compute cost per paid trip, cancellation
+reasons, and renewal intent. Review the landing page in a normal browser at desktop and phone
+widths, then tighten any copy that overstates the product. Re-check the real captures after
+the next venue run. Keep the pin-and-pulse favicon and the public/private root split. The
+current instruction is to keep deploying without committing or pushing, so the landing, logo,
+captures, billing, and docs remain uncommitted until that changes.

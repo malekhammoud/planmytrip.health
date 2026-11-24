@@ -2,7 +2,9 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { parseSaveTripBody, type SaveTripInput } from "../savedTrips";
 import { closeDatabase, ensureSchema, resetDatabaseForTests } from "./postgres";
 import {
+  countSavedTrips,
   deleteSavedTrip,
+  findSavedTripForRun,
   getSavedTrip,
   listSavedTrips,
   saveTrip,
@@ -113,5 +115,15 @@ describeDb("saved trip storage", () => {
     expect(await getSavedTrip("user-2", saved.id)).toBeNull();
     expect(await deleteSavedTrip("user-2", saved.id)).toBe(false);
     expect(await getSavedTrip("user-1", saved.id)).not.toBeNull();
+  });
+
+  it("counts rows and finds a run for the free-plan limit", async () => {
+    expect(await countSavedTrips("user-1")).toBe(0);
+    expect(await findSavedTripForRun("user-1", "run-12345678")).toBeNull();
+    const saved = await saveTrip("user-1", input());
+    expect(await countSavedTrips("user-1")).toBe(1);
+    expect(await countSavedTrips("user-2")).toBe(0);
+    expect(await findSavedTripForRun("user-1", "run-12345678")).toBe(saved.id);
+    expect(await findSavedTripForRun("user-2", "run-12345678")).toBeNull();
   });
 });

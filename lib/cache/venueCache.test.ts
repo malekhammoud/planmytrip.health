@@ -55,6 +55,7 @@ describe("venue cache", () => {
   beforeEach(() => resetCacheMemory());
 
   it("reads a menu and a dated hotel quote with recorded telemetry", async () => {
+    const now = new Date().toISOString();
     const menuKey = venueCacheKey({ kind: "menu", url: menu.sourceUrl, placeId: menu.placeId ?? "" });
     const hotelKey = venueCacheKey({
       kind: "hotel",
@@ -72,7 +73,7 @@ describe("venue cache", () => {
         activity: [{ text: "Read the menu", kind: "read", offsetSec: 12 }],
         durationSec: 18,
       },
-      "2026-11-22T10:00:00.000Z",
+      now,
     );
     await writeCachedVenue(
       hotelKey,
@@ -82,7 +83,7 @@ describe("venue cache", () => {
         activity: [],
         durationSec: 0,
       },
-      "2026-11-22T10:00:00.000Z",
+      now,
     );
     const storedMenu = await readCachedVenue(menuKey);
     expect(storedMenu?.evidence.placeName).toBe("Cafe");

@@ -40,6 +40,8 @@ export interface UseSwarmInput {
   installId: string;
   /** Explicit opt-in for saving verification findings. */
   captureConsent: boolean;
+  /** Gate for the live verification entitlement. False never starts a worker. */
+  enabled: boolean;
   /** 0 before the first Deploy; each Deploy increments it. */
   runToken: number;
 }
@@ -88,6 +90,7 @@ export function useSwarm({
   runId,
   installId,
   captureConsent,
+  enabled,
   runToken,
 }: UseSwarmInput): UseSwarmResult {
   const [state, dispatch] = useReducer(swarmReducer, createSwarmState());
@@ -116,7 +119,7 @@ export function useSwarm({
 
   const startWorkers = useCallback(
     (workers: readonly WorkerId[], input: SwarmRunInput): void => {
-      if (runToken <= 0 || input.destination.length === 0) return;
+      if (!enabled || runToken <= 0 || input.destination.length === 0) return;
       dispatch({ type: "run_started", runToken, workers });
 
       const requestId = requestIdRef.current + 1;
@@ -148,7 +151,7 @@ export function useSwarm({
         },
       });
     },
-    [runToken, batcher],
+    [enabled, runToken, batcher],
   );
 
   useEffect(() => () => batcher.cancel(), [batcher]);
@@ -158,7 +161,7 @@ export function useSwarm({
       clearTimeout(abortTimerRef.current);
       abortTimerRef.current = null;
     }
-    if (runToken <= 0) {
+    if (!enabled || runToken <= 0) {
       abortAll();
       startedTokenRef.current = 0;
       return;
@@ -197,6 +200,7 @@ export function useSwarm({
     captureConsent,
     condition,
     destination,
+    enabled,
     installId,
     medication,
     runId,
@@ -207,20 +211,21 @@ export function useSwarm({
   const retry = useCallback(
     (worker: WorkerId): void => {
       const snapshot = runInputRef.current;
-      if (snapshot === null || snapshot.runToken !== runToken) return;
+      if (!enabled || snapshot === null || snapshot.runToken !== runToken) return;
       startWorkers([worker], snapshot);
     },
-    [runToken, startWorkers],
+    [enabled, runToken, startWorkers],
   );
 
   const rerun = useCallback((): void => {
     const snapshot = runInputRef.current;
-    if (snapshot === null || snapshot.runToken !== runToken) return;
+    if (!enabled || snapshot === null || snapshot.runToken !== runToken) return;
     startWorkers(WORKER_IDS, snapshot);
-  }, [runToken, startWorkers]);
+  }, [enabled, runToken, startWorkers]);
 
-  const currentState =
-    state.runToken === runToken
+  const currentState = !enabled
+    ? createSwarmState(runToken)
+    : state.runToken === runToken
       ? state
       : runToken > 0 && destination.trim().length > 0
         ? createQueuedSwarmState(runToken)

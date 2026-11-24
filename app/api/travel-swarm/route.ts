@@ -11,7 +11,7 @@
  * API key is never logged, echoed, or placed in an event.
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { readBilling } from "@/lib/billing/server";
 import { buildCachedSwarmEvents } from "@/lib/cache/cachedEvents";
 import { archiveSwarmCache } from "@/lib/cache/swarmArchive";
 import { readCachedSwarm, type SwarmCacheWriteWorker } from "@/lib/cache/swarmCache";
@@ -39,8 +39,8 @@ const SSE_HEADERS = {
   "X-Accel-Buffering": "no",
 } as const;
 
-function jsonError(status: number, message: string): Response {
-  return new Response(JSON.stringify({ error: message }), {
+function jsonError(status: number, message: string, code?: string): Response {
+  return new Response(JSON.stringify({ error: message, ...(code ? { code } : {}) }), {
     status,
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
@@ -48,9 +48,16 @@ function jsonError(status: number, message: string): Response {
 
 /** Handles one swarm request. Invalid bodies get JSON; valid bodies get an SSE stream. */
 export async function POST(request: Request): Promise<Response> {
-  const { userId } = await auth();
+  const { userId, entitlements } = await readBilling();
   if (userId === null) {
     return jsonError(401, "Sign in to start live verification.");
+  }
+  if (!entitlements.liveVerification) {
+    return jsonError(
+      403,
+      "Live verification is included in Care Circle. Upgrade to run the browser checks.",
+      "upgrade_required",
+    );
   }
 
   let body: unknown;

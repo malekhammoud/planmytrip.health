@@ -1,4 +1,5 @@
-import Link from "next/link";
+/* eslint-disable @next/next/no-html-link-for-pages -- account, billing, and saved-trip links deliberately use a full navigation so a stale client router cannot trap the click. */
+import { LogoLink } from "@/components/Logo";
 import { Callout } from "@/components/ui";
 import { MODEL_ARTIFACT, MODEL_AVAILABLE } from "@/lib/model/artifact";
 import { predictFromArtifact } from "@/lib/model/predict";
@@ -85,9 +86,9 @@ export default function ModelPage() {
         <p className="t-body mt-4 text-muted">
           Run <span className="t-data">npm run model:train</span> to build one.
         </p>
-        <Link href="/" className="t-small mt-6 inline-flex min-h-11 items-center text-accent hover:underline">
+        <a href="/" className="t-small mt-6 inline-flex min-h-11 items-center text-accent hover:underline">
           Back to the planner
-        </Link>
+        </a>
       </main>
     );
   }
@@ -143,16 +144,13 @@ export default function ModelPage() {
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-hairline">
         <div className="page-container flex h-16 items-center justify-between gap-6">
-          <Link href="/" className="t-wordmark text-ink">
-            PlanMyTrip
-            <span className="t-data text-accent">.health</span>
-          </Link>
-          <Link
+          <LogoLink />
+          <a
             href="/"
             className="t-small inline-flex min-h-11 items-center text-muted transition-colors duration-150 hover:text-ink hover:underline"
           >
             Back to planner
-          </Link>
+          </a>
         </div>
       </header>
 

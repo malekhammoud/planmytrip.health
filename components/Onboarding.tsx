@@ -47,6 +47,8 @@ const ALERT_TONES: Record<SunLifeSeverity, CalloutTone> = {
 export interface OnboardingProps {
   /** Draft to start from, including the current trip when editing. */
   initial: TripConfig;
+  /** Plan ceiling for the duration field. Defaults to the engine maximum. */
+  maxDays?: number;
   /** Receives the normalized trip configuration when the user builds the plan. */
   onComplete: (config: TripConfig) => void;
   /** Returns to the existing workspace without rebuilding, when editing. */
@@ -77,8 +79,20 @@ function StepMark({
  * two collects the health profile and coverage. The finished plan opens in the
  * workspace, so this screen never carries results or live agent logs.
  */
-export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
-  const [config, setConfig] = useState<TripConfig>(initial);
+export function Onboarding({
+  initial,
+  maxDays = TRIP_DAYS_MAX,
+  onComplete,
+  onCancel,
+}: OnboardingProps) {
+  const daysMax = Math.max(
+    TRIP_DAYS_MIN,
+    Math.min(TRIP_DAYS_MAX, Math.round(maxDays)),
+  );
+  const [config, setConfig] = useState<TripConfig>(() => ({
+    ...initial,
+    days: Math.min(initial.days, daysMax),
+  }));
   const [step, setStep] = useState<1 | 2>(1);
   const [medicationTouched, setMedicationTouched] = useState(
     initial.medication !== DEFAULT_MEDICATION_BY_CONDITION[initial.condition],
@@ -107,11 +121,11 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
       if (canContinue) setStep(2);
       return;
     }
-    onComplete(normalizeTripConfig(config));
+    onComplete(normalizeTripConfig(config, daysMax));
   }
 
   function handleCancel(): void {
-    setConfig(initial);
+    setConfig({ ...initial, days: Math.min(initial.days, daysMax) });
     setMedicationTouched(
       initial.medication !== DEFAULT_MEDICATION_BY_CONDITION[initial.condition],
     );
@@ -190,7 +204,7 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
                   <Field
                     id="onboarding-days"
                     label="Duration"
-                    hint={`${TRIP_DAYS_MIN} to ${TRIP_DAYS_MAX} days.`}
+                    hint={`${TRIP_DAYS_MIN} to ${daysMax} days.`}
                   >
                     {(control) => (
                       <div className="flex items-baseline gap-3">
@@ -199,7 +213,7 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
                             id={control.id}
                             value={config.days}
                             min={TRIP_DAYS_MIN}
-                            max={TRIP_DAYS_MAX}
+                            max={daysMax}
                             onValueChange={(days) => update("days", days)}
                             aria-describedby={control["aria-describedby"]}
                             aria-invalid={control["aria-invalid"]}
@@ -209,6 +223,15 @@ export function Onboarding({ initial, onComplete, onCancel }: OnboardingProps) {
                       </div>
                     )}
                   </Field>
+                  {daysMax < TRIP_DAYS_MAX ? (
+                    <p className="t-small -mt-4 text-muted">
+                      The Free Preview includes trips up to {daysMax} days.{" "}
+                      <a href="/pricing" className="text-accent hover:underline">
+                        See plans
+                      </a>
+                      .
+                    </p>
+                  ) : null}
 
                   <Field
                     id="onboarding-checkin"

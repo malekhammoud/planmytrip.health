@@ -8,7 +8,10 @@
  * server-only; no API key, session secret, or raw provider error is echoed.
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { randomUUID } from "node:crypto";
+import { billingPeriodStart, planLabel } from "@/lib/billing/plans";
+import { readBilling } from "@/lib/billing/server";
+import { countBillingUsage, recordBillingUsage } from "@/lib/db/billingUsage";
 import { runPlanner } from "@/lib/agent/agentRunner";
 import { parsePlannerRequest } from "@/lib/agent/agentRequest";
 import { buildCachedPlannerEvents } from "@/lib/cache/cachedEvents";
@@ -32,8 +35,8 @@ const SSE_HEADERS = {
   "X-Accel-Buffering": "no",
 } as const;
 
-function jsonError(status: number, message: string): Response {
-  return new Response(JSON.stringify({ error: message }), {
+function jsonError(status: number, message: string, code?: string): Response {
+  return new Response(JSON.stringify({ error: message, ...(code ? { code } : {}) }), {
     status,
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
@@ -41,7 +44,7 @@ function jsonError(status: number, message: string): Response {
 
 /** Handles one concierge request. Invalid bodies get JSON; valid bodies get SSE. */
 export async function POST(request: Request): Promise<Response> {
-  const { userId } = await auth();
+  const { userId, entitlements } = await readBilling();
   if (userId === null) return jsonError(401, "Sign in to plan a trip.");
 
   let body: unknown;
@@ -57,12 +60,32 @@ export async function POST(request: Request): Promise<Response> {
       "Send a destination, 2 to 20 days, a supported condition, a medication value, preferences, and a budget.",
     );
   }
+  if (plannerRequest.days > entitlements.maxTripDays) {
+    return jsonError(
+      403,
+      `The ${entitlements.plan === "free_user" ? "Free" : "current"} plan includes trips up to ${entitlements.maxTripDays} days. Upgrade to plan a longer trip.`,
+      "plan_limit",
+    );
+  }
 
   const mock =
     process.env.AGENT_MOCK === "1" && process.env.NODE_ENV !== "production";
   // A cache hit skips the OpenCode runtime entirely, so a known trip is one fast
   // replay of validated results rather than a six-to-twelve-minute research run.
   const cached = mock ? null : await readCachedPlan(plannerRequest).catch(() => null);
+  const usageRunId = plannerRequest.runId ?? randomUUID();
+  const usagePeriod = billingPeriodStart(entitlements.tripPeriod);
+  const livePlan = !mock && cached === null;
+  if (livePlan) {
+    const used = await countBillingUsage(userId, "plan", usagePeriod).catch(() => 0);
+    if (used >= entitlements.tripsPerPeriod) {
+      return jsonError(
+        403,
+        `The ${planLabel(entitlements.plan)} plan includes ${entitlements.tripsPerPeriod} live ${entitlements.tripsPerPeriod === 1 ? "trip" : "trips"} per ${entitlements.tripPeriod}. Cached plans remain available. Upgrade to plan another live trip.`,
+        "trip_limit",
+      );
+    }
+  }
   const encoder = new TextEncoder();
   const abort = new AbortController();
   let closed = false;
@@ -97,7 +120,7 @@ export async function POST(request: Request): Promise<Response> {
           // Capture is best-effort; the live plan must still render.
         }),
       );
-      if (!mock && cached === null) {
+      if (livePlan) {
         pendingCaptures.push(
           writeCachedPlan(
             plannerRequest,
@@ -110,6 +133,15 @@ export async function POST(request: Request): Promise<Response> {
             event.data.ts,
           ).catch(() => {
             // Cache writes never delay or fail a live plan.
+          }),
+          recordBillingUsage(
+            userId,
+            usageRunId,
+            "plan",
+            usagePeriod,
+            event.data.ts,
+          ).catch(() => {
+            // A usage write never delays or fails a delivered plan.
           }),
         );
       }

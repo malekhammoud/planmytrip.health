@@ -24,6 +24,9 @@ const COLOR_UTILITY =
 
 const isUi = (file: string): boolean => file.startsWith("components/ui/");
 const isTs = (file: string): boolean => /\.(ts|tsx)$/.test(file);
+/** Real product captures are the only permitted raster assets, and only on the landing page. */
+const isProductShot = (file: string): boolean =>
+  file === "components/landing/ProductShot.tsx";
 
 const RULES: Rule[] = [
   {
@@ -96,6 +99,7 @@ const RULES: Rule[] = [
   {
     name: "image support",
     pattern: /<img\b|<Image\b|\bnext\/image\b|\bbackground-image\b|\bbg-\[url\(/,
+    skipIn: isProductShot,
   },
   {
     // Motion is a named vocabulary in globals.css; Tailwind's canned loops are banned.
@@ -215,6 +219,11 @@ const ALLOWED_FIXTURES: ReadonlyArray<{ source: string; file: string }> = [
   {
     source: 'className="bg-red-500" // design-guard-ignore',
     file: "app/fixture.tsx",
+  },
+  {
+    source:
+      '<Image src="/landing/route.webp" alt="Route" width={1200} height={900} />',
+    file: "components/landing/ProductShot.tsx",
   },
 ];
 

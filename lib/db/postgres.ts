@@ -1,5 +1,5 @@
 /**
- * PostgreSQL connection and schema for the trip-outcome loop and model runs.
+ * PostgreSQL connection and schema for captures, saved trips, billing usage, and model runs.
  *
  * Inputs: DATABASE_URL, optionally DATABASE_SSL=true. Outputs: one lazily opened Pool
  * with an idempotent schema.
@@ -90,6 +90,17 @@ CREATE INDEX IF NOT EXISTS idx_trip_cache_lookup
   ON trip_cache(kind, destination_norm, days, condition, expires_at DESC);
 CREATE INDEX IF NOT EXISTS idx_trip_cache_expiry
   ON trip_cache(expires_at);
+
+CREATE TABLE IF NOT EXISTS billing_usage (
+  event_id TEXT PRIMARY KEY,
+  clerk_user_id TEXT NOT NULL,
+  metric TEXT NOT NULL,
+  period_start DATE NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_billing_usage_user
+  ON billing_usage(clerk_user_id, metric, period_start);
 `;
 
 function connectionString(): string {
@@ -146,8 +157,10 @@ export async function closeDatabase(): Promise<void> {
   if (current !== null) await current.end();
 }
 
-/** Test helper: clears capture, model, and saved-trip rows without dropping the schema. */
+/** Test helper: clears capture, cache, saved-trip, and billing rows without dropping the schema. */
 export async function resetDatabaseForTests(): Promise<void> {
   await ensureSchema();
-  await getPool().query("TRUNCATE TABLE trip_captures, model_runs, saved_trips, trip_cache");
+  await getPool().query(
+    "TRUNCATE TABLE trip_captures, model_runs, saved_trips, trip_cache, billing_usage",
+  );
 }

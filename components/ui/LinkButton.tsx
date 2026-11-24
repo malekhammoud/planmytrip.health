@@ -15,8 +15,8 @@ export interface LinkButtonProps extends AnchorHTMLAttributes<HTMLAnchorElement>
   /** Stretches the link to the width of its container. */
   fullWidth?: boolean;
   /**
-   * Opens in a new tab with `noopener noreferrer`. Defaults to true because every current
-   * use is an external handoff such as Google Maps.
+   * Opens an external handoff in a new tab with `noopener noreferrer`. Defaults to true,
+   * but an internal `href` (starting with `/` or `#`) always stays in the same tab.
    */
   external?: boolean;
 }
@@ -49,6 +49,10 @@ export function LinkButton({
   rel,
   ...rest
 }: LinkButtonProps) {
+  const internal =
+    typeof rest.href === "string" &&
+    (rest.href.startsWith("/") || rest.href.startsWith("#"));
+  const openExternal = external && !internal;
   const horizontalPadding = variant === "ghost" ? "" : size === "sm" ? "px-4" : "px-5";
   const classes = [
     "inline-flex items-center justify-center gap-2 rounded-control t-button transition-colors duration-150",
@@ -64,8 +68,8 @@ export function LinkButton({
   return (
     <a
       {...rest}
-      target={target ?? (external ? "_blank" : undefined)}
-      rel={rel ?? (external ? "noopener noreferrer" : undefined)}
+      target={target ?? (openExternal ? "_blank" : undefined)}
+      rel={rel ?? (openExternal ? "noopener noreferrer" : undefined)}
       className={classes}
     >
       <span>{children}</span>

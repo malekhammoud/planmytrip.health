@@ -100,6 +100,32 @@ export async function saveTrip(
   return { id: row.id };
 }
 
+/** Number of saved trips owned by one account. */
+export async function countSavedTrips(clerkUserId: string): Promise<number> {
+  await ensureSchema();
+  const result = await getPool().query(
+    "SELECT COUNT(*)::int AS count FROM saved_trips WHERE clerk_user_id = $1",
+    [clerkUserId],
+  );
+  const row: unknown = result.rows[0];
+  if (!isRecord(row) || typeof row.count !== "number") return 0;
+  return row.count;
+}
+
+/** Finds the saved row for one browser run, used to allow idempotent re-saves. */
+export async function findSavedTripForRun(
+  clerkUserId: string,
+  runId: string,
+): Promise<string | null> {
+  await ensureSchema();
+  const result = await getPool().query(
+    "SELECT id FROM saved_trips WHERE clerk_user_id = $1 AND run_id = $2",
+    [clerkUserId, runId],
+  );
+  const row: unknown = result.rows[0];
+  return isRecord(row) && typeof row.id === "string" ? row.id : null;
+}
+
 /** Lists one account's recent saved trips, newest first. */
 export async function listSavedTrips(
   clerkUserId: string,
