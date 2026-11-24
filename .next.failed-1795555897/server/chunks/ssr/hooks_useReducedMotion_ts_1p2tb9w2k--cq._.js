@@ -1,3 +1,0 @@
-module.exports=[57659,a=>{"use strict";var b=a.i(72131);let c="(prefers-reduced-motion: reduce)";function d(a){if("function"!=typeof window.matchMedia)return()=>{};let b=window.matchMedia(c);return b.addEventListener("change",a),()=>b.removeEventListener("change",a)}function e(){return"function"==typeof window.matchMedia&&window.matchMedia(c).matches}a.s(["f",0,function(){return(0,b.useSyncExternalStore)(d,e,()=>!1)}])}];
-
-//# sourceMappingURL=hooks_useReducedMotion_ts_1p2tb9w2k--cq._.js.map

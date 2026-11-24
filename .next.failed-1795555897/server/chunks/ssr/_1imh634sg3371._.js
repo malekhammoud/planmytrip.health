@@ -1,3 +1,0 @@
-module.exports=[57659,a=>{"use strict";var b=a.i(72131);let c="(prefers-reduced-motion: reduce)";function d(a){if("function"!=typeof window.matchMedia)return()=>{};let b=window.matchMedia(c);return b.addEventListener("change",a),()=>b.removeEventListener("change",a)}function e(){return"function"==typeof window.matchMedia&&window.matchMedia(c).matches}a.s(["f",0,function(){return(0,b.useSyncExternalStore)(d,e,()=>!1)}])},67495,a=>{a.v(b=>Promise.all(["server/chunks/ssr/node_modules_leaflet_dist_leaflet-src_1de3iy2560t96.js"].map(b=>a.l(b))).then(()=>b(99661)))}];
-
-//# sourceMappingURL=_1imh634sg3371._.js.map

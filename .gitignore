@@ -43,3 +43,7 @@ next-env.d.ts
 
 # exported real training data; never commit traveler outcomes
 /data/training-rows.jsonl
+# Safe-deploy rollback artifacts (never commit)
+.next.failed-*
+.next.prev-*
+.build-*
