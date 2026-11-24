@@ -47,3 +47,4 @@ next-env.d.ts
 .next.failed-*
 .next.prev-*
 .build-*
+.deploy-sha
