@@ -112,6 +112,8 @@ and this file agree at that commit. Only the orchestrator commits.
 | 72. Above-the-fold ad bar | [x] | `fix(ads): show the campaign above the fold` |
 | 73. Narrow-screen ad bar | [x] | `fix(ads): keep the top ad bar readable on narrow screens` |
 | 74. Revert inverted ad campaign | [x] | `revert(ads): remove the planmytrip ad campaign` |
+| 75. Shared-report destination prefill | [x] | `feat(onboarding): prefill destination from shared report links` |
+| 76. Cross-site campaign attribution | [x] | `feat(analytics): attribute shared-report signups to campaign` |
 
 ## 3. Commands
 
