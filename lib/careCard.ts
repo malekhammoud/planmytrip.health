@@ -51,7 +51,7 @@ function adjustmentLine(adjustment: VerificationAdjustment): string {
  * Build the care card plain text. The exact section order is part of the contract:
  * title, trip facts, a blank line, the daily checkpoints, a blank line, optional applied
  * adjustments, and the planning notice. Section lines carry only the engine's
- * checkpoints and confirmed verification notes.
+ * checkpoints and confirmed destination-check notes.
  */
 export function buildCareCard(
   destination: string,
@@ -83,7 +83,7 @@ export function buildCareCard(
 
   const applied = adjustments.filter((adjustment) => adjustment.applied);
   if (applied.length > 0) {
-    lines.push("", "Applied verification adjustments");
+    lines.push("", "Applied destination-check adjustments");
     for (const adjustment of applied) lines.push(adjustmentLine(adjustment));
   }
 

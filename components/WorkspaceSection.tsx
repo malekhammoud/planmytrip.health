@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Disclosure } from "@/components/ui";
 
 /** Props for {@link WorkspaceSection}. */
@@ -12,6 +12,8 @@ export interface WorkspaceSectionProps {
   active: boolean;
   /** Optional action, kept outside the toggle button. */
   action?: ReactNode;
+  /** Increment to open this section on request, such as a "View checks" link. */
+  openRequest?: number;
   className?: string;
   children: ReactNode;
 }
@@ -29,10 +31,19 @@ export function WorkspaceSection({
   summary,
   active,
   action,
+  openRequest,
   className,
   children,
 }: WorkspaceSectionProps) {
   const [choice, setChoice] = useState<Choice>("auto");
+  const requestRef = useRef(openRequest ?? 0);
+
+  useEffect(() => {
+    if (openRequest === undefined || openRequest === requestRef.current) return;
+    requestRef.current = openRequest;
+    setChoice("open");
+  }, [openRequest]);
+
   const open = choice === "open" ? true : choice === "closed" ? false : active;
 
   return (

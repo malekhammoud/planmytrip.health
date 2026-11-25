@@ -2,8 +2,8 @@
  * The hero live browser for one venue page.
  *
  * Inputs: one venue worker state, the run start, and a visible flag.
- * Outputs: a live iframe while TinyFish is running, the checked facts where the frame
- * ends, or a calm preparing/error frame; a per-page clock and a real fullscreen action.
+ * Outputs: a live iframe while the page check is running, the checked facts where the
+ * frame ends, or a calm preparing/error frame; a per-page clock and a real fullscreen action.
  * Invariants: all venue frames stay mounted and hidden rather than reloaded; the iframe is
  * used only while a queued or running worker has an allowlisted streaming URL; a completed
  * page is never replayed as a live view; the clock never ticks on a settled page.
@@ -158,7 +158,7 @@ export function VenueLiveView({
               {worker.error ?? "The browser run stopped before it returned a result."}
             </p>
             <Button variant="secondary" onClick={onRetry}>
-              Retry venue research
+              Re-check this page
             </Button>
           </div>
         ) : showFrame ? (
@@ -185,7 +185,7 @@ export function VenueLiveView({
           <div className="flex h-full flex-col justify-between gap-4 p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="t-label text-muted">
-                {worker.phase === "queued" ? "Browser queued" : "Browser opening"}
+                {worker.phase === "queued" ? "Page queued" : "Page opening"}
               </p>
               <p className="t-data-sm text-muted">{host}</p>
             </div>
@@ -193,12 +193,12 @@ export function VenueLiveView({
               <Globe size={20} strokeWidth={1.75} aria-hidden="true" className="text-muted" />
               <p className="t-heading text-ink">
                 {worker.phase === "queued"
-                  ? "Preparing the browser check"
+                  ? "Preparing the page check"
                   : "Opening the venue page"}
               </p>
               <p className="t-small text-muted">
-                TinyFish returns the live page view when this browser starts. The frame is
-                shown only after the provider sends its preview URL.
+                The live page view appears when the browser starts. It is shown only after
+                the page is ready to display.
               </p>
             </div>
             <div className="flex items-center gap-2" aria-hidden="true">

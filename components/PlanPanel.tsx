@@ -2,12 +2,10 @@
 
 import type { CSSProperties } from "react";
 import { AgentPlanView } from "@/components/AgentPlanView";
-import { CachedRecordings, type CachedRecording } from "@/components/CachedRecordings";
-import { UpgradeCallout } from "@/components/UpgradeCallout";
-import { VenueMissionControl } from "@/components/venue/VenueMissionControl";
 import { Button, Callout, LinkButton, Skeleton } from "@/components/ui";
 import {
   PLANNER_AGENTS,
+  isPlanLimitCode,
   type PlannerAgentId,
   type PlannerAgentPhase,
 } from "@/lib/agent/agentTypes";
@@ -15,7 +13,7 @@ import type { PlannerAgentState, PlannerState } from "@/lib/agent/plannerReducer
 import type { MissionStage } from "@/lib/agent/plannerStage";
 import { STAGE_META } from "@/lib/agent/plannerStage";
 import type { TripCaptureContext } from "@/lib/data/types";
-import type { UseVenueResearchResult } from "@/hooks/useVenueResearch";
+import type { VenueEvidence } from "@/lib/venue/types";
 import type { TransportMode } from "@/lib/types";
 
 /** Props for {@link PlanPanel}. */
@@ -35,14 +33,10 @@ export interface PlanPanelProps {
   /** The day highlighted on the map and in the route, owned by the workspace. */
   activeDay: number | null;
   onSelectDay: (day: number | null) => void;
-  /** Recorded worker runs carried by a cached verification. */
-  recordings?: readonly CachedRecording[];
-  /** Live menu and hotel evidence for this plan. */
-  venue: UseVenueResearchResult;
-  /** Whether the current plan includes live venue research. */
-  venueEnabled: boolean;
-  /** Trip start date, used by the hotel-rate note. */
-  checkIn: string;
+  /** Checked menu and room-rate facts for the selected places. */
+  venueEvidence?: readonly VenueEvidence[];
+  /** Opens the checked-places section from the plan summary. */
+  onViewChecks?: () => void;
 }
 
 const ROUTE_PATH =
@@ -85,13 +79,14 @@ function RouteForming({
   stage: MissionStage;
 }) {
   const completed = completedCount(agents);
+  const total = PLANNER_AGENTS.length;
   const failing = Object.values(agents).filter((agent) => agent.phase === "error").length;
   const status =
     stage === "composing"
       ? "The concierge is sequencing verified picks inside each day's ceilings."
-      : completed >= 7
-        ? "All seven agents are in. The concierge is writing the final route."
-        : `${completed} of 7 agents complete. The map appears when the route is ready.`;
+      : completed >= total
+        ? "Every specialist is in. The concierge is writing the final route."
+        : `${completed} of ${total} specialists complete. The map appears when the route is ready.`;
   const slots = Array.from({ length: Math.min(Math.max(days, 1), 7) }, (_, i) => i + 1);
 
   return (
@@ -99,7 +94,7 @@ function RouteForming({
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className="t-label text-muted">Route forming</p>
         <p className="t-data-sm text-muted">
-          {completed} / 7 agents{failing > 0 ? ` · ${failing} incomplete` : ""}
+          {completed} / {total} specialists{failing > 0 ? ` · ${failing} incomplete` : ""}
         </p>
       </div>
       <p role="status" aria-live="polite" className="t-small mt-1 text-muted">
@@ -183,10 +178,8 @@ export function PlanPanel({
   onRetry,
   activeDay,
   onSelectDay,
-  recordings = [],
-  venue,
-  venueEnabled,
-  checkIn,
+  venueEvidence = [],
+  onViewChecks,
 }: PlanPanelProps) {
   const mockNote = state.mock ? (
     <div className="mb-4">
@@ -200,7 +193,7 @@ export function PlanPanel({
       <div className="mb-4">
         <Callout tone="info" title="Cached plan">
           <p>
-            Served from a verified cache checked{" "}
+            Served from a shared cache checked{" "}
             {new Date(state.cachedAt).toLocaleDateString("en-CA", {
               year: "numeric",
               month: "short",
@@ -221,7 +214,6 @@ export function PlanPanel({
       <div>
         {mockNote}
         {cachedNote}
-        <CachedRecordings recordings={recordings} />
         <AgentPlanView
           plan={state.plan}
           visible={visible}
@@ -230,43 +222,37 @@ export function PlanPanel({
           capture={capture}
           activeDay={activeDay}
           onSelectDay={onSelectDay}
-          venue={venue.evidence}
+          venue={venueEvidence}
+          onViewChecks={onViewChecks}
         />
-        {venueEnabled ? (
-          <VenueMissionControl
-            state={venue.state}
-            checkIn={checkIn}
-            onRetry={venue.retry}
-            mock={state.mock}
-          />
-        ) : (
-          <div className="mt-10">
-            <UpgradeCallout feature="Live menus and room rates" />
-          </div>
-        )}
       </div>
     );
   }
 
   if (state.status === "error") {
+    const planLimit = isPlanLimitCode(state.error?.code);
     return (
       <div>
         {mockNote}
         <Callout
-          tone={state.error?.code === "agent_unavailable" ? "caution" : "risk"}
-          title="Planning paused"
+          tone={planLimit ? "info" : "caution"}
+          title={planLimit ? "Live plan limit" : "Planning paused"}
         >
           <p>{state.error?.message ?? "The concierge did not return a plan."}</p>
           <p className="mt-2">
-            The safety envelope and live verification keep running.
+            {planLimit
+              ? "Your saved trips and the free pacing envelope are still available."
+              : "The pacing and safety envelope below is still available for this trip."}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button variant="secondary" onClick={onRetry}>
-              Try the concierge again
+              Try again
             </Button>
-            <LinkButton href="/pricing" variant="ghost">
-              See plans
-            </LinkButton>
+            {planLimit ? (
+              <LinkButton href="/pricing" variant="ghost">
+                See plans
+              </LinkButton>
+            ) : null}
           </div>
         </Callout>
       </div>

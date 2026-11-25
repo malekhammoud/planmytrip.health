@@ -10,6 +10,7 @@
 import {
   PLANNER_AGENT_IDS,
   type AgentTripPlan,
+  type PlanLimitCode,
   type PlannerActivityKind,
   type PlannerAgentId,
   type PlannerAgentPhase,
@@ -107,7 +108,7 @@ export type PlannerAction =
       failed: readonly PlannerAgentId[];
       mock?: true;
     }
-  | { type: "stream_failed"; message: string };
+  | { type: "stream_failed"; message: string; code?: PlanLimitCode };
 
 const ACTIVITY_LIMIT = 4;
 const LOG_LIMIT = 24;
@@ -292,7 +293,7 @@ export function plannerReducer(
       return {
         ...state,
         status: "error",
-        error: { code: "upstream_error", message: action.message },
+        error: { code: action.code ?? "upstream_error", message: action.message },
       };
   }
 }

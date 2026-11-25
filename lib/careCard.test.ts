@@ -2,7 +2,7 @@
  * Unit tests for the deterministic care-card text builder.
  *
  * Covers the exact section format, whitespace normalization, engine integration, the
- * empty-itinerary fallback, and applied verification adjustments.
+ * empty-itinerary fallback, and applied destination-check adjustments.
  */
 
 import { describe, expect, it } from "vitest";
@@ -96,7 +96,7 @@ describe("buildCareCard", () => {
     expect(card).toContain("Daily checkpoints\nNo itinerary days are available.");
   });
 
-  it("includes only applied verification adjustments with provenance", () => {
+  it("includes only applied destination-check adjustments with provenance", () => {
     const card = buildCareCard(
       "Tokyo, Japan",
       "asthma_respiratory",
@@ -129,7 +129,7 @@ describe("buildCareCard", () => {
     );
     expect(card).toContain(
       [
-        "Applied verification adjustments",
+        "Applied destination-check adjustments",
         "- Day 1 afternoon recovery: 30 to 60 min. Reason: heat notice: Extreme heat. Source: https://travel.gc.ca/travelling/advisories (retrieved 2026-11-21 12:00 UTC)",
         "",
         "Planning aid only.",

@@ -3,7 +3,7 @@
  *
  * Inputs: a validated request, an abort controller, the reducer dispatch, and a
  * settlement callback. Outputs: typed actions, including stream_failed when the
- * connection cannot finish.
+ * connection cannot finish, with an explicit plan-limit code when the server sends one.
  * Invariants: frames after an abort are ignored; server errors never echo raw text;
  * the caller owns the controller.
  */
@@ -11,7 +11,11 @@
 import type { Dispatch } from "react";
 import { asText, applyPlannerFrame, isRecord } from "@/hooks/plannerFrames";
 import type { PlannerAction } from "@/lib/agent/plannerReducer";
-import type { PlannerRequest } from "@/lib/agent/agentTypes";
+import {
+  isPlanLimitCode,
+  type PlanLimitCode,
+  type PlannerRequest,
+} from "@/lib/agent/agentTypes";
 import { createSseParser, type SseMessage } from "@/lib/sse";
 
 const NETWORK_MESSAGE =
@@ -22,6 +26,12 @@ const UNAVAILABLE_MESSAGE =
   "The planning service is unavailable. Try again in a moment.";
 const START_MESSAGE = "The planning service could not start. Try again.";
 
+/** One planner POST failure, with the server's explicit plan-limit code when present. */
+export interface PlannerFailure {
+  message: string;
+  code: PlanLimitCode | null;
+}
+
 /** Everything one planner POST needs. */
 export interface PlannerStreamInput {
   request: PlannerRequest;
@@ -30,17 +40,28 @@ export interface PlannerStreamInput {
   onSettled: () => void;
 }
 
-async function readErrorMessage(response: Response): Promise<string> {
+/**
+ * Reads a server JSON error without echoing anything unvalidated. Only the two
+ * explicit plan-limit codes survive, so the interface never branches on raw text.
+ */
+export function parsePlannerFailure(body: unknown, status: number): PlannerFailure {
+  const fallback = status >= 500 ? UNAVAILABLE_MESSAGE : START_MESSAGE;
+  if (!isRecord(body)) return { message: fallback, code: null };
+  const message = asText(body.error);
+  const code = isPlanLimitCode(body.code) ? body.code : null;
+  return {
+    message: message !== null && message.length <= 240 ? message : fallback,
+    code,
+  };
+}
+
+async function readFailure(response: Response): Promise<PlannerFailure> {
   try {
-    const body: unknown = await response.json();
-    if (isRecord(body)) {
-      const message = asText(body.error);
-      if (message !== null && message.length <= 240) return message;
-    }
+    return parsePlannerFailure(await response.json(), response.status);
   } catch {
-    // A non-JSON body is replaced below with copy that never echoes server text.
+    // A non-JSON body is replaced with copy that never echoes server text.
+    return parsePlannerFailure(null, response.status);
   }
-  return response.status >= 500 ? UNAVAILABLE_MESSAGE : START_MESSAGE;
 }
 
 /**
@@ -57,9 +78,9 @@ export function streamPlannerRequest(input: PlannerStreamInput): void {
     }
     return sawDone;
   };
-  const fail = (message: string): void => {
+  const fail = (message: string, code: PlanLimitCode | null = null): void => {
     if (!controller.signal.aborted) {
-      dispatch({ type: "stream_failed", message });
+      dispatch({ type: "stream_failed", message, ...(code === null ? {} : { code }) });
     }
   };
 
@@ -76,8 +97,8 @@ export function streamPlannerRequest(input: PlannerStreamInput): void {
         signal: controller.signal,
       });
       if (!response.ok) {
-        const message = await readErrorMessage(response);
-        fail(message);
+        const failure = await readFailure(response);
+        fail(failure.message, failure.code);
         return;
       }
       if (response.body === null) {

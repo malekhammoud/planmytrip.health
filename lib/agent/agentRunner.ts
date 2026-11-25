@@ -74,6 +74,10 @@ function errorMessage(code: PlannerErrorCode): string {
       return "The planning team returned an incomplete plan. Try again.";
     case "invalid_request":
       return "That trip request is incomplete. Check the destination and duration.";
+    case "plan_limit":
+      return "This trip is longer than the current plan includes. See the plans page or shorten the trip.";
+    case "trip_limit":
+      return "The live plans included in this account are used up for now. Cached plans remain available.";
     case "upstream_error":
       return "The planning team could not finish. Try again in a moment.";
   }

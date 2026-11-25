@@ -137,6 +137,7 @@
       "deck"
       "stage"
       "verify"
+      "venue"
       "env"
       "rail";
     gap: 48px 40px;
@@ -148,6 +149,7 @@
       "deck"
       "stage"
       "verify"
+      "venue"
       "env"
       "rail";
   }
@@ -158,6 +160,7 @@
       "stage"
       "deck"
       "verify"
+      "venue"
       "env"
       "rail";
   }
@@ -166,18 +169,20 @@
     grid-template-areas:
       "stage"
       "deck"
+      "venue"
       "env"
       "verify"
       "rail";
   }
 
-  /* While the checks are live they move above the envelope; when they settle, the
-   * envelope moves back ahead of the archived verification. */
+  /* While the destination check is live it moves ahead of the archived sections;
+   * the safety envelope returns ahead of it when the check settles. */
   .command-grid--ready[data-checks="live"] {
     grid-template-areas:
       "stage"
       "deck"
       "verify"
+      "venue"
       "env"
       "rail";
   }
@@ -230,6 +235,7 @@
   }
 
   .cg-verify { grid-area: verify; }
+  .cg-venue { grid-area: venue; }
   .cg-env { grid-area: env; }
   .cg-rail { grid-area: rail; align-self: stretch; }
 
@@ -264,6 +270,7 @@
         "deck deck rail"
         "stage stage rail"
         "verify verify rail"
+        "venue venue rail"
         "env env rail";
     }
 
@@ -272,6 +279,7 @@
         "deck deck rail"
         "stage stage rail"
         "verify verify rail"
+        "venue venue rail"
         "env env rail";
     }
 
@@ -280,6 +288,7 @@
         "stage stage rail"
         "deck deck rail"
         "verify verify rail"
+        "venue venue rail"
         "env env rail";
     }
 
@@ -287,6 +296,7 @@
       grid-template-areas:
         "stage stage rail"
         "deck deck rail"
+        "venue venue rail"
         "env env rail"
         "verify verify verify";
     }
@@ -296,6 +306,7 @@
         "stage stage rail"
         "deck deck rail"
         "verify verify verify"
+        "venue venue rail"
         "env env rail";
     }
 
@@ -320,6 +331,7 @@
         "deck deck rail"
         "stage stage rail"
         "verify verify rail"
+        "venue venue rail"
         "env env rail";
     }
   }

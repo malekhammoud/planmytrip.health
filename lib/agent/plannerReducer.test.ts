@@ -190,4 +190,17 @@ describe("plannerReducer", () => {
       message: "Connection lost.",
     });
   });
+
+  it("keeps an explicit plan-limit code from the server", () => {
+    const state = apply(createPlannerState(1), {
+      type: "stream_failed",
+      message: "The Free Preview includes one live plan a year.",
+      code: "trip_limit",
+    });
+    expect(state.status).toBe("error");
+    expect(state.error).toEqual({
+      code: "trip_limit",
+      message: "The Free Preview includes one live plan a year.",
+    });
+  });
 });

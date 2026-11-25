@@ -15,6 +15,21 @@ export const metadata: Metadata = {
   description: "Open a trip you saved, with its itinerary and safety envelope.",
 };
 
+const PAGE_SIZE = 30;
+const MAX_PAGE = 10_000;
+
+function parsePage(value: string | string[] | undefined): number {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw === undefined) return 1;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return 1;
+  return Math.min(parsed, MAX_PAGE);
+}
+
+function pageHref(page: number): string {
+  return page <= 1 ? "/trips" : `/trips?page=${page}`;
+}
+
 function savedDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "date not recorded";
@@ -22,14 +37,23 @@ function savedDate(value: string): string {
 }
 
 /** The account-owned trip list. Only summaries are read here. */
-export default async function SavedTripsPage() {
+export default async function SavedTripsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string | string[] }>;
+}) {
   const { userId, entitlements } = await readBilling();
   if (userId === null) redirect(signInHref("/trips"));
 
+  const page = parsePage((await searchParams).page);
+  const offset = (page - 1) * PAGE_SIZE;
   let trips: Awaited<ReturnType<typeof listSavedTrips>> = [];
+  let hasMore = false;
   let failed = false;
   try {
-    trips = await listSavedTrips(userId);
+    const rows = await listSavedTrips(userId, PAGE_SIZE + 1, offset);
+    hasMore = rows.length > PAGE_SIZE;
+    trips = rows.slice(0, PAGE_SIZE);
   } catch {
     failed = true;
   }
@@ -41,12 +65,13 @@ export default async function SavedTripsPage() {
         <p className="t-label text-muted">Account</p>
         <h1 className="t-display measure mt-3">Saved trips.</h1>
         <p className="t-body measure mt-5 text-muted">
-          These are the plans you saved while signed in. Each one keeps the trip, the
-          itinerary, and the safety envelope, so you can reopen it later.
+          Each saved trip is a snapshot of the plan you kept: the route, the concierge
+          day plan, and the safety envelope as it was captured. Menu and room-rate checks
+          are not stored, so open a trip to refresh them.
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <LinkButton href="/" variant="secondary">
-            Plan a new trip
+            Plan another trip
           </LinkButton>
           <LinkButton href="/pricing" variant="ghost">
             {planLabel(entitlements.plan)} plan · See plans
@@ -68,10 +93,13 @@ export default async function SavedTripsPage() {
           </div>
         ) : trips.length === 0 ? (
           <div className="mt-10 border-t border-hairline pt-6">
-            <h2 className="t-title">No saved trips yet.</h2>
+            <h2 className="t-title">
+              {page > 1 ? "No saved trips on this page." : "No saved trips yet."}
+            </h2>
             <p className="t-small measure mt-2 text-muted">
-              When a plan is ready, choose Save trip in the command bar. It will appear
-              here.
+              {page > 1
+                ? "Go back to a newer page to find your saved plans."
+                : "When a plan is ready, choose Save trip in the command bar. It will appear here."}
             </p>
           </div>
         ) : (
@@ -101,6 +129,27 @@ export default async function SavedTripsPage() {
             ))}
           </ol>
         )}
+
+        {failed ? null : page > 1 || hasMore ? (
+          <nav
+            aria-label="Saved trip pages"
+            className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-hairline pt-4"
+          >
+            <p className="t-data-sm text-muted">Page {page}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              {page > 1 ? (
+                <LinkButton href={pageHref(page - 1)} variant="secondary">
+                  Newer
+                </LinkButton>
+              ) : null}
+              {hasMore ? (
+                <LinkButton href={pageHref(page + 1)} variant="secondary">
+                  Older
+                </LinkButton>
+              ) : null}
+            </div>
+          </nav>
+        ) : null}
       </main>
       <SiteFooter />
     </div>

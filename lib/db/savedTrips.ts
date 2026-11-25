@@ -27,6 +27,11 @@ function boundedLimit(limit: number): number {
   return Math.max(1, Math.min(100, Math.trunc(limit)));
 }
 
+function boundedOffset(offset: number): number {
+  if (!Number.isFinite(offset)) return 0;
+  return Math.max(0, Math.min(1_000_000, Math.trunc(offset)));
+}
+
 function parseJson(value: unknown): unknown {
   if (value === null || value === undefined) return null;
   if (typeof value !== "string") return value;
@@ -126,19 +131,20 @@ export async function findSavedTripForRun(
   return isRecord(row) && typeof row.id === "string" ? row.id : null;
 }
 
-/** Lists one account's recent saved trips, newest first. */
+/** Lists one account's recent saved trips, newest first, with a bounded page offset. */
 export async function listSavedTrips(
   clerkUserId: string,
   limit = 30,
+  offset = 0,
 ): Promise<SavedTripSummary[]> {
   await ensureSchema();
   const result = await getPool().query(
     `SELECT id, destination, days, condition, updated_at
      FROM saved_trips
      WHERE clerk_user_id = $1
-     ORDER BY updated_at DESC
-     LIMIT $2`,
-    [clerkUserId, boundedLimit(limit)],
+     ORDER BY updated_at DESC, id DESC
+     LIMIT $2 OFFSET $3`,
+    [clerkUserId, boundedLimit(limit), boundedOffset(offset)],
   );
   return result.rows
     .map(toSummary)

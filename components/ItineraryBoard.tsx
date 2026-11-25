@@ -88,7 +88,7 @@ function KpiStrip({
       <div className="grid grid-cols-1 md:grid-cols-3">
         <div className="pb-6 md:pb-0 md:pr-4">
           <Metric
-            label="Health Safety Score"
+            label="Pacing score"
             value={Math.round(score)}
             unit="/100"
             sub="Modeled estimate"
@@ -97,12 +97,12 @@ function KpiStrip({
               baseline: plan.baselineScore,
               baselineLabel: "Standard baseline",
             }}
-            info={`Inputs for ${profileLabel}: profile floor ${profileFloor}/100, step and walking ceilings, planned daily load, exertion, recovery minutes, and trip length. Standard baseline: 10,000 steps, 8 km, exertion 2.2, no recovery.`}
+            info={`Pacing score inputs for ${profileLabel}: profile floor ${profileFloor}/100, step and walking ceilings, planned daily load, exertion, recovery minutes, and trip length. Standard baseline: 10,000 steps, 8 km, exertion 2.2, no recovery.`}
           />
         </div>
         <div className="border-t border-hairline py-6 md:border-l md:border-t-0 md:px-4 md:py-0">
           <Metric
-            label="Daily Step Ceiling"
+            label="Daily step ceiling"
             value={formatCount(stepCeiling)}
             unit="steps"
             sub="Hard limit per day for this profile"
@@ -110,17 +110,19 @@ function KpiStrip({
         </div>
         <div className="border-t border-hairline pt-6 md:border-l md:border-t-0 md:pl-4 md:pt-0">
           <Metric
-            label="Flare / ER Risk Reduction"
+            label="Modeled risk reduction"
             value={Math.round(risk)}
             unit="%"
             sub="Modeled estimate"
-            info={`Inputs for ${profileLabel}: profile floor ${profileFloor}/100, planned daily load, condition ceilings, exertion, recovery minutes, trip length, and the standard sightseeing baseline (10,000 steps, 8 km, exertion 2.2, no recovery).`}
+            info={`Modeled risk reduction inputs for ${profileLabel}: profile floor ${profileFloor}/100, planned daily load, condition ceilings, exertion, recovery minutes, trip length, and the standard sightseeing baseline (10,000 steps, 8 km, exertion 2.2, no recovery).`}
           />
         </div>
       </div>
       {verification === undefined ? null : (
         <p className="mt-4 border-t border-solid border-hairline pt-3 t-data-sm text-muted">
-          Live verification: {verification.checked} of {verification.total} sources checked
+          {verification.total === 1
+            ? `Destination check: ${verification.checked === 1 ? "1 source checked" : "not checked yet"}`
+            : `Destination check: ${verification.checked} of ${verification.total} sources checked`}
         </p>
       )}
     </div>
@@ -204,28 +206,31 @@ function ItineraryDayRow({
           </h3>
           <Button
             variant="ghost"
-            size="sm"
-            aria-expanded={focused}
-            aria-controls={`envelope-day-${day.day}`}
+            aria-pressed={focused}
             onClick={onToggle}
           >
-            {focused ? "Close day" : "Open day"}
+            {focused ? "Clear map focus" : "Show on map"}
           </Button>
         </div>
         <DayCaps day={day} mobile />
-        <div id={`envelope-day-${day.day}`} hidden={!focused}>
-          <p className="t-body mt-4 text-muted">{day.pacingRule}</p>
-          <PacingStrip blocks={day.blocks} day={day.day} />
-          <BlockList blocks={day.blocks} />
-          <div className="mt-6 rounded-frame bg-accent-soft p-3">
-            <p className="t-label text-muted">Checkpoint</p>
-            <p className="t-small mt-1 text-ink">{day.healthCheckpoint}</p>
-          </div>
+        <div className="mt-4 rounded-frame bg-accent-soft p-3">
+          <p className="t-label text-muted">Checkpoint</p>
+          <p className="t-small mt-1 text-ink">{day.healthCheckpoint}</p>
         </div>
+        <details className="mt-4 border-t border-solid border-hairline pt-2">
+          <summary className="t-label flex min-h-11 cursor-pointer items-center text-muted">
+            How this day is modeled
+          </summary>
+          <div className="pt-2">
+            <p className="t-body text-muted">{day.pacingRule}</p>
+            <PacingStrip blocks={day.blocks} day={day.day} />
+            <BlockList blocks={day.blocks} />
+          </div>
+        </details>
         {recovery === undefined ? null : (
           <div className="mt-4 border-t border-solid border-hairline pt-3">
             <p className="t-label text-accent">
-              Adjusted by verification <NewMark />
+              Adjusted by the destination check <NewMark />
             </p>
             <p className="t-small mt-1 text-ink">
               Afternoon recovery {recovery.fromValue ?? 0} to {recovery.toValue ?? 0}{" "}

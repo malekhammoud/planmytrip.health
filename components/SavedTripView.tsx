@@ -6,8 +6,9 @@ import { DeleteSavedTripButton } from "@/components/DeleteSavedTripButton";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { CareCardButton, ItineraryBoard } from "@/components/ItineraryBoard";
 import { UpgradeCallout } from "@/components/UpgradeCallout";
-import { LinkButton } from "@/components/ui";
+import { Button, Callout, LinkButton } from "@/components/ui";
 import { VenueMissionControl } from "@/components/venue/VenueMissionControl";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useVenueResearch } from "@/hooks/useVenueResearch";
 import type { BillingEntitlements } from "@/lib/billing/plans";
 import { describeTrip } from "@/lib/describeTrip";
@@ -21,10 +22,25 @@ function savedDate(value: string): string {
   return `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
 
+function venueStatusLine(
+  requested: boolean,
+  status: "idle" | "running" | "complete" | "error",
+  checked: number,
+): string {
+  if (!requested) return "Not checked on this page yet";
+  if (status === "running") return "Checking current pages";
+  if (status === "complete") {
+    return `${checked} ${checked === 1 ? "page" : "pages"} checked`;
+  }
+  if (status === "error") return "Needs a retry";
+  return "Ready to check";
+}
+
 /**
  * Read-only saved snapshot. The engine plan is rebuilt deterministically from the saved
  * trip, so the pacing envelope is always current with the documented engine, while the
- * concierge plan and its caps remain exactly as captured.
+ * concierge plan and its caps remain exactly as captured. Menu and room-rate checks are
+ * explicit: the saved page never opens live pages until the reader asks.
  */
 export function SavedTripView({
   saved,
@@ -33,6 +49,7 @@ export function SavedTripView({
   saved: SavedTrip;
   entitlements: BillingEntitlements;
 }) {
+  const reduced = useReducedMotion();
   const enginePlan = useMemo(
     () =>
       buildHealthTripPlan({
@@ -42,17 +59,30 @@ export function SavedTripView({
       }),
     [saved.trip],
   );
-  const [activeDay, setActiveDay] = useState<number | null>(
-    saved.plan.days[0]?.day ?? null,
-  );
+  const [activeDay, setActiveDay] = useState<number | null>(null);
+  const [venueRequested, setVenueRequested] = useState(false);
   const venue = useVenueResearch({
     plan: saved.plan,
     destination: saved.trip.destination,
     checkIn: saved.trip.checkIn ?? "",
     days: saved.trip.days,
     travelers: saved.trip.travelers ?? 1,
-    enabled: entitlements.venueResearch,
+    enabled: entitlements.venueResearch && venueRequested,
   });
+
+  const scrollToChecks = (): void => {
+    window.setTimeout(() => {
+      document.getElementById("venue-deck-heading")?.scrollIntoView({
+        behavior: reduced ? "auto" : "smooth",
+        block: "start",
+      });
+    }, 60);
+  };
+
+  const openChecks = (): void => {
+    setVenueRequested(true);
+    scrollToChecks();
+  };
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -74,18 +104,35 @@ export function SavedTripView({
           {saved.plan.days.length} days
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
+          <LinkButton href="/" variant="primary">
+            Plan another trip
+          </LinkButton>
           <LinkButton href="/trips" variant="secondary">
             All saved trips
           </LinkButton>
           <DeleteSavedTripButton id={saved.id} />
         </div>
 
+        <div className="mt-6">
+          <Callout tone="info" title="Saved snapshot">
+            <p>
+              This page shows the plan as it was saved. The safety envelope is rebuilt
+              from the same trip with the current pacing engine; the concierge route,
+              places, and sources are unchanged.
+            </p>
+            <p className="mt-2">
+              Menus, room rates, and page checks are not stored. Use Refresh menus and
+              rates under Checked places for current facts.
+            </p>
+          </Callout>
+        </div>
+
         <section aria-labelledby="saved-plan-heading" className="mt-12">
           <div className="panel-head">
             <h2 id="saved-plan-heading" className="t-label text-muted">
-              Concierge plan
+              Saved route
             </h2>
-            <p className="t-data-sm text-muted">Saved snapshot</p>
+            <p className="t-data-sm text-muted">Concierge snapshot</p>
           </div>
           <div className="mt-4">
             <AgentPlanView
@@ -95,25 +142,57 @@ export function SavedTripView({
               activeDay={activeDay}
               onSelectDay={setActiveDay}
               venue={venue.evidence}
+              onViewChecks={openChecks}
             />
-            {entitlements.venueResearch ? (
-              <VenueMissionControl
-                state={venue.state}
-                checkIn={saved.trip.checkIn ?? ""}
-                onRetry={venue.retry}
-              />
-            ) : (
-              <div className="mt-10">
-                <UpgradeCallout feature="Live menus and room rates" />
-              </div>
-            )}
           </div>
+        </section>
+
+        <section aria-labelledby="saved-checks-heading" className="mt-16">
+          <div className="panel-head">
+            <h2 id="saved-checks-heading" className="t-label text-muted">
+              Checked places
+            </h2>
+            <p className="t-data-sm text-muted">
+              {venueStatusLine(
+                venueRequested,
+                venue.state.status,
+                venue.evidence.length,
+              )}
+            </p>
+          </div>
+          {entitlements.venueResearch ? (
+            venueRequested ? (
+              <div className="mt-4">
+                <VenueMissionControl
+                  state={venue.state}
+                  checkIn={saved.trip.checkIn ?? ""}
+                  onRetry={venue.retry}
+                />
+              </div>
+            ) : (
+              <div className="mt-4 border-t border-solid border-hairline-strong pt-4">
+                <p className="t-body measure text-muted">
+                  Menus and room rates are checked snapshots, not part of the saved plan.
+                  Refresh them to open the selected menu and booking pages again.
+                </p>
+                <div className="mt-4">
+                  <Button variant="secondary" onClick={openChecks}>
+                    Refresh menus and rates
+                  </Button>
+                </div>
+              </div>
+            )
+          ) : (
+            <div className="mt-4">
+              <UpgradeCallout feature="Live menus and room rates" />
+            </div>
+          )}
         </section>
 
         <section aria-labelledby="saved-safety-heading" className="mt-16">
           <div className="panel-head">
             <h2 id="saved-safety-heading" className="t-label text-muted">
-              Safety envelope
+              Pacing and safety
             </h2>
             <CareCardButton
               destination={saved.trip.destination}
@@ -127,13 +206,13 @@ export function SavedTripView({
               destination={saved.trip.destination}
               condition={saved.trip.condition}
               activeDay={activeDay}
+              onSelectDay={setActiveDay}
             />
           </div>
         </section>
 
         <p className="t-small measure mt-12 border-t border-hairline pt-4 text-muted">
-          This is a saved plan snapshot. Venue menus and rates may be refreshed separately;
-          the saved plan itself is unchanged. Confirm hours, access, and safety details
+          Planning aid only. Not medical advice. Confirm hours, access, and safety details
           before booking.
         </p>
       </main>

@@ -11,9 +11,12 @@ import { PlanPanel } from "@/components/PlanPanel";
 import { AdjustmentsPanel } from "@/components/VerificationAdjustments";
 import { WorkspaceSection } from "@/components/WorkspaceSection";
 import { UpgradeCallout } from "@/components/UpgradeCallout";
+import { VenueMissionControl } from "@/components/venue/VenueMissionControl";
 import { useAgentPlan } from "@/hooks/useAgentPlan";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useSwarm } from "@/hooks/useSwarm";
 import { useVenueResearch } from "@/hooks/useVenueResearch";
+import { PLANNER_AGENT_IDS } from "@/lib/agent/agentTypes";
 import { surfaceMode, missionStage } from "@/lib/agent/plannerStage";
 import { isSwarmLive, swarmSummary } from "@/lib/swarmTelemetry";
 import {
@@ -24,6 +27,7 @@ import { WORKER_IDS } from "@/lib/swarmTypes";
 import type { HealthTripPlan } from "@/lib/healthTripEngine";
 import type { TripConfig } from "@/lib/agent/agentTypes";
 import type { BillingEntitlements } from "@/lib/billing/plans";
+import type { VenueResearchState } from "@/lib/venue/venueState";
 
 /** Props for {@link PlanWorkspace}. */
 export interface PlanWorkspaceProps {
@@ -46,13 +50,56 @@ function count(value: number): string {
   return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
+function venueSummaryText(
+  enabled: boolean,
+  ready: boolean,
+  state: VenueResearchState,
+): string {
+  if (!enabled) return "Included in Care Circle";
+  if (!ready) return "Opens when the plan is ready";
+  const pages = state.order.length;
+  if (pages === 0) {
+    return state.status === "running" ? "Resolving pages" : "No pages attached";
+  }
+  let checked = 0;
+  let menus = 0;
+  let hotels = 0;
+  for (const id of state.order) {
+    const worker = state.workers[id];
+    if (worker === undefined) continue;
+    if (worker.phase === "complete" || worker.phase === "error") checked += 1;
+    if (worker.evidence?.kind === "menu") menus += 1;
+    if (worker.evidence?.kind === "hotel") hotels += 1;
+  }
+  const parts = [`${checked} of ${pages} pages checked`];
+  if (menus > 0) parts.push(`${menus} ${menus === 1 ? "menu" : "menus"}`);
+  if (hotels > 0) {
+    parts.push(`${hotels} ${hotels === 1 ? "room quote" : "room quotes"}`);
+  }
+  return parts.join(" · ");
+}
+
+function destinationSummary(
+  enabled: boolean,
+  live: boolean,
+  completed: number,
+  failed: number,
+  findings: number,
+): string {
+  if (!enabled) return "Included in Care Circle";
+  if (live) return "Checking the destination";
+  if (completed + failed === 0) return "Ready when the plan is";
+  if (WORKER_IDS.length === 1) {
+    return findings === 1 ? "1 source checked" : "Source not available";
+  }
+  return `${findings} of ${WORKER_IDS.length} sources checked`;
+}
+
 /**
  * The live command surface. One sticky instrument bar carries identity, stage, clocks,
- * and counts; below it a named-area grid reorders as real events land: the team leads
- * while sessions open, stage and team sit together as research arrives, the stage takes
- * the width while the concierge composes, and the finished stage leads with the team
- * compacted to a strip. Both agent streams and the live preview frame stay mounted
- * for the whole workspace, so nothing aborts when panels move.
+ * specialist progress, and actions; below it a named-area grid reorders as real events
+ * land. Both agent streams and every live page view stay mounted for the whole
+ * workspace, so nothing aborts when panels move.
  */
 export function PlanWorkspace({
   trip,
@@ -100,9 +147,11 @@ export function PlanWorkspace({
     runToken,
   });
 
+  const reduced = useReducedMotion();
   const [adjustmentMaster, setAdjustmentMaster] = useState(true);
   const [disabledAdjustments, setDisabledAdjustments] = useState<readonly string[]>([]);
   const [activeDay, setActiveDay] = useState<number | null>(null);
+  const [venueRequest, setVenueRequest] = useState(0);
   const verificationFindings = useMemo<VerificationFindingInput[]>(
     () =>
       WORKER_IDS.flatMap((worker) => {
@@ -130,13 +179,11 @@ export function PlanWorkspace({
     [plan, trip.condition, verificationFindings, adjustmentMaster, disabledAdjustments],
   );
   const verification = swarmSummary(swarm.state);
-  const recordedRuns = WORKER_IDS.flatMap((worker) => {
-    const recordingUrl = swarm.state.workers[worker].recordingUrl;
-    return recordingUrl === null ? [] : [{ worker, url: recordingUrl }];
-  });
   const checksLive = isSwarmLive(swarm.state);
+  const venueLive = venue.state.status === "running";
   const stage = missionStage(state);
   const mode = surfaceMode(stage);
+  const specialistTotal = PLANNER_AGENT_IDS.length;
   const completed = Object.values(state.agents).filter(
     (agent) => agent.phase === "complete",
   ).length;
@@ -155,19 +202,20 @@ export function PlanWorkspace({
       : stage === "error"
         ? "Planning paused"
         : stage === "composing"
-          ? `${completed}/7 in · concierge composing`
+          ? `${completed}/${specialistTotal} in · concierge composing`
           : stage === "researching"
-            ? `${completed}/7 in · route forming`
+            ? `${completed}/${specialistTotal} in · route forming`
             : "Sessions opening";
 
   // Only the surface carrying the live work opens by default. The route stage leads
-  // while composing; verification takes over while checks run; the route returns when
-  // checks settle. The safety envelope is static reference, so it stays folded until
-  // the reader opens it.
+  // while composing; the destination check takes over while it runs; the route returns
+  // when checks settle. The safety envelope opens with the finished plan, and checked
+  // places open while those pages run or when the plan summary asks for them.
   const routeActive = stage === "ready" && !checksLive;
   const teamActive =
     stage === "starting" || stage === "researching" || stage === "composing";
   const checksActive = checksLive;
+  const safetyActive = stage === "ready";
   const railActive = state.status === "running" || checksLive;
 
   // A new build or replan remounts the workspace; open it at the top, not at the
@@ -176,18 +224,9 @@ export function PlanWorkspace({
     window.scrollTo(0, 0);
   }, [runToken]);
 
-  // The first plan_ready focuses day one, so the map, route, and day plan open together.
-  const seenPlanRef = useRef(state.plan);
-  useEffect(() => {
-    if (state.plan === null) {
-      seenPlanRef.current = null;
-      return;
-    }
-    if (seenPlanRef.current !== state.plan) {
-      seenPlanRef.current = state.plan;
-      setActiveDay(state.plan.days[0]?.day ?? null);
-    }
-  }, [state.plan]);
+  // The finished plan starts with all days visible; the reader can focus one day from
+  // the map, route, or envelope without a second itinerary opening first. The workspace
+  // remounts on a new build, so null stays the default for every run.
 
   // A layout reorder fades the moved panels once; the class toggle never remounts them.
   const [reorderPulse, setReorderPulse] = useState(false);
@@ -210,6 +249,16 @@ export function PlanWorkspace({
     );
   };
 
+  const openVenueChecks = (): void => {
+    setVenueRequest((current) => current + 1);
+    window.setTimeout(() => {
+      document.getElementById("venue-deck-heading")?.scrollIntoView({
+        behavior: reduced ? "auto" : "smooth",
+        block: "start",
+      });
+    }, 60);
+  };
+
   return (
     <main>
       <CommandBar
@@ -218,6 +267,7 @@ export function PlanWorkspace({
         plan={state.plan}
         state={state}
         swarm={swarm.state}
+        entitlements={entitlements}
         onEditTrip={onEditTrip}
         onReplan={onReplan}
       />
@@ -229,8 +279,8 @@ export function PlanWorkspace({
           data-checks={checksLive ? "live" : "settled"}
         >
           <WorkspaceSection
-            id="route-stage"
-            title="Route and days"
+            id="trip-route"
+            title="Your route"
             summary={routeMeta}
             active={routeActive}
             className="cg-stage"
@@ -246,17 +296,15 @@ export function PlanWorkspace({
               onRetry={retry}
               activeDay={activeDay}
               onSelectDay={setActiveDay}
-              recordings={recordedRuns}
-              venue={venue}
-              venueEnabled={entitlements.venueResearch}
-              checkIn={trip.checkIn}
+              venueEvidence={venue.evidence}
+              onViewChecks={openVenueChecks}
             />
           </WorkspaceSection>
 
           <WorkspaceSection
-            id="planning-team"
-            title="Planning team"
-            summary={`${completed} of 7 complete${incompleteCount > 0 ? ` · ${incompleteCount} incomplete` : ""}`}
+            id="research-team"
+            title="Research team"
+            summary={`${completed} of ${specialistTotal} complete${incompleteCount > 0 ? ` · ${incompleteCount} incomplete` : ""}`}
             active={teamActive}
             className={`cg-deck ${pulse}`}
           >
@@ -264,8 +312,8 @@ export function PlanWorkspace({
           </WorkspaceSection>
 
           <WorkspaceSection
-            id="live-verification"
-            title="Live verification"
+            id="destination-check"
+            title="Destination check"
             summary={
               entitlements.liveVerification ? (
                 <span className="flex items-center gap-2">
@@ -275,11 +323,13 @@ export function PlanWorkspace({
                       checksLive ? "anim-pulse-dot bg-accent" : "bg-ink"
                     }`}
                   />
-                  {verification.running} running · {verification.steps} steps ·{" "}
-                  {verification.sources} sources · {verification.findings}/{WORKER_IDS.length} findings
-                  {recordedRuns.length > 0
-                    ? ` · ${recordedRuns.length} recordings`
-                    : ""}
+                  {destinationSummary(
+                    true,
+                    checksLive,
+                    verification.completed,
+                    verification.failed,
+                    verification.findings,
+                  )}
                 </span>
               ) : (
                 "Included in Care Circle"
@@ -299,15 +349,49 @@ export function PlanWorkspace({
                 expanded={stage === "ready"}
               />
             ) : (
-              <UpgradeCallout feature="Live verification" />
+              <UpgradeCallout feature="Live destination checks" />
             )}
           </WorkspaceSection>
 
           <WorkspaceSection
-            id="safety-envelope"
-            title="Safety envelope"
+            id="checked-places"
+            title="Checked places"
+            summary={
+              entitlements.venueResearch ? (
+                <span className="flex items-center gap-2">
+                  <span
+                    aria-hidden="true"
+                    className={`block h-1.5 w-1.5 ${
+                      venueLive ? "anim-pulse-dot bg-accent" : "bg-ink"
+                    }`}
+                  />
+                  {venueSummaryText(true, state.plan !== null, venue.state)}
+                </span>
+              ) : (
+                "Included in Care Circle"
+              )
+            }
+            active={venueLive}
+            openRequest={venueRequest}
+            className={`cg-venue ${pulse}`}
+          >
+            {entitlements.venueResearch ? (
+              <VenueMissionControl
+                state={venue.state}
+                checkIn={trip.checkIn}
+                onRetry={venue.retry}
+                mock={state.mock}
+              />
+            ) : (
+              <UpgradeCallout feature="Live menus and room rates" />
+            )}
+          </WorkspaceSection>
+
+          <WorkspaceSection
+            id="pacing-safety"
+            title="Pacing and safety"
             summary={`${plan.itinerary.length} days · ${count(plan.dailyStepCeiling)} steps/day · ${walkingCap.toFixed(1)} km walking/day${applied > 0 ? ` · ${applied} adjustments` : ""}`}
-            active={false}
+            active={safetyActive}
             className={`cg-env ${pulse}`}
           >
             <div className="mb-4">
@@ -340,9 +424,9 @@ export function PlanWorkspace({
           </WorkspaceSection>
 
           <WorkspaceSection
-            id="live-activity"
-            title="Live activity"
-            summary={railActive ? "Streaming" : "Settled"}
+            id="activity"
+            title="Activity"
+            summary={railActive ? "Live" : "Settled"}
             active={railActive}
             className="cg-rail"
           >
@@ -351,7 +435,11 @@ export function PlanWorkspace({
         </div>
       </div>
 
-      <CommandDock plannerLive={state.status === "running"} checksLive={checksLive} />
+      <CommandDock
+        plannerLive={state.status === "running"}
+        checksLive={checksLive}
+        venueLive={venueLive}
+      />
     </main>
   );
 }

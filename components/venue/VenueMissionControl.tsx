@@ -1,10 +1,10 @@
 /**
- * The TinyFish venue-research surface: live browser deck, venue tabs, activity, and evidence.
+ * The live venue-page surface: browser deck, venue tabs, activity, and evidence.
  *
  * Inputs: venue research state, the trip's check-in date, and a retry action.
  * Outputs: a live hero frame per venue, an instrument run bar, timestamped activity, the
  * focused source ledger, and checked menu/rate cards.
- * Invariants: every visible line is from an accepted TinyFish frame or checked evidence;
+ * Invariants: every visible line is from an accepted page-check frame or checked evidence;
  * all frames stay mounted while hidden; no recording is shown; the plan stays unchanged.
  */
 
@@ -174,11 +174,11 @@ export interface VenueMissionControlProps {
   state: VenueResearchState;
   checkIn: string;
   onRetry: () => void;
-  /** True for a sample plan; live TinyFish checks stay off. */
+  /** True for a sample plan; live page checks stay off. */
   mock?: boolean;
 }
 
-/** The venue-research control surface. */
+/** The venue-page control surface. */
 export function VenueMissionControl({
   state,
   checkIn,
@@ -232,7 +232,7 @@ export function VenueMissionControl({
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <p className="t-label text-muted">TinyFish live research</p>
+            <p className="t-label text-muted">Live page checks</p>
             {everyCached ? (
               <span className="t-label text-muted">
                 Cached{recordedAt === null ? "" : ` · ${checkedDate(recordedAt)}`}
@@ -240,7 +240,7 @@ export function VenueMissionControl({
             ) : state.status === "running" ? (
               <span className="inline-flex items-center gap-2">
                 <span aria-hidden="true" className="anim-pulse-dot block h-2 w-2 bg-accent" />
-                <span className="t-label text-muted">Browsers live</span>
+                <span className="t-label text-muted">Checking pages</span>
               </span>
             ) : failed > 0 && completed > 0 ? (
               <span className="t-label text-muted">Partly checked</span>
@@ -250,10 +250,9 @@ export function VenueMissionControl({
             Menus, room rates, and the pages behind them
           </h3>
           <p className="t-small measure mt-2 text-muted">
-            TinyFish opens the exact menu and booking links attached to this plan in real
-            browsers, three at a time. The live view is the page itself; the checked cards
-            below are the extracted facts. Hotel rates use the trip start date and party
-            size.
+            We open the exact menu and booking links attached to this plan in real
+            browsers. The live view is the page itself; the checked cards below are the
+            extracted facts. Hotel rates use the trip start date and party size.
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-start gap-2">
@@ -264,7 +263,7 @@ export function VenueMissionControl({
           </p>
           {state.status === "complete" || failed > 0 ? (
             <Button variant="secondary" leadingIcon={RefreshCw} onClick={onRetry}>
-              Re-run venue checks
+              Re-check pages
             </Button>
           ) : null}
         </div>
@@ -284,7 +283,7 @@ export function VenueMissionControl({
             </p>
             <div className="mt-3">
               <Button variant="secondary" onClick={onRetry}>
-                Retry venue checks
+                Re-check pages
               </Button>
             </div>
           </Callout>
@@ -293,9 +292,9 @@ export function VenueMissionControl({
 
       {state.status === "error" ? (
         <div className="mt-4">
-          <Callout tone="caution" title="Venue research paused">
+          <Callout tone="caution" title="Page checks paused">
             <p>
-              {state.error ?? "The venue checks stopped before every page was read."} The
+              {state.error ?? "The page checks stopped before every page was read."} The
               plan and safety envelope are unchanged.
             </p>
             <div className="mt-3">
@@ -311,7 +310,7 @@ export function VenueMissionControl({
         <div className="mt-6 rounded-frame border border-solid border-hairline bg-sunken p-4">
           <p className="t-heading text-ink">
             {mock
-              ? "Live venue checks are off for this mock plan"
+              ? "Live page checks are off for this mock plan"
               : state.status === "complete"
                 ? "No venue page was checked for this plan"
                 : state.status === "idle"
@@ -322,10 +321,10 @@ export function VenueMissionControl({
             {mock
               ? "These places, prices, and menus are sample data. Run a live plan to open real venue pages."
               : state.status === "complete"
-                ? "Add a start date for a hotel rate, or attach a menu link to a restaurant, then re-run the check."
+                ? "Add a start date for a hotel rate, or attach a menu link to a restaurant, then re-check."
                 : state.status === "idle"
                   ? "Add a restaurant or hotel to the trip, or open a plan that includes one, to check live menus and rates."
-                  : "The first browser jobs appear here as soon as the server lists them. The plan is already usable while this runs."}
+                  : "The first page checks appear here as soon as the server lists them. The plan is already usable while this runs."}
           </p>
         </div>
       ) : (
@@ -333,7 +332,7 @@ export function VenueMissionControl({
           <div
             ref={tabsRef}
             role="tablist"
-            aria-label="Venue checks"
+            aria-label="Checked pages"
             onKeyDown={onTabKeyDown}
             className={`mt-4 grid grid-cols-1 gap-2 border-b border-solid border-hairline pb-3 ${tabColumns}`}
           >
@@ -465,7 +464,7 @@ export function VenueMissionControl({
               ) : null}
 
               <p className="t-data-sm mt-4 text-muted">
-                {state.order.length} pages · 3 browsers at a time · 90s per page
+                {state.order.length} pages · a few at a time · about 90 seconds per page
               </p>
             </aside>
           </div>
@@ -489,8 +488,9 @@ export function VenueMissionControl({
       ) : null}
 
       <p className="t-data-sm measure mt-4 text-muted">
-        TinyFish opens the supplied menu or booking URL. No recording is requested. Menu
-        facts are cached for 7 days and room rates for 12 hours; re-run to refresh either.
+        We open the supplied menu or booking URL. The live view is the page itself, not a
+        recording. Menu facts stay fresh for 7 days and room rates for 12 hours; re-check
+        to refresh either.
       </p>
     </section>
   );

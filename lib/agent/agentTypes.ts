@@ -253,13 +253,40 @@ export interface AgentTripPlan {
   mock?: true;
 }
 
+/** Server-assigned limit codes that may arrive with a rejected planner request. */
+export const PLAN_LIMIT_CODES = ["plan_limit", "trip_limit"] as const;
+
+/** One explicit plan-limit failure code returned by the planner route. */
+export type PlanLimitCode = (typeof PLAN_LIMIT_CODES)[number];
+
+/** True only for the server's explicit plan-limit codes. */
+export function isPlanLimitCode(value: unknown): value is PlanLimitCode {
+  return (
+    typeof value === "string" &&
+    (PLAN_LIMIT_CODES as readonly string[]).includes(value)
+  );
+}
+
+/** Every stable failure code the interface can branch on. */
+export const PLANNER_ERROR_CODES = [
+  "agent_unavailable",
+  "invalid_request",
+  "invalid_plan",
+  "timeout",
+  "upstream_error",
+  ...PLAN_LIMIT_CODES,
+] as const;
+
 /** Stable failure codes the interface can branch on. */
-export type PlannerErrorCode =
-  | "agent_unavailable"
-  | "invalid_request"
-  | "invalid_plan"
-  | "timeout"
-  | "upstream_error";
+export type PlannerErrorCode = (typeof PLANNER_ERROR_CODES)[number];
+
+/** Narrows an untrusted value to a known planner failure code. */
+export function isPlannerErrorCode(value: unknown): value is PlannerErrorCode {
+  return (
+    typeof value === "string" &&
+    (PLANNER_ERROR_CODES as readonly string[]).includes(value)
+  );
+}
 
 /** Planner agent lifecycle phases. */
 export type PlannerAgentPhase =

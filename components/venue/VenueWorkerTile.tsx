@@ -1,5 +1,5 @@
 /**
- * One venue tab in the TinyFish research deck.
+ * One venue tab in the page-check deck.
  *
  * Inputs: worker state, its ordinal, selected flag, and select action.
  * Outputs: category, venue name, newest purpose, the checked result, actions, and sources.
@@ -87,7 +87,7 @@ export function VenueWorkerTile({
         {hostOfUrl(worker.evidence?.sourceUrl ?? worker.meta.sourceUrl, "page not stated")}
       </p>
       <p className="t-small mt-2 line-clamp-2 min-h-10 text-ink">
-        {worker.currentPurpose ?? "Waiting for the browser."}
+        {worker.currentPurpose ?? "Waiting for the page."}
       </p>
       <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-solid border-hairline pt-2">
         <p className="t-data-sm text-ink">{resultLine(worker)}</p>

@@ -82,6 +82,20 @@ describe("applyPlannerFrame", () => {
     expect(state.plan?.mock).toBe(true);
   });
 
+  it("keeps the server plan-limit code on a planner_error frame", () => {
+    let state = createPlannerState(1);
+    state = apply(state, "planner_error", {
+      code: "trip_limit",
+      message: "The plan includes two live trips a month.",
+      ts: "2026-11-21T10:02:00.000Z",
+    });
+    expect(state.status).toBe("error");
+    expect(state.error).toEqual({
+      code: "trip_limit",
+      message: "The plan includes two live trips a month.",
+    });
+  });
+
   it("returns true only for planner_done", () => {
     let seenDone = false;
     const dispatch = (action: PlannerAction): void => {

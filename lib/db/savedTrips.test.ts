@@ -59,6 +59,7 @@ const PLAN = {
 function input(
   destination = "Lisbon, Portugal",
   runId = "run-12345678",
+  savedAt = "2026-11-21T10:05:00.000Z",
 ): SaveTripInput {
   const parsed = parseSaveTripBody(
     {
@@ -66,7 +67,7 @@ function input(
       trip: { ...TRIP, destination },
       plan: PLAN,
     },
-    "2026-11-21T10:05:00.000Z",
+    savedAt,
   );
   if (parsed === null) throw new Error("test fixture was rejected");
   return parsed;
@@ -123,5 +124,26 @@ describeDb("saved trip storage", () => {
     expect(await countSavedTrips("user-2")).toBe(0);
     expect(await findSavedTripForRun("user-1", "run-12345678")).toBe(saved.id);
     expect(await findSavedTripForRun("user-2", "run-12345678")).toBeNull();
+  });
+
+  it("pages saved trips with a bounded limit and offset", async () => {
+    await saveTrip(
+      "user-1",
+      input("Lisbon, Portugal", "run-11111111", "2026-11-21T10:00:00.000Z"),
+    );
+    await saveTrip(
+      "user-1",
+      input("Porto, Portugal", "run-22222222", "2026-11-21T11:00:00.000Z"),
+    );
+
+    const firstPage = await listSavedTrips("user-1", 1, 0);
+    const secondPage = await listSavedTrips("user-1", 1, 1);
+    const beyond = await listSavedTrips("user-1", 1, 2);
+
+    expect(firstPage).toHaveLength(1);
+    expect(firstPage[0]?.destination).toBe("Porto, Portugal");
+    expect(secondPage).toHaveLength(1);
+    expect(secondPage[0]?.destination).toBe("Lisbon, Portugal");
+    expect(beyond).toEqual([]);
   });
 });

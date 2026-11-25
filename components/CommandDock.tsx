@@ -25,10 +25,15 @@ interface DockItem {
 export interface CommandDockProps {
   plannerLive: boolean;
   checksLive: boolean;
+  venueLive: boolean;
 }
 
 /** The fixed section dock for narrow viewports. */
-export function CommandDock({ plannerLive, checksLive }: CommandDockProps) {
+export function CommandDock({
+  plannerLive,
+  checksLive,
+  venueLive,
+}: CommandDockProps) {
   const reduced = useReducedMotion();
   const [active, setActive] = useState<string | null>(null);
   const timer = useRef<number | null>(null);
@@ -55,11 +60,11 @@ export function CommandDock({ plannerLive, checksLive }: CommandDockProps) {
   };
 
   const items: DockItem[] = [
-    { id: "route-stage", label: "Route" },
-    { id: "planning-team", label: "Team", live: plannerLive },
-    { id: "live-verification", label: "Checks", live: checksLive },
-    { id: "safety-envelope", label: "Safety" },
-    { id: "live-activity", label: "Activity", live: plannerLive || checksLive },
+    { id: "trip-route", label: "Route" },
+    { id: "research-team", label: "Research", live: plannerLive },
+    { id: "checked-places", label: "Checked places", live: venueLive },
+    { id: "pacing-safety", label: "Safety" },
+    { id: "activity", label: "Activity", live: plannerLive || checksLive || venueLive },
   ];
 
   return (

@@ -13,10 +13,10 @@ import { normalizeWirePlan } from "@/lib/agent/agentPlanParse";
 import type { PlannerAction } from "@/lib/agent/plannerReducer";
 import {
   isPlannerAgentId,
+  isPlannerErrorCode,
   type PlannerActivityKind,
   type PlannerAgentId,
   type PlannerAgentPhase,
-  type PlannerErrorCode,
 } from "@/lib/agent/agentTypes";
 
 const PHASES: readonly PlannerAgentPhase[] = [
@@ -34,14 +34,6 @@ const ACTIVITY_KINDS: readonly PlannerActivityKind[] = [
   "note",
   "tool",
   "error",
-];
-
-const ERROR_CODES: readonly PlannerErrorCode[] = [
-  "agent_unavailable",
-  "invalid_request",
-  "invalid_plan",
-  "timeout",
-  "upstream_error",
 ];
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -87,13 +79,6 @@ function asCachedAt(value: unknown): string | undefined {
   return typeof value === "string" && Number.isFinite(Date.parse(value))
     ? value
     : undefined;
-}
-
-function asErrorCode(value: unknown): PlannerErrorCode | null {
-  return typeof value === "string" &&
-    (ERROR_CODES as readonly string[]).includes(value)
-    ? (value as PlannerErrorCode)
-    : null;
 }
 
 /**
@@ -189,10 +174,9 @@ export function applyPlannerFrame(
     }
 
     case "planner_error": {
-      const code = asErrorCode(raw.code);
       const text = asText(raw.message);
-      if (code === null || text === null) return false;
-      dispatch({ type: "planner_error", code, message: text, mock });
+      if (!isPlannerErrorCode(raw.code) || text === null) return false;
+      dispatch({ type: "planner_error", code: raw.code, message: text, mock });
       return false;
     }
 

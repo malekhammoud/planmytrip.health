@@ -29,6 +29,8 @@ export interface AgentPlanViewProps {
   onSelectDay?: (day: number | null) => void;
   /** Checked menu and room-rate facts for the selected places. */
   venue?: readonly VenueEvidence[];
+  /** Opens the checked-places section when the reader asks to see the checks. */
+  onViewChecks?: () => void;
 }
 
 function money(plan: AgentTripPlan): string {
@@ -60,6 +62,7 @@ export function AgentPlanView({
   activeDay = null,
   onSelectDay,
   venue = [],
+  onViewChecks,
 }: AgentPlanViewProps) {
   const reduced = useReducedMotion();
   const outside = plan.days.filter((day) => !day.withinCaps);
@@ -109,14 +112,14 @@ export function AgentPlanView({
         {venue.length > 0 ? (
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="t-data-sm text-muted">
-              Live venue checks: {menuCount} {menuCount === 1 ? "menu" : "menus"} ·{" "}
+              Checked menus and rates: {menuCount} {menuCount === 1 ? "menu" : "menus"} ·{" "}
               {hotelCount} {hotelCount === 1 ? "room quote" : "room quotes"}
             </span>
             <LinkButton
               variant="ghost"
-              size="sm"
               href="#venue-deck-heading"
               external={false}
+              onClick={onViewChecks}
             >
               View checks
             </LinkButton>

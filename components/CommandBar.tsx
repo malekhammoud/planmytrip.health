@@ -1,10 +1,11 @@
 /**
- * The sticky command bar: trip identity, mission stage, run clocks, live counts, and
+ * The sticky command bar: trip identity, stage, run clocks, specialist progress, and
  * the trip actions in one instrument row.
  *
- * Inputs: the trip config, planner state, swarm state, and the edit/replan actions.
+ * Inputs: the trip config, planner state, swarm state, entitlements, and the
+ * edit/replan actions.
  * Outputs: a two-row sticky bar with a labelled stage rail, two real progress rules,
- * and a newest-activity line. Every value traces to an accepted event; clocks tick only
+ * and a calm action group. Every value traces to an accepted event; clocks tick only
  * while a run is live.
  * Invariants: no percentage, ETA, or invented progress; the queued token never renders;
  * the elapsed interval lives in useElapsed and Elapsed, not in this component's render.
@@ -13,13 +14,13 @@
 "use client";
 
 import { Elapsed } from "@/components/mission/Elapsed";
-import { WORKER_TAG, formatDuration } from "@/components/mission/missionMeta";
+import { formatDuration } from "@/components/mission/missionMeta";
 import { SaveTripButton } from "@/components/SaveTripButton";
 import { Button } from "@/components/ui";
 import { useElapsed } from "@/hooks/useElapsed";
 import {
   BUDGET_LABELS,
-  PLANNER_AGENTS,
+  PLANNER_AGENT_IDS,
   type AgentTripPlan,
   type TripConfig,
 } from "@/lib/agent/agentTypes";
@@ -33,9 +34,9 @@ import {
   stagePosition,
 } from "@/lib/agent/plannerStage";
 import type { PlannerState } from "@/lib/agent/plannerReducer";
+import { planLabel, type BillingEntitlements } from "@/lib/billing/plans";
 import { CONDITION_LABELS, TRANSPORT_LABELS } from "@/lib/types";
 import type { SwarmState } from "@/lib/swarmReducer";
-import { mergedFeed, swarmSummary } from "@/lib/swarmTelemetry";
 import { WORKER_IDS } from "@/lib/swarmTypes";
 
 /** Props for {@link CommandBar}. */
@@ -45,11 +46,10 @@ export interface CommandBarProps {
   plan: AgentTripPlan | null;
   state: PlannerState;
   swarm: SwarmState;
+  entitlements: BillingEntitlements;
   onEditTrip: () => void;
   onReplan: () => void;
 }
-
-const AGENT_NAMES = new Map(PLANNER_AGENTS.map((agent) => [agent.id, agent.name]));
 
 const RULE: Record<string, string> = {
   done: "border-ink",
@@ -82,47 +82,23 @@ function swarmWindow(state: SwarmState): { startedAt: number | null; endedAt: nu
   return { startedAt, endedAt: live ? null : endedAt };
 }
 
-/** The newest real activity line across both teams, or null while nothing has arrived. */
-function newestLine(
-  state: PlannerState,
-  swarm: SwarmState,
-): { id: string; tag: string; text: string } | null {
-  const plannerEntry = state.log[state.log.length - 1];
-  const swarmLine = mergedFeed(swarm, "all", 1)[0];
-  const plannerAt = plannerEntry === undefined ? 0 : Date.parse(plannerEntry.ts);
-  const swarmAt = swarmLine?.at ?? 0;
-  if (plannerEntry !== undefined && (Number.isNaN(plannerAt) ? 0 : plannerAt) >= swarmAt) {
-    return {
-      id: `p-${plannerEntry.id}`,
-      tag: AGENT_NAMES.get(plannerEntry.agentId) ?? "Planner",
-      text: plannerEntry.text,
-    };
-  }
-  if (swarmLine !== undefined) {
-    return { id: `s-${swarmLine.id}`, tag: WORKER_TAG[swarmLine.worker], text: swarmLine.text };
-  }
-  return null;
+/** The plan's live-plan allowance, without inventing a remaining count. */
+export function livePlanAllowance(entitlements: BillingEntitlements): string {
+  const count = entitlements.tripsPerPeriod;
+  const period = entitlements.tripPeriod === "month" ? "month" : "year";
+  return `${planLabel(entitlements.plan)} · ${count} live ${
+    count === 1 ? "plan" : "plans"
+  } a ${period}`;
 }
 
-/** A labelled instrument count: mono value, muted unit. */
-function Count({ value, unit, tick }: { value: string; unit: string; tick?: boolean }) {
-  return (
-    <span className="t-data-sm text-muted">
-      <span key={value} className={`${tick ? "anim-tick" : ""} inline-block text-ink`}>
-        {value}
-      </span>{" "}
-      {unit}
-    </span>
-  );
-}
-
-/** Trip identity, stage, clocks, counts, and actions; sticky under the site header. */
+/** Trip identity, stage, clocks, specialists, and actions; sticky under the site header. */
 export function CommandBar({
   trip,
   runId,
   plan,
   state,
   swarm,
+  entitlements,
   onEditTrip,
   onReplan,
 }: CommandBarProps) {
@@ -134,9 +110,12 @@ export function CommandBar({
   const elapsed = useElapsed(running, state.runToken);
   const completed = phaseCount(state.agents, "complete");
   const failed = phaseCount(state.agents, "error");
-  const summary = swarmSummary(swarm);
-  const window = swarmWindow(swarm);
-  const line = newestLine(state, swarm);
+  const total = PLANNER_AGENT_IDS.length;
+  const checks = swarmWindow(swarm);
+  const checkSettled = WORKER_IDS.filter((worker) => {
+    const phase = swarm.workers[worker].phase;
+    return phase === "complete" || phase === "error";
+  }).length;
   const dot = running
     ? "status-pulse bg-accent"
     : stage === "error"
@@ -161,7 +140,8 @@ export function CommandBar({
             </div>
             <p className="t-data-sm hidden truncate text-muted sm:block">
               {trip.days} days · {CONDITION_LABELS[trip.condition]} ·{" "}
-              {TRANSPORT_LABELS[trip.transport]} · {BUDGET_LABELS[trip.budget]}
+              {TRANSPORT_LABELS[trip.transport]} · {BUDGET_LABELS[trip.budget]} ·{" "}
+              {livePlanAllowance(entitlements)}
             </p>
           </div>
           <div className="command-actions flex min-w-0 max-w-full flex-wrap items-center gap-2">
@@ -169,9 +149,16 @@ export function CommandBar({
             <Button variant="secondary" onClick={onEditTrip}>
               Edit trip
             </Button>
-            <Button variant="secondary" onClick={onReplan}>
-              Plan again
+            <Button
+              variant="secondary"
+              onClick={onReplan}
+              title="Starts a new live plan"
+            >
+              Re-run plan
             </Button>
+            <p className="t-data-sm basis-full text-right text-muted">
+              Re-run plan starts a new live plan.
+            </p>
           </div>
         </div>
 
@@ -209,42 +196,27 @@ export function CommandBar({
             </span>
           </span>
           <span className="t-data-sm text-muted">
-            Checks{" "}
+            Check{" "}
             <Elapsed
-              startedAt={window.startedAt}
-              endedAt={window.endedAt}
+              startedAt={checks.startedAt}
+              endedAt={checks.endedAt}
               className="text-ink"
             />
           </span>
-          <Count value={`${completed}/7`} unit="agents" tick />
+          <span className="t-data-sm text-muted">
+            <span key={completed} className="anim-tick inline-block text-ink">
+              {completed}/{total}
+            </span>{" "}
+            specialists
+          </span>
           {failed > 0 ? (
             <span className="t-data-sm text-risk">{failed} incomplete</span>
           ) : null}
-          <span className="hidden sm:inline-flex">
-            <Count value={summary.steps.toString()} unit="steps" />
-          </span>
-          <span className="hidden sm:inline-flex">
-            <Count value={summary.sources.toString()} unit="sources" />
-          </span>
-          <Count value={`${summary.findings}/${WORKER_IDS.length}`} unit="findings" tick />
-
-          {line !== null ? (
-            <span
-              key={line.id}
-              className="anim-fade flex min-w-0 basis-full items-baseline gap-2 lg:basis-64 lg:flex-1"
-            >
-              <span className="t-label shrink-0 text-muted">{line.tag}</span>
-              <span className="t-data-sm truncate text-muted">{line.text}</span>
-            </span>
-          ) : (
-            <span className="t-data-sm flex basis-full text-muted lg:inline lg:flex-1 lg:basis-64">
-              Waiting for the first activity line.
-            </span>
-          )}
         </div>
 
         <p className="sr-only" role="status" aria-live="polite">
-          Stage {meta.label}, step {page + 1} of 4. {completed} of 7 agents complete.
+          Stage {meta.label}, step {page + 1} of 4. {completed} of {total} specialists
+          complete.
           {failed > 0 ? ` ${failed} incomplete.` : ""}
         </p>
       </div>
@@ -252,30 +224,30 @@ export function CommandBar({
       <div className="grid grid-cols-2 gap-px bg-hairline">
         <div
           role="progressbar"
-          aria-label="Planning agents complete"
+          aria-label="Specialists complete"
           aria-valuemin={0}
-          aria-valuemax={7}
+          aria-valuemax={total}
           aria-valuenow={completed}
-          aria-valuetext={`${completed} of 7 agents complete`}
+          aria-valuetext={`${completed} of ${total} specialists complete`}
           className="h-0.5 bg-paper"
         >
           <div
             className="mission-progress__fill h-full bg-accent"
-            style={{ width: `${(completed / 7) * 100}%` }}
+            style={{ width: `${(completed / total) * 100}%` }}
           />
         </div>
         <div
           role="progressbar"
-          aria-label="Verification worker complete"
+          aria-label="Destination check complete"
           aria-valuemin={0}
           aria-valuemax={WORKER_IDS.length}
-          aria-valuenow={summary.completed + summary.failed}
-          aria-valuetext={`${summary.completed + summary.failed} of ${WORKER_IDS.length} check settled`}
+          aria-valuenow={checkSettled}
+          aria-valuetext={`${checkSettled} of ${WORKER_IDS.length} destination check settled`}
           className="h-0.5 bg-paper"
         >
           <div
             className="mission-progress__fill h-full bg-ink"
-            style={{ width: `${((summary.completed + summary.failed) / WORKER_IDS.length) * 100}%` }}
+            style={{ width: `${(checkSettled / WORKER_IDS.length) * 100}%` }}
           />
         </div>
       </div>
