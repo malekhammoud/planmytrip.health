@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-html-link-for-pages -- error boundaries use a full navigation so a stale client router cannot trap the reader. */
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui";
