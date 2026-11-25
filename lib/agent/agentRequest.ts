@@ -2,9 +2,10 @@
  * Validation for POST /api/agent-plan bodies.
  *
  * Inputs: untrusted JSON. Outputs: a narrowed PlannerRequest or null.
- * Invariants: destination, origin, medication, and interests are trimmed; lengths are
- * bounded; days stay inside the engine's supported range; an absent transport becomes mixed
- * so older clients keep working; unknown keys are ignored.
+ * Invariants: destination, origin, and interests are trimmed; lengths are bounded; days
+ * stay inside the engine's supported range; an absent transport becomes mixed so older
+ * clients keep working; unknown keys are ignored, so saved rows written before removed
+ * fields existed still parse.
  */
 
 import { TRIP_DAYS_MAX, TRIP_DAYS_MIN } from "@/lib/healthTripTypes";
@@ -15,7 +16,6 @@ import { BUDGET_LEVELS, type BudgetLevel, type PlannerRequest } from "./agentTyp
 
 const DESTINATION_MAX = 120;
 const ORIGIN_MAX = 120;
-const MEDICATION_MAX = 120;
 const INTERESTS_MAX = 240;
 
 /** True only for one of the three budget levels. */
@@ -55,8 +55,6 @@ export function parsePlannerRequest(value: unknown): PlannerRequest | null {
     return null;
   }
   if (!isCondition(body.condition)) return null;
-  const medication = boundedText(body.medication, MEDICATION_MAX);
-  if (medication === null) return null;
   const interests = boundedText(body.interests ?? "", INTERESTS_MAX);
   if (interests === null) return null;
   const budget = body.budget === undefined ? "balanced" : body.budget;
@@ -79,12 +77,6 @@ export function parsePlannerRequest(value: unknown): PlannerRequest | null {
   if (body.captureConsent !== undefined && typeof body.captureConsent !== "boolean") {
     return null;
   }
-  if (
-    body.hasSunLifeTravelCoverage !== undefined &&
-    typeof body.hasSunLifeTravelCoverage !== "boolean"
-  ) {
-    return null;
-  }
   const runId = body.runId === undefined ? undefined : parseRunId(body.runId);
   if (runId === null) return null;
   const installId =
@@ -95,7 +87,6 @@ export function parsePlannerRequest(value: unknown): PlannerRequest | null {
     origin,
     days: body.days,
     condition: body.condition,
-    medication,
     interests,
     budget,
     transport,
@@ -104,6 +95,5 @@ export function parsePlannerRequest(value: unknown): PlannerRequest | null {
     ...(runId === undefined ? {} : { runId }),
     ...(installId === undefined ? {} : { installId }),
     captureConsent: body.captureConsent === true,
-    hasSunLifeTravelCoverage: body.hasSunLifeTravelCoverage === true,
   };
 }

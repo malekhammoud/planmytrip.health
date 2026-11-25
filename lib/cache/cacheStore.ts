@@ -26,7 +26,6 @@ export interface CacheColumns {
   destination: string;
   days: number | null;
   condition: Condition | null;
-  medication: string;
   interests: string;
   budget: string;
   transport: string;
@@ -142,12 +141,11 @@ export async function readCacheRow(key: string): Promise<CacheRow | null> {
   }
 }
 
-/** Finds the newest unexpired plan for a destination, day count, condition, and medication. */
+/** Finds the newest unexpired plan for a destination, day count, and condition. */
 export async function readPlanRowByIdentity(input: {
   destination: string;
   days: number;
   condition: Condition;
-  medication: string;
 }): Promise<CacheRow | null> {
   if (!databaseEnabled()) return null;
   try {
@@ -159,11 +157,41 @@ export async function readPlanRowByIdentity(input: {
          AND destination_norm = $1
          AND days = $2
          AND condition = $3
-         AND medication_norm = $4
          AND expires_at > now()
        ORDER BY created_at DESC
        LIMIT 1`,
-      [input.destination, input.days, input.condition, input.medication],
+      [input.destination, input.days, input.condition],
+    );
+    const row = toRow(result.rows[0]);
+    if (row !== null) remember(row);
+    return row;
+  } catch {
+    console.warn("[cache] a database lookup failed");
+    return null;
+  }
+}
+
+/**
+ * Finds the newest unexpired verification row for a destination and condition. This is
+ * the fallback that keeps rows written before the medication field was removed readable.
+ */
+export async function readSwarmRowByIdentity(input: {
+  destination: string;
+  condition: Condition;
+}): Promise<CacheRow | null> {
+  if (!databaseEnabled()) return null;
+  try {
+    await ensureSchema();
+    const result = await getPool().query(
+      `SELECT cache_key, kind, payload, created_at, expires_at
+       FROM trip_cache
+       WHERE kind = 'swarm'
+         AND destination_norm = $1
+         AND condition = $2
+         AND expires_at > now()
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [input.destination, input.condition],
     );
     const row = toRow(result.rows[0]);
     if (row !== null) remember(row);
@@ -192,14 +220,13 @@ export async function writeCacheRow(input: CacheWrite): Promise<void> {
     await ensureSchema();
     await getPool().query(
       `INSERT INTO trip_cache (
-        cache_key, kind, destination_norm, days, condition, medication_norm,
+        cache_key, kind, destination_norm, days, condition,
         interest_norm, budget, transport, payload, created_at, expires_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::timestamptz, $12::timestamptz)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::timestamptz, $11::timestamptz)
       ON CONFLICT (cache_key) DO UPDATE SET
         destination_norm = EXCLUDED.destination_norm,
         days = EXCLUDED.days,
         condition = EXCLUDED.condition,
-        medication_norm = EXCLUDED.medication_norm,
         interest_norm = EXCLUDED.interest_norm,
         budget = EXCLUDED.budget,
         transport = EXCLUDED.transport,
@@ -223,7 +250,6 @@ export async function writeCacheRow(input: CacheWrite): Promise<void> {
         input.columns.destination,
         input.columns.days,
         input.columns.condition,
-        input.columns.medication,
         input.columns.interests,
         input.columns.budget,
         input.columns.transport,

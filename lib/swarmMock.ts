@@ -35,8 +35,6 @@ export interface MockRunOptions {
 /** Total scripted duration per worker, in virtual seconds. */
 const TOTAL_SECONDS: Record<WorkerId, number> = {
   advisory: 35,
-  pharmacy: 48,
-  coverage: 62,
 };
 
 const PURPOSES: Record<WorkerId, readonly string[]> = {
@@ -62,50 +60,6 @@ const PURPOSES: Record<WorkerId, readonly string[]> = {
     "Reading the local health services note",
     "Opening the advisory source page",
   ],
-  pharmacy: [
-    "Opening the international drug names page",
-    "Searching for the generic name",
-    "Reading the medication entry",
-    "Checking local brand names",
-    "Opening the customs guidance page",
-    "Searching for carry rules",
-    "Reading the prescription documentation note",
-    "Checking the controlled medication section",
-    "Scanning the destination import rules",
-    "Searching for the brand availability note",
-    "Reading the pharmacy contact section",
-    "Checking the traveller medication allowance",
-    "Scanning the customs declaration guidance",
-    "Reading the carry-on rules",
-    "Searching for the local equivalent",
-    "Checking the packaging requirements",
-    "Reading the prescription copy guidance",
-    "Opening the destination pharmacy listing",
-    "Searching for the customs office note",
-    "Reading the medication summary",
-  ],
-  coverage: [
-    "Opening the emergency travel medical page",
-    "Searching for the coverage limit",
-    "Reading the eligibility section",
-    "Checking the pre-authorization rules",
-    "Opening the contact page",
-    "Searching for the assistance provider",
-    "Reading the claim checklist",
-    "Checking the trip length cap",
-    "Scanning the exclusions section",
-    "Searching for the stability wording",
-    "Reading the emergency contact numbers",
-    "Checking the policy document note",
-    "Scanning the pre-departure checklist",
-    "Reading the coverage summary",
-    "Searching for the plan administrator note",
-    "Checking the medical questionnaire rules",
-    "Reading the claim submission guidance",
-    "Opening the travel insurance page",
-    "Searching for the assistance hours",
-    "Reading the coverage source page",
-  ],
 };
 
 const SOURCE_TITLES: Record<WorkerId, readonly string[]> = {
@@ -114,18 +68,6 @@ const SOURCE_TITLES: Record<WorkerId, readonly string[]> = {
     "Health notices",
     "Safety and security",
     "Entry requirements",
-  ],
-  pharmacy: [
-    "International drug names",
-    "Customs and border guidance",
-    "Medication carry rules",
-    "Local pharmacy listings",
-  ],
-  coverage: [
-    "Emergency travel medical insurance",
-    "Pre-authorization",
-    "Claims checklist",
-    "Contact the plan administrator",
   ],
 };
 
@@ -244,25 +186,6 @@ function mockResult(worker: WorkerId, input: SwarmGoalInput): SwarmFindings {
           `Mock heat and poor air quality advisory for ${input.condition}.`,
         ],
       };
-    case "pharmacy":
-      return {
-        genericName: input.medication || "Mock generic name",
-        localBrandNames: [`Mock local brand in ${destination}`],
-        customsRules: `Mock customs note for entering ${destination}.`,
-        carryRules: `Mock carry note for ${input.medication || "the medication"}.`,
-      };
-    case "coverage":
-      return {
-        emergencyMedicalLimit: "Mock limit: CAD 5,000,000 per insured person.",
-        preAuthorizationRules: "Mock rule: call Allianz Global Assistance before emergency care.",
-        checklist: [
-          { item: "Confirm emergency contact numbers before departure.", source: "page" },
-          {
-            item: `Carry a medication summary for ${input.medication || "each medication"}.`,
-            source: "inferred",
-          },
-        ],
-      };
   }
 }
 
@@ -287,8 +210,8 @@ function tsNow(): string {
 
 /**
  * Emits the mock lifecycle for one worker without touching the network. The timeline
- * runs in real time divided by `options.speed`, so a 62-second scenario finishes in
- * about 1.2 seconds at speed 50.
+ * runs in real time divided by `options.speed`, so a 35-second scenario finishes in
+ * under a second at speed 50.
  */
 export async function runMockWorker(
   worker: WorkerId,

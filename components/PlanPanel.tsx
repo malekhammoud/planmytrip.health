@@ -208,7 +208,7 @@ export function PlanPanel({
             })}
             .{" "}
             {state.cacheMatch === "related"
-              ? "The cache matched the destination, duration, condition, and medication; your other preferences and starting point may differ."
+              ? "The cache matched the destination, duration, and condition; your other preferences and starting point may differ."
               : "The route, places, and sources are the recorded result."}
           </p>
           <p className="mt-2">Confirm hours, prices, and availability before booking.</p>

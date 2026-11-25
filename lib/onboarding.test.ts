@@ -15,7 +15,8 @@ describe("onboarding draft", () => {
     expect(DEFAULT_TRIP.transport).toBe("mixed");
     expect(DEFAULT_TRIP.checkIn).toBe("");
     expect(DEFAULT_TRIP.travelers).toBe(1);
-    expect(DEFAULT_TRIP.hasSunLifeTravelCoverage).toBe(false);
+    expect("medication" in DEFAULT_TRIP).toBe(false);
+    expect("hasSunLifeTravelCoverage" in DEFAULT_TRIP).toBe(false);
   });
 
   it("requires a destination before the health step", () => {
@@ -33,7 +34,6 @@ describe("onboarding draft", () => {
         days: 20,
         checkIn: " 2026-12-10 ",
         travelers: 3,
-        medication: "  albuterol  ",
         interests: "  quiet food  ",
       }),
     ).toMatchObject({
@@ -42,7 +42,6 @@ describe("onboarding draft", () => {
       days: 20,
       checkIn: "2026-12-10",
       travelers: 3,
-      medication: "albuterol",
       interests: "quiet food",
     });
     expect(normalizeTripConfig({ ...DEFAULT_TRIP, days: 1 }).days).toBe(2);
@@ -69,17 +68,27 @@ describe("onboarding draft", () => {
     expect(normalized.travelers).toBe(1);
   });
 
+  it("ignores removed fields on an older stored draft", () => {
+    const legacy = {
+      ...DEFAULT_TRIP,
+      medication: "albuterol",
+      hasSunLifeTravelCoverage: true,
+    } as unknown as typeof DEFAULT_TRIP;
+    const normalized = normalizeTripConfig(legacy);
+    expect("medication" in normalized).toBe(false);
+    expect("hasSunLifeTravelCoverage" in normalized).toBe(false);
+    expect(normalized.destination).toBe("");
+  });
+
   it("bounds long labels to the API limits", () => {
     const config = normalizeTripConfig({
       ...DEFAULT_TRIP,
       destination: "x".repeat(200),
       origin: "w".repeat(200),
-      medication: "y".repeat(200),
       interests: "z".repeat(300),
     });
     expect(config.destination).toHaveLength(120);
     expect(config.origin).toHaveLength(120);
-    expect(config.medication).toHaveLength(120);
     expect(config.interests).toHaveLength(240);
   });
 });

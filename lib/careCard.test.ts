@@ -1,9 +1,8 @@
 /**
  * Unit tests for the deterministic care-card text builder.
  *
- * Covers the exact section format, whitespace normalization, the no-medication
- * fallback, engine integration, the empty-itinerary fallback, and the absence of
- * added doses.
+ * Covers the exact section format, whitespace normalization, engine integration, the
+ * empty-itinerary fallback, and applied verification adjustments.
  */
 
 import { describe, expect, it } from "vitest";
@@ -15,18 +14,10 @@ const PLAN: HealthTripPlan = {
   baselineScore: 52,
   riskReductionPct: 54,
   dailyStepCeiling: 7000,
-  sunLifeAlert: {
-    severity: "caution",
-    title: "Sun Life coverage is not confirmed",
-    messages: [
-      "No Sun Life travel coverage is recorded for this trip.",
-      "Verify with your plan administrator",
-    ],
-  },
   itinerary: [
     {
       day: 1,
-      title: "Acclimation and pharmacy setup in Tokyo, Japan",
+      title: "Acclimation and settling in to Tokyo, Japan",
       stepCap: 3150,
       walkingCapKm: 1.8,
       pacingRule: "First day pacing rule.",
@@ -47,19 +38,13 @@ const PLAN: HealthTripPlan = {
 
 describe("buildCareCard", () => {
   it("builds the exact documented format", () => {
-    expect(buildCareCard("Tokyo, Japan", "asthma_respiratory", "albuterol inhaler", PLAN)).toBe(
+    expect(buildCareCard("Tokyo, Japan", "asthma_respiratory", PLAN)).toBe(
       [
         "PlanMyTrip.health care card",
         "Destination: Tokyo, Japan",
         "Condition: asthma or respiratory conditions",
-        "Medication: albuterol inhaler",
         "Trip length: 2 days",
         "Daily step ceiling: 7,000 steps",
-        "",
-        "Sun Life",
-        "Sun Life coverage is not confirmed",
-        "- No Sun Life travel coverage is recorded for this trip.",
-        "- Verify with your plan administrator",
         "",
         "Daily checkpoints",
         "Day 1 (step cap 3,150 steps): Pause if breathing feels harder than usual.",
@@ -70,17 +55,23 @@ describe("buildCareCard", () => {
     );
   });
 
+  it("has no Sun Life block and no medication line", () => {
+    const card = buildCareCard("Tokyo, Japan", "asthma_respiratory", PLAN);
+    expect(card).not.toContain("Sun Life");
+    expect(card).not.toContain("Medication:");
+    expect(card).not.toContain("coverage");
+  });
+
   it("is deterministic and has no trailing newline", () => {
-    const first = buildCareCard("Tokyo, Japan", "asthma_respiratory", "albuterol inhaler", PLAN);
-    const second = buildCareCard("Tokyo, Japan", "asthma_respiratory", "albuterol inhaler", PLAN);
+    const first = buildCareCard("Tokyo, Japan", "asthma_respiratory", PLAN);
+    const second = buildCareCard("Tokyo, Japan", "asthma_respiratory", PLAN);
     expect(second).toBe(first);
     expect(first.endsWith("\n")).toBe(false);
   });
 
-  it("normalizes whitespace and handles a missing medication", () => {
-    const card = buildCareCard("  Tokyo,   Japan  ", "asthma_respiratory", "   ", PLAN);
+  it("normalizes whitespace in the destination", () => {
+    const card = buildCareCard("  Tokyo,   Japan  ", "asthma_respiratory", PLAN);
     expect(card).toContain("Destination: Tokyo, Japan");
-    expect(card).toContain("Medication: None recorded");
     expect(card).toContain("Condition: asthma or respiratory conditions");
   });
 
@@ -89,23 +80,15 @@ describe("buildCareCard", () => {
       destination: "Tokyo, Japan",
       days: 4,
       condition: "asthma_respiratory",
-      medication: "albuterol inhaler",
-      hasSunLifeTravelCoverage: false,
     });
-    const card = buildCareCard(
-      "Tokyo, Japan",
-      "asthma_respiratory",
-      "albuterol inhaler",
-      plan,
-    );
+    const card = buildCareCard("Tokyo, Japan", "asthma_respiratory", plan);
     expect(card).toContain("Daily step ceiling: 7,000 steps");
-    expect(card).toContain("Medication: albuterol inhaler");
     expect(card.split("\n").filter((line) => line.startsWith("Day "))).toHaveLength(4);
     expect(card).not.toMatch(/\bmg\b|\bdose\b/i);
   });
 
   it("handles an empty itinerary", () => {
-    const card = buildCareCard("Tokyo, Japan", "asthma_respiratory", "albuterol inhaler", {
+    const card = buildCareCard("Tokyo, Japan", "asthma_respiratory", {
       ...PLAN,
       itinerary: [],
     });
@@ -117,7 +100,6 @@ describe("buildCareCard", () => {
     const card = buildCareCard(
       "Tokyo, Japan",
       "asthma_respiratory",
-      "albuterol inhaler",
       PLAN,
       [
         {
@@ -143,23 +125,12 @@ describe("buildCareCard", () => {
           retrievedAt: "2026-11-21T12:00:00.000Z",
           applied: false,
         },
-        {
-          id: "coverage:preauthorization",
-          kind: "checklist",
-          title: "Pre-departure checklist",
-          reason: "Call the assistance line before non-emergency care.",
-          sourceUrl: "https://www.sunlife.ca/en/health/emergency-travel-medical-insurance/",
-          sourceWorker: "coverage",
-          retrievedAt: "2026-11-21T12:05:00.000Z",
-          applied: true,
-        },
       ],
     );
     expect(card).toContain(
       [
         "Applied verification adjustments",
         "- Day 1 afternoon recovery: 30 to 60 min. Reason: heat notice: Extreme heat. Source: https://travel.gc.ca/travelling/advisories (retrieved 2026-11-21 12:00 UTC)",
-        "- Pre-departure checklist: Call the assistance line before non-emergency care. Source: https://www.sunlife.ca/en/health/emergency-travel-medical-insurance/ (retrieved 2026-11-21 12:05 UTC)",
         "",
         "Planning aid only.",
       ].join("\n"),

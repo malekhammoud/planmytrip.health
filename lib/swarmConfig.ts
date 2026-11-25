@@ -1,5 +1,5 @@
 /**
- * Run limits and retry copy for the three TinyFish workers.
+ * Run limits and retry copy for the live TinyFish worker.
  *
  * Inputs: none. Outputs: one frozen constants object used by the route, the client, and
  * the UI. Invariants: the route budget, the upstream run limits, and our client timeout

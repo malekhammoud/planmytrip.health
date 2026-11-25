@@ -2,7 +2,7 @@
  * Feedback intake for PlanMyTrip.health.
  *
  * The route keeps a local JSONL fallback and forwards only product feedback to the
- * central OpenCode Self service. Destination, condition, medication, saved trips, and
+ * central OpenCode Self service. Destination, condition, saved trips, and
  * form values are never included.
  */
 

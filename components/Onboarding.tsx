@@ -3,20 +3,16 @@
 import { useState, type FormEvent } from "react";
 import {
   Button,
-  Callout,
   Checkbox,
   Field,
   NumberInput,
   Select,
   Slider,
   TextInput,
-  type CalloutTone,
 } from "@/components/ui";
 import { LocationField } from "@/components/LocationField";
-import { DEFAULT_MEDICATION_BY_CONDITION } from "@/lib/conditionProfiles";
 import { describeTrip } from "@/lib/describeTrip";
 import { TRIP_DAYS_MAX, TRIP_DAYS_MIN } from "@/lib/healthTripTypes";
-import { checkSunLifeCoverage, type SunLifeSeverity } from "@/lib/healthTripEngine";
 import {
   BUDGET_LABELS,
   BUDGET_LEVELS,
@@ -34,14 +30,7 @@ import {
   TRANSPORT_HINTS,
   TRANSPORT_LABELS,
   TRANSPORT_MODES,
-  type Condition,
 } from "@/lib/types";
-
-const ALERT_TONES: Record<SunLifeSeverity, CalloutTone> = {
-  ok: "info",
-  caution: "caution",
-  blocking: "risk",
-};
 
 /** Props for {@link Onboarding}. */
 export interface OnboardingProps {
@@ -76,7 +65,7 @@ function StepMark({
 
 /**
  * Two-step trip onboarding. Step one collects the place and shape of the trip; step
- * two collects the health profile and coverage. The finished plan opens in the
+ * two collects the health profile and research consent. The finished plan opens in the
  * workspace, so this screen never carries results or live agent logs.
  */
 export function Onboarding({
@@ -94,25 +83,11 @@ export function Onboarding({
     days: Math.min(initial.days, daysMax),
   }));
   const [step, setStep] = useState<1 | 2>(1);
-  const [medicationTouched, setMedicationTouched] = useState(
-    initial.medication !== DEFAULT_MEDICATION_BY_CONDITION[initial.condition],
-  );
-  const alert = checkSunLifeCoverage(config.days, config.hasSunLifeTravelCoverage);
   const canContinue = canContinueTripStep(config);
   const budgetIndex = Math.max(0, BUDGET_LEVELS.indexOf(config.budget));
 
   function update<K extends keyof TripConfig>(key: K, value: TripConfig[K]): void {
     setConfig((current) => ({ ...current, [key]: value }));
-  }
-
-  function handleConditionChange(next: Condition): void {
-    setConfig((current) => ({
-      ...current,
-      condition: next,
-      medication: medicationTouched
-        ? current.medication
-        : DEFAULT_MEDICATION_BY_CONDITION[next],
-    }));
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
@@ -126,9 +101,6 @@ export function Onboarding({
 
   function handleCancel(): void {
     setConfig({ ...initial, days: Math.min(initial.days, daysMax) });
-    setMedicationTouched(
-      initial.medication !== DEFAULT_MEDICATION_BY_CONDITION[initial.condition],
-    );
     setStep(1);
     onCancel?.();
   }
@@ -367,7 +339,7 @@ export function Onboarding({
                         value={config.condition}
                         onChange={(event) => {
                           const next = event.currentTarget.value;
-                          if (isCondition(next)) handleConditionChange(next);
+                          if (isCondition(next)) update("condition", next);
                         }}
                       >
                         {CONDITIONS.map((value) => (
@@ -378,32 +350,6 @@ export function Onboarding({
                       </Select>
                     )}
                   </Field>
-
-                  <Field
-                    id="onboarding-medication"
-                    label="Medication"
-                    hint="Name only. No doses."
-                  >
-                    {(control) => (
-                      <TextInput
-                        {...control}
-                        value={config.medication}
-                        onChange={(event) => {
-                          setMedicationTouched(true);
-                          update("medication", event.currentTarget.value);
-                        }}
-                        autoComplete="off"
-                        maxLength={120}
-                      />
-                    )}
-                  </Field>
-
-                  <Checkbox
-                    id="onboarding-coverage"
-                    label="I have Sun Life group travel coverage"
-                    checked={config.hasSunLifeTravelCoverage}
-                    onChange={(checked) => update("hasSunLifeTravelCoverage", checked)}
-                  />
 
                   <div className="flex flex-col gap-2">
                     <Checkbox
@@ -419,14 +365,6 @@ export function Onboarding({
                     </p>
                   </div>
 
-                  <Callout tone={ALERT_TONES[alert.severity]} title={alert.title}>
-                    <div className="flex flex-col gap-1">
-                      {alert.messages.map((message) => (
-                        <p key={message}>{message}</p>
-                      ))}
-                    </div>
-                  </Callout>
-
                   <div className="border-t border-hairline pt-4">
                     <p className="t-label text-muted">Review</p>
                     <p className="t-body mt-2 text-ink">
@@ -441,10 +379,7 @@ export function Onboarding({
                       {config.travelers} {config.travelers === 1 ? "traveller" : "travellers"} ·{" "}
                       {TRANSPORT_LABELS[config.transport]} ·{" "}
                       {BUDGET_LABELS[config.budget]} ·{" "}
-                      {config.interests || "No extra preferences"} ·{" "}
-                      {config.hasSunLifeTravelCoverage
-                        ? "Sun Life coverage recorded"
-                        : "Sun Life coverage not confirmed"}
+                      {config.interests || "No extra preferences"}
                     </p>
                   </div>
                 </div>

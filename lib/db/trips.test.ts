@@ -31,10 +31,8 @@ function dossier(
       destination: "Lisbon, Portugal",
       days: 4,
       condition: "asthma_respiratory",
-      medication: "albuterol inhaler",
       interests: "",
       budget: "balanced",
-      hasSunLifeTravelCoverage: false,
     },
     engine: {
       healthSafetyScore: 75,
@@ -351,10 +349,8 @@ describeDb("trip capture storage", () => {
           destination: "Kyoto, Japan",
           days: 2,
           condition: "cardiac_hypertension",
-          medication: "synthetic",
           interests: "",
           budget: "value",
-          hasSunLifeTravelCoverage: false,
         },
       }),
     );

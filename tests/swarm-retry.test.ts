@@ -13,7 +13,6 @@ import { FINDINGS, NOW, sseResponse } from "./swarm-route-fixtures";
 const input = {
   destination: "Lisbon, Portugal",
   condition: "asthma_respiratory" as const,
-  medication: "albuterol inhaler",
 };
 
 const completed = [

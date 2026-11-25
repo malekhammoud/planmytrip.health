@@ -305,8 +305,6 @@ export function buildCaps(request: PlannerRequest): PlannerCapInput[] {
     destination: request.destination,
     days: request.days,
     condition: request.condition,
-    medication: request.medication,
-    hasSunLifeTravelCoverage: false,
   });
   return plan.itinerary.map((day) => ({
     day: day.day,

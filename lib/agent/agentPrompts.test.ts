@@ -11,7 +11,6 @@ const request: PlannerRequest = {
   travelers: 1,
   days: 4,
   condition: "pregnancy_second_trimester",
-  medication: "prenatal vitamins",
   interests: "quiet food and short walks",
   budget: "premium",
 };
@@ -23,7 +22,6 @@ describe("agent prompts", () => {
     expect(prompt).toContain("second-trimester pregnancy");
     expect(prompt).toContain("5000 steps");
     expect(prompt).toContain("3 km walking");
-    expect(prompt).toContain("prenatal vitamins");
     expect(prompt).toContain("Return exactly one JSON object");
     expect(prompt).toContain("Use at most 10 tool calls");
     expect(prompt).toContain("Return the JSON object by your 16th step");

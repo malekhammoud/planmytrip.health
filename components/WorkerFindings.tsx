@@ -11,9 +11,6 @@ import { NewMark } from "@/components/mission/NewMark";
 import type { WorkerState } from "@/lib/swarmReducer";
 import {
   type AdvisoryFindings,
-  type CoverageChecklistItem,
-  type CoverageFindings,
-  type PharmacyFindings,
   type SwarmFindings,
   type WorkerId,
 } from "@/lib/swarmTypes";
@@ -44,23 +41,6 @@ function ListValue({ items }: { items: readonly string[] }) {
   );
 }
 
-function ChecklistValue({ items }: { items: readonly CoverageChecklistItem[] }) {
-  if (items.length === 0) return <>{NOT_FOUND}</>;
-  return (
-    <ul className="flex flex-col gap-2">
-      {items.map((entry, index) => (
-        <li
-          key={`${index}-${entry.source}-${entry.item}`}
-          className="flex flex-wrap items-baseline gap-2"
-        >
-          <span className="t-label text-muted">{entry.source}</span>
-          <span>{entry.item}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 interface FindingRow {
   label: string;
   value: ReactNode;
@@ -79,23 +59,6 @@ function findingRows(worker: WorkerId, findings: SwarmFindings): readonly Findin
           label: "Environmental hazards",
           value: <ListValue items={data.environmentalHazards} />,
         },
-      ];
-    }
-    case "pharmacy": {
-      const data = findings as PharmacyFindings;
-      return [
-        { label: "Generic name", value: textOrNotFound(data.genericName) },
-        { label: "Local brand names", value: <ListValue items={data.localBrandNames} /> },
-        { label: "Customs rules", value: textOrNotFound(data.customsRules) },
-        { label: "Carry rules", value: textOrNotFound(data.carryRules) },
-      ];
-    }
-    case "coverage": {
-      const data = findings as CoverageFindings;
-      return [
-        { label: "Emergency medical limit", value: textOrNotFound(data.emergencyMedicalLimit) },
-        { label: "Pre-authorization rules", value: textOrNotFound(data.preAuthorizationRules) },
-        { label: "Checklist", value: <ChecklistValue items={data.checklist} /> },
       ];
     }
   }

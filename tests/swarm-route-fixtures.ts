@@ -12,7 +12,6 @@ export const SECRET = "tf_live_test_secret_should_never_appear";
 export const BODY = {
   destination: "Lisbon, Portugal",
   condition: "asthma_respiratory",
-  medication: "albuterol inhaler",
 };
 
 export const FINDINGS: Record<WorkerId, Record<string, unknown>> = {
@@ -21,17 +20,6 @@ export const FINDINGS: Record<WorkerId, Record<string, unknown>> = {
     riskSummary: "Avoid large gatherings.",
     healthNotices: ["Measles outbreak reported."],
     environmentalHazards: ["Summer heat and poor air quality."],
-  },
-  pharmacy: {
-    genericName: "albuterol",
-    localBrandNames: ["Ventolin"],
-    customsRules: "Carry a copy of the prescription.",
-    carryRules: "Keep the inhaler in hand luggage.",
-  },
-  coverage: {
-    emergencyMedicalLimit: "Mock limit: CAD 5,000,000.",
-    preAuthorizationRules: "Call before non-emergency care.",
-    checklist: [{ item: "Carry your policy card.", source: "page" }],
   },
 };
 

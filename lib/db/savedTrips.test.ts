@@ -17,12 +17,10 @@ const TRIP = {
   origin: "Toronto, Canada",
   days: 4,
   condition: "asthma_respiratory",
-  medication: "albuterol inhaler",
   interests: "",
   budget: "balanced",
   transport: "mixed",
   captureConsent: false,
-  hasSunLifeTravelCoverage: false,
 };
 
 const PLAN = {

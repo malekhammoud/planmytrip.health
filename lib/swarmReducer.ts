@@ -1,5 +1,5 @@
 /**
- * Pure state machine for the live three-worker swarm monitor.
+ * Pure state machine for the live swarm monitor.
  *
  * Inputs: run lifecycle and worker event actions forwarded by hooks/useSwarm.
  * Outputs: an immutable SwarmState for the mission control, re-exported with its action,
@@ -92,7 +92,7 @@ export function mergeSources(
 /**
  * Applies one action without mutating the previous state.
  *
- * A run_started action naming all three workers is a new Deploy: it clears the mock
+ * A run_started action naming every worker is a new Deploy: it clears the mock
  * flag and completion lists. Naming a subset is a retry: those workers return to
  * `queued` and every other worker keeps its phase and findings.
  */

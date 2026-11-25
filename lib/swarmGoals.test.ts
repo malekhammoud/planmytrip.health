@@ -1,27 +1,23 @@
 /**
- * Worker schema, goal, placeholder-normalisation, and shared-rule tests.
+ * Worker schema, goal, and placeholder-normalisation tests.
  *
  * Uses the pure builders and normalisers only; no network.
  */
 
 import { describe, expect, it } from "vitest";
-import { SUN_LIFE_RULES } from "./sunLifeRules";
-import * as swarmGoals from "./swarmGoals";
-import { WORKER_IDS } from "./swarmTypes";
 import {
   WORKER_SCHEMAS,
   WORKER_SOURCES,
   buildWorkerGoal,
   normalizeAdvisoryResult,
-  normalizePharmacyResult,
   normalizeWorkerResult,
   type SwarmGoalInput,
 } from "./swarmGoals";
+import { WORKER_IDS } from "./swarmTypes";
 
 const INPUT: SwarmGoalInput = {
   destination: "Lisbon, Portugal",
   condition: "asthma_respiratory",
-  medication: "albuterol inhaler",
 };
 
 function walk(value: unknown, visit: (key: string, child: unknown) => void): void {
@@ -78,44 +74,20 @@ describe("worker output schemas", () => {
       expect(goal).toContain("[]");
       expect(goal).toContain("sourceUrl");
       expect(goal).toContain("Lisbon, Portugal");
-      expect(goal).toContain("albuterol inhaler");
       expect(goal).toContain("asthma or respiratory conditions");
     }
   });
 
-  it("carries the coverage page and inferred source tags", () => {
-    const goal = buildWorkerGoal("coverage", INPUT);
-    expect(goal).toContain('"page"');
-    expect(goal).toContain('"inferred"');
-    expect(goal).toContain("not condition-specific");
-  });
-
-  it("uses the shared nested Sun Life rules and labels plan context as non-findings", () => {
-    const goal = buildWorkerGoal("coverage", INPUT);
-    expect(goal).toContain(`${SUN_LIFE_RULES.tripDayCap} days per trip`);
-    expect(goal).toContain(SUN_LIFE_RULES.preAuthorization.provider);
-    expect(goal).toContain(SUN_LIFE_RULES.preAuthorization.availability);
-    expect(goal).toContain(SUN_LIFE_RULES.preAuthorization.note);
-    expect(goal).toContain("Report only what the page states. The plan context is not a finding.");
-    expect(goal).not.toContain("stability");
-    expect(goal).not.toContain("not confirmed");
-    expect(goal).not.toContain("null days");
-  });
-});
-
-describe("SUN_LIFE_RULES", () => {
-  it("comes only from the shared rules module", () => {
-    expect("SUN_LIFE_RULES" in swarmGoals).toBe(false);
-  });
-
-  it("keeps the shared nested values and the unconfirmed stability window", () => {
-    expect(SUN_LIFE_RULES.tripDayCap).toBe(60);
-    expect(SUN_LIFE_RULES.preAuthorization.provider).toBe("Allianz Global Assistance");
-    expect(SUN_LIFE_RULES.preAuthorization.availability).toBe("24/7");
-    expect(SUN_LIFE_RULES.preAuthorization.required).toBe(true);
-    expect(SUN_LIFE_RULES.stabilityWindow.days).toBeNull();
-    expect(SUN_LIFE_RULES.stabilityWindow.isPlaceholder).toBe(true);
-    expect(SUN_LIFE_RULES.administratorNotice).toBe("Verify with your plan administrator");
+  it("asks only for the destination advisory", () => {
+    const goal = buildWorkerGoal("advisory", INPUT);
+    expect(goal).toContain("travel.gc.ca/travelling/advisories");
+    expect(goal).toContain("risk level");
+    expect(goal).toContain("health notices");
+    expect(goal).toContain("environmental hazards");
+    expect(goal).not.toContain("medication");
+    expect(goal).not.toContain("insurance");
+    expect(goal).not.toContain("pharmacy");
+    expect(goal).not.toContain("Sun Life");
   });
 });
 
@@ -137,22 +109,20 @@ describe("placeholder normalisation", () => {
   });
 
   it("keeps meaningful values even when they end with punctuation", () => {
-    const result = normalizePharmacyResult(
+    const result = normalizeAdvisoryResult(
       {
-        genericName: "  Albuterol.  ",
-        localBrandNames: ["Ventolin.", "Not specified"],
-        customsRules: "Not available.",
-        carryRules: "Carry a copy.",
+        destinationRiskLevel: " Exercise a high degree of caution. ",
+        healthNotices: ["Measles notice.", "Not specified"],
+        environmentalHazards: ["Not available."],
       },
-      WORKER_SOURCES.pharmacy,
+      WORKER_SOURCES.advisory,
     );
-    expect(result.genericName).toBe("Albuterol.");
-    expect(result.localBrandNames).toEqual(["Ventolin."]);
-    expect(result.customsRules).toBeNull();
-    expect(result.carryRules).toBe("Carry a copy.");
+    expect(result.destinationRiskLevel).toBe("Exercise a high degree of caution.");
+    expect(result.healthNotices).toEqual(["Measles notice."]);
+    expect(result.environmentalHazards).toEqual([]);
   });
 
-  it("bounds untrusted text, lists, checklists, and source URLs", () => {
+  it("bounds untrusted text, lists, and source URLs", () => {
     const long = "x".repeat(20_000);
     const advisory = normalizeAdvisoryResult(
       {
@@ -170,19 +140,5 @@ describe("placeholder normalisation", () => {
     expect(advisory.healthNotices).toHaveLength(12);
     expect(advisory.environmentalHazards[0]?.length).toBeLessThanOrEqual(1_200);
     expect(advisory.sourceUrl).toBe(WORKER_SOURCES.advisory);
-
-    const coverage = swarmGoals.normalizeCoverageResult(
-      {
-        emergencyMedicalLimit: long,
-        preAuthorizationRules: null,
-        checklist: Array.from({ length: 50 }, (_, index) => ({
-          item: `Item ${index}`,
-          source: "page",
-        })),
-        sourceUrl: WORKER_SOURCES.coverage,
-      },
-      WORKER_SOURCES.coverage,
-    );
-    expect(coverage.checklist).toHaveLength(20);
   });
 });

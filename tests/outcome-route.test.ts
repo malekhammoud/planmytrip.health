@@ -18,10 +18,8 @@ const dossier: TripDossier = {
     destination: "Lisbon, Portugal",
     days: 4,
     condition: "asthma_respiratory",
-    medication: "albuterol inhaler",
     interests: "",
     budget: "balanced",
-    hasSunLifeTravelCoverage: false,
   },
   engine: {
     healthSafetyScore: 75,

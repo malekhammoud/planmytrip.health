@@ -4,7 +4,7 @@
  * Inputs: one complete live swarm result, the run id per worker, and the API key.
  * Outputs: a cached worker set whose recording URLs point at authenticated local files.
  * Invariants: recording failures never block the cache write; the API key never leaves the
- * run-detail request; only a complete three-worker set is stored.
+ * run-detail request; only a complete worker set is stored.
  */
 
 import type { WorkerId } from "@/lib/swarmTypes";

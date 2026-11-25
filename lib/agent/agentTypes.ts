@@ -103,8 +103,8 @@ export const PLANNER_AGENTS: readonly PlannerAgentMeta[] = [
   {
     id: "care",
     name: "Care scout",
-    role: "Hospitals, pharmacies, emergency",
-    checks: "Verifies care routes, emergency numbers, and local health risks.",
+    role: "Hospitals, clinics, emergency",
+    checks: "Verifies hospitals, urgent care, emergency numbers, and local health risks.",
   },
   {
     id: "concierge",
@@ -121,7 +121,6 @@ export interface PlannerRequest {
   origin: string;
   days: number;
   condition: Condition;
-  medication: string;
   interests: string;
   budget: BudgetLevel;
   /** How the traveler expects to move between stops inside the destination. */
@@ -136,13 +135,10 @@ export interface PlannerRequest {
   installId?: string;
   /** Explicit opt-in for saving the trip dossier. */
   captureConsent?: boolean;
-  /** Coverage answer used to build the captured engine plan. */
-  hasSunLifeTravelCoverage?: boolean;
 }
 
 /** Complete trip configuration owned by the onboarding screen. */
 export interface TripConfig extends PlannerRequest {
-  hasSunLifeTravelCoverage: boolean;
   /** Explicit opt-in shown on the health step. */
   captureConsent: boolean;
 }
@@ -151,7 +147,7 @@ export interface TripConfig extends PlannerRequest {
 export type PlaceCategory = "stay" | "eat" | "hike" | "visit" | "care";
 
 /** Care place subtype. */
-export type CareType = "hospital" | "pharmacy";
+export type CareType = "hospital";
 
 /** One verified venue or resource in the final plan. */
 export interface PlannerPlace {

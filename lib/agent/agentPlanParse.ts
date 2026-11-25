@@ -61,7 +61,7 @@ function asCategory(value: unknown): PlaceCategory | null {
 }
 
 function asCareType(value: unknown): CareType | null {
-  return value === "hospital" || value === "pharmacy" ? value : null;
+  return value === "hospital" ? value : null;
 }
 
 function asBlockKind(value: unknown): PlanBlockKind {

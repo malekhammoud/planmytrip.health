@@ -2,8 +2,8 @@
  * Shared types for the health pacing engine and its split modules.
  *
  * Inputs: none. Outputs: HealthTripInput, the typed input error, condition constraints,
- * itinerary blocks and days, plan output, Sun Life alert types, and day-load output.
- * Invariant: every condition profile, itinerary day, and alert in lib/ uses these types.
+ * itinerary blocks and days, plan output, and day-load output.
+ * Invariant: every condition profile, itinerary day, and plan in lib/ uses these types.
  */
 
 import type { Condition } from "./types";
@@ -14,22 +14,18 @@ export const TRIP_DAYS_MIN = 2;
 /** Inclusive upper bound for a supported trip length. */
 export const TRIP_DAYS_MAX = 20;
 
-/** Caller-supplied plan inputs. Destination and medication are labels only. */
+/** Caller-supplied plan inputs. The destination is a display label only. */
 export interface HealthTripInput {
   destination: string;
   days: number;
   condition: Condition;
-  medication: string;
-  hasSunLifeTravelCoverage: boolean;
 }
 
 /** Stable machine-readable reasons a plan input was rejected. */
 export type HealthTripInputErrorCode =
   | "invalid_destination"
   | "invalid_days"
-  | "invalid_condition"
-  | "invalid_medication"
-  | "invalid_coverage";
+  | "invalid_condition";
 
 /**
  * Typed validation error. `code` is stable for callers; `field` names the offending
@@ -104,16 +100,6 @@ export interface ConditionProfile {
   readonly rationale: string;
 }
 
-/** Alert severity used by the coverage panel. */
-export type SunLifeSeverity = "ok" | "caution" | "blocking";
-
-/** One Sun Life coverage alert. */
-export interface SunLifeAlert {
-  severity: SunLifeSeverity;
-  title: string;
-  messages: string[];
-}
-
 /** Block kinds used by the pacing strip. */
 export type BlockKind = "acclimation" | "cultural" | "recovery" | "meal" | "transit";
 
@@ -145,7 +131,6 @@ export interface HealthTripPlan {
   baselineScore: number;
   riskReductionPct: number;
   dailyStepCeiling: number;
-  sunLifeAlert: SunLifeAlert;
   itinerary: HealthTripDay[];
 }
 

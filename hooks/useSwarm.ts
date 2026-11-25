@@ -3,8 +3,7 @@
 /**
  * Browser data source for the Step 6 swarm monitor.
  *
- * Inputs: the page's destination, condition, medication, and runToken (0 before the
- * first Deploy). Outputs: the current SwarmState, the run's input snapshot, and
+ * Inputs: the page's destination, condition, and runToken (0 before the first Deploy). Outputs: the current SwarmState, the run's input snapshot, and
  * retry(worker), which redeploys one worker with that snapshot.
  * Invariants: no request at token 0 or with an empty destination; one POST per run token
  * and one per retry, so a Strict Mode effect replay reuses the live request instead of
@@ -32,8 +31,6 @@ export interface UseSwarmInput {
   destination: string;
   /** Condition used by the worker goals. */
   condition: Condition;
-  /** Medication name; workers never report doses. */
-  medication: string;
   /** Opaque browser run id shared with the planner capture. */
   runId: string;
   /** Anonymous install id. */
@@ -52,8 +49,6 @@ export interface SwarmRunInput {
   destination: string;
   /** Condition used by the worker goals. */
   condition: Condition;
-  /** Trimmed medication name; never a dose. */
-  medication: string;
   /** Opaque run id shared with the capture row. */
   runId: string;
   /** Anonymous install id. */
@@ -75,7 +70,7 @@ export interface UseSwarmResult {
   runInput: SwarmRunInput | null;
   /** Redeploys one worker only, using the snapshot, and leaves its siblings untouched. */
   retry: (worker: WorkerId) => void;
-  /** Redeploys all three workers with the same snapshot. */
+  /** Redeploys the worker with the same snapshot. */
   rerun: () => void;
 }
 
@@ -86,7 +81,6 @@ export interface UseSwarmResult {
 export function useSwarm({
   destination,
   condition,
-  medication,
   runId,
   installId,
   captureConsent,
@@ -101,8 +95,6 @@ export function useSwarm({
   const controllersRef = useRef<Set<AbortController>>(new Set());
   const latestRequestRef = useRef<Record<WorkerId, number>>({
     advisory: 0,
-    pharmacy: 0,
-    coverage: 0,
   });
   const inFlightRunRef = useRef<{ runToken: number; controller: AbortController } | null>(
     null,
@@ -134,7 +126,6 @@ export function useSwarm({
       streamSwarmRequest({
         destination: input.destination,
         condition: input.condition,
-        medication: input.medication,
         runId: input.runId,
         installId: input.installId,
         captureConsent: input.captureConsent,
@@ -175,7 +166,6 @@ export function useSwarm({
           runToken,
           destination: destination.trim(),
           condition,
-          medication: medication.trim(),
           runId,
           installId,
           captureConsent,
@@ -202,7 +192,6 @@ export function useSwarm({
     destination,
     enabled,
     installId,
-    medication,
     runId,
     runToken,
     startWorkers,
@@ -236,7 +225,6 @@ export function useSwarm({
       ? {
           destination: storedInput.destination,
           condition: storedInput.condition,
-          medication: storedInput.medication,
           runId: storedInput.runId,
           installId: storedInput.installId,
           captureConsent: storedInput.captureConsent,

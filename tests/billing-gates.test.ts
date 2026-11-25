@@ -35,7 +35,6 @@ describe("free-plan server gates", () => {
         origin: "Toronto, Canada",
         days: 20,
         condition: "asthma_respiratory",
-        medication: "albuterol inhaler",
         interests: "",
         budget: "balanced",
         transport: "mixed",
@@ -54,7 +53,6 @@ describe("free-plan server gates", () => {
       jsonRequest({
         destination: "Tokyo, Japan",
         condition: "asthma_respiratory",
-        medication: "albuterol inhaler",
       }),
     );
     expect(response.status).toBe(403);

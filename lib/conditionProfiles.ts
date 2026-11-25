@@ -1,10 +1,10 @@
 /**
  * Condition-specific modeled planning limits for PlanMyTrip.health.
  *
- * Inputs: none. Outputs: CONDITION_PROFILES, DEFAULT_MEDICATION_BY_CONDITION, and
- * MEDICATION_DISCLAIMER. Invariant: every supported Condition has exactly one typed
- * profile; all modeled physiological limits live in CONDITION_PROFILES. Values are
- * planning limits, not clinical prescriptions, and are not clinically validated.
+ * Inputs: none. Outputs: CONDITION_PROFILES. Invariant: every supported Condition has
+ * exactly one typed profile; all modeled physiological limits live in
+ * CONDITION_PROFILES. Values are planning limits, not clinical prescriptions, and are
+ * not clinically validated.
  */
 
 import type { Condition } from "./types";
@@ -95,16 +95,3 @@ export const CONDITION_PROFILES: Readonly<Record<Condition, ConditionProfile>> =
     rationale: "A moderate load with a midday recovery and altitude limits; check with the cardiology clinician. Modeled residual-risk floor: 22.",
   },
 };
-
-/** Common generic medication names by condition. Names only; never doses. */
-export const DEFAULT_MEDICATION_BY_CONDITION: Readonly<Record<Condition, string>> = {
-  asthma_respiratory: "albuterol",
-  chronic_fatigue_pots: "fludrocortisone",
-  pregnancy_second_trimester: "prenatal vitamins",
-  severe_food_allergy: "epinephrine",
-  cardiac_hypertension: "lisinopril",
-};
-
-/** Plain-language limits on what medication information this planner may show. */
-export const MEDICATION_DISCLAIMER =
-  "Medication names are examples only. This planner does not give doses or medication changes. Confirm all medication decisions with your clinician and pharmacist.";

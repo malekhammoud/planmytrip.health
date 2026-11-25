@@ -151,7 +151,6 @@ export async function writeCachedVenue(
       destination: "",
       days: null,
       condition: null,
-      medication: "",
       interests: "",
       budget: "",
       transport: "",

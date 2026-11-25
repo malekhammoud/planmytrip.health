@@ -26,8 +26,8 @@ const PANELS: Record<WorkerId, readonly Panel[]> = {
       heading: "Health notices",
       lines: [
         "Measles vaccination is recommended for some travellers.",
-        "Carry routine medication in original packaging.",
         "Check local emergency numbers on arrival.",
+        "Confirm the nearest hospital or urgent care after landing.",
       ],
     },
     {
@@ -46,82 +46,6 @@ const PANELS: Record<WorkerId, readonly Panel[]> = {
         "A valid passport is required.",
         "Check the current visa rules before booking.",
         "Keep a copy of the passport in a separate bag.",
-      ],
-    },
-  ],
-  pharmacy: [
-    {
-      path: "/international/drugs/albuterol",
-      heading: "International drug names",
-      lines: [
-        "Generic name: albuterol.",
-        "Local brands may use a different label.",
-        "Confirm the active ingredient with a pharmacist.",
-      ],
-    },
-    {
-      path: "/international/customs/portugal",
-      heading: "Customs guidance",
-      lines: [
-        "Carry a copy of the prescription.",
-        "Keep medication in hand luggage.",
-        "Declare controlled medicines when asked.",
-      ],
-    },
-    {
-      path: "/international/pharmacies/lisbon",
-      heading: "Pharmacy listings",
-      lines: [
-        "Pharmacies are marked with a green cross.",
-        "Some locations open late in the city centre.",
-        "Ask for the generic name at the counter.",
-      ],
-    },
-    {
-      path: "/international/packaging",
-      heading: "Packaging and carry rules",
-      lines: [
-        "Keep the pharmacy label visible.",
-        "Do not transfer tablets into unlabelled containers.",
-        "Bring enough for the whole trip plus a buffer.",
-      ],
-    },
-  ],
-  coverage: [
-    {
-      path: "/health/emergency-travel-medical",
-      heading: "Emergency travel medical insurance",
-      lines: [
-        "Emergency medical benefits apply outside the home province.",
-        "The plan may require a call before non-emergency care.",
-        "Keep receipts and medical reports for a claim.",
-      ],
-    },
-    {
-      path: "/health/emergency-travel-medical/pre-authorization",
-      heading: "Pre-authorization",
-      lines: [
-        "Call Allianz Global Assistance before non-emergency care.",
-        "The assistance line is open 24 hours.",
-        "Have the policy number ready.",
-      ],
-    },
-    {
-      path: "/health/emergency-travel-medical/checklist",
-      heading: "Pre-departure checklist",
-      lines: [
-        "Confirm the policy is active for the travel dates.",
-        "Save the assistance number offline.",
-        "Check the trip length against the plan cap.",
-      ],
-    },
-    {
-      path: "/health/emergency-travel-medical/contact",
-      heading: "Contact the plan administrator",
-      lines: [
-        "Ask about the pre-existing stability window.",
-        "Confirm the claim deadline after returning.",
-        "Record the representative's name and date.",
       ],
     },
   ],

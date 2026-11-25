@@ -213,7 +213,7 @@ export function buildFallbackPlan(input: FallbackInput): AgentTripPlan {
           "18:00",
           "transit",
           "Return transfer",
-          "Keep the transfer unhurried and medication within reach.",
+          "Keep the transfer unhurried and the day light.",
           30,
           null,
         ),

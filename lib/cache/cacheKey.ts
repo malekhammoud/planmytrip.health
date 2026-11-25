@@ -13,7 +13,7 @@ import type { PlannerRequest } from "@/lib/agent/agentTypes";
 import type { Condition } from "@/lib/types";
 
 /** Bump when the cached payload shape or planner prompt contract changes. */
-export const CACHE_VERSION = 1;
+export const CACHE_VERSION = 2;
 
 /** Normalises place and preference text for matching, not for display. */
 export function normalizeCacheText(value: string): string {
@@ -70,7 +70,6 @@ export interface PlanCacheSignature {
   destination: string;
   days: number;
   condition: Condition;
-  medication: string;
   interests: string;
   budget: string;
   transport: string;
@@ -81,7 +80,6 @@ export interface PlanCacheIdentity {
   destination: string;
   days: number;
   condition: Condition;
-  medication: string;
 }
 
 /** Builds the signature stored beside a cached plan. */
@@ -90,7 +88,6 @@ export function planCacheSignature(request: PlannerRequest): PlanCacheSignature 
     destination: normalizeDestination(request.destination),
     days: request.days,
     condition: request.condition,
-    medication: normalizeCacheText(request.medication),
     interests: normalizeCacheText(request.interests),
     budget: request.budget,
     transport: request.transport,
@@ -103,7 +100,6 @@ export function planCacheIdentity(request: PlannerRequest): PlanCacheIdentity {
     destination: normalizeDestination(request.destination),
     days: request.days,
     condition: request.condition,
-    medication: normalizeCacheText(request.medication),
   };
 }
 
@@ -117,7 +113,6 @@ export function buildPlanCacheKey(request: PlannerRequest): string {
     signature.destination,
     signature.days,
     signature.condition,
-    signature.medication,
     signature.interests,
     signature.budget,
     signature.transport,
@@ -128,7 +123,6 @@ export function buildPlanCacheKey(request: PlannerRequest): string {
 export interface SwarmCacheIdentity {
   destination: string;
   condition: Condition;
-  medication: string;
 }
 
 /** Canonical key for one verification configuration. */
@@ -138,7 +132,6 @@ export function buildSwarmCacheKey(input: SwarmCacheIdentity): string {
     "swarm",
     normalizeDestination(input.destination),
     input.condition,
-    normalizeCacheText(input.medication),
   ].join("|");
 }
 

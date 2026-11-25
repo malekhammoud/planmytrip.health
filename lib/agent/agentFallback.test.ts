@@ -11,7 +11,6 @@ const request: PlannerRequest = {
   travelers: 1,
   days: 4,
   condition: "chronic_fatigue_pots",
-  medication: "fludrocortisone",
   interests: "",
   budget: "value",
 };

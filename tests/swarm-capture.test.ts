@@ -10,7 +10,6 @@ const installId = "swarm-install-1234";
 const body = {
   destination: "Lisbon, Portugal",
   condition: "asthma_respiratory" as const,
-  medication: "albuterol",
   runId,
   installId,
   captureConsent: true,
@@ -46,7 +45,7 @@ describeDb("swarm capture", () => {
     const row = await getCapture(runId);
     expect(row).not.toBeNull();
     const findings = Array.isArray(row?.swarm_json) ? row.swarm_json : [];
-    expect(findings.length).toBe(3);
+    expect(findings.length).toBe(1);
     expect(
       findings
         .map((finding) =>
@@ -55,7 +54,7 @@ describeDb("swarm capture", () => {
             : "",
         )
         .sort(),
-    ).toEqual(["advisory", "coverage", "pharmacy"]);
+    ).toEqual(["advisory"]);
   });
 
   it("does not capture without consent", async () => {

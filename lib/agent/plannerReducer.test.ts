@@ -16,7 +16,6 @@ const request: PlannerRequest = {
   travelers: 1,
   days: 4,
   condition: "asthma_respiratory",
-  medication: "albuterol",
   interests: "",
   budget: "balanced",
 };

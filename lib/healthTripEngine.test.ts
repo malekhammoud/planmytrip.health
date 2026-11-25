@@ -28,7 +28,6 @@ function captureItineraryError(
       profile,
       "asthma_respiratory",
       BASE_INPUT.destination,
-      "albuterol",
     );
   } catch (error) {
     if (error instanceof ItineraryInvariantError) return error;
@@ -60,7 +59,6 @@ describe.each(CONDITIONS)("condition profile: %s", (condition) => {
 
     expect(plan.itinerary).toHaveLength(days);
     expect(plan.dailyStepCeiling).toBe(profile.dailyStepCeiling);
-    expect(plan.sunLifeAlert.severity).toBe("ok");
     expect(Number.isInteger(plan.healthSafetyScore)).toBe(true);
     expect(plan.healthSafetyScore).toBeGreaterThanOrEqual(0);
     expect(plan.healthSafetyScore).toBeLessThanOrEqual(100);
@@ -113,9 +111,10 @@ describe.each(CONDITIONS)("condition profile: %s", (condition) => {
       .join(" ");
     expect(firstDay.blocks[0]?.kind).toBe("acclimation");
     expect(firstDayText).toContain("sleep");
-    expect(firstDayText).toContain("pharmacy");
     expect(firstDayText).toContain("hospital");
-    expect(firstDayText).toContain("medication");
+    expect(firstDayText).toContain("settle in");
+    expect(firstDayText).not.toContain("pharmacy");
+    expect(firstDayText).not.toContain("medication");
 
     const finalDay = plan.itinerary[days - 1];
     expect(finalDay.stepCap).toBeLessThan(firstDay.stepCap);

@@ -13,7 +13,6 @@ function plan(overrides: Partial<HealthTripPlan> = {}): HealthTripPlan {
     baselineScore: 52,
     riskReductionPct: 54,
     dailyStepCeiling: 6000,
-    sunLifeAlert: { severity: "ok", title: "Coverage recorded", messages: [] },
     itinerary: [],
     ...overrides,
   };

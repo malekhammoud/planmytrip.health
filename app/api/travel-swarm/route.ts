@@ -1,8 +1,8 @@
 /**
  * POST /api/travel-swarm: validates the request and streams the swarm's own SSE events
- * while lib/swarmRunner executes the three TinyFish research workers concurrently.
+ * while lib/swarmRunner executes the live TinyFish destination advisory worker.
  *
- * Inputs: a JSON body { destination, condition, medication, workers? } validated by
+ * Inputs: a JSON body { destination, condition, workers? } validated by
  * isSwarmRequestBody, plus TINYFISH_API_KEY and the dev-only SWARM_MOCK flag.
  * Outputs: text/event-stream frames (worker_status, worker_started, streaming_url,
  * worker_progress, worker_sources, worker_heartbeat, worker_note, worker_complete,
@@ -64,12 +64,12 @@ export async function POST(request: Request): Promise<Response> {
   try {
     body = await request.json();
   } catch {
-    return jsonError(400, "Send a JSON object with destination, condition, and medication.");
+    return jsonError(400, "Send a JSON object with a destination and condition.");
   }
   if (!isSwarmRequestBody(body)) {
     return jsonError(
       400,
-      "Send a destination, a supported condition, a medication value, and a non-empty worker list.",
+      "Send a destination, a supported condition, and a non-empty worker list.",
     );
   }
 
@@ -78,12 +78,11 @@ export async function POST(request: Request): Promise<Response> {
   const input: SwarmRunContext["input"] = {
     destination: normalizeSwarmText(body.destination),
     condition: body.condition,
-    medication: normalizeSwarmText(body.medication),
   };
   const apiKey = process.env.TINYFISH_API_KEY?.trim() ?? "";
   const mock = process.env.SWARM_MOCK === "1" && process.env.NODE_ENV !== "production";
-  // Cached verification skips all three paid browser runs. A miss runs the live swarm
-  // and stores the complete set for the next request.
+  // Cached verification skips the paid browser run. A miss runs the live worker and
+  // stores the complete set for the next request.
   const cached = mock ? null : await readCachedSwarm(input, workers).catch(() => null);
   const fromCache = cached !== null;
 
@@ -152,7 +151,7 @@ export async function POST(request: Request): Promise<Response> {
         sourceUrl: event.data.sourceUrl,
         retrievedAt: event.data.retrievedAt,
         // Keep enough of the typed result to seed a complete verification cache from a
-        // capture row; 800 characters truncated the coverage checklist.
+        // capture row; 800 characters was too short for the bounded findings.
         summary: JSON.stringify(event.data.findings).slice(0, 4_000),
       });
     }
@@ -183,7 +182,6 @@ export async function POST(request: Request): Promise<Response> {
       event.event === "swarm_done" &&
       !mock &&
       !fromCache &&
-      workers.length === 3 &&
       event.data.completed.length === workers.length &&
       event.data.failed.length === 0
     ) {

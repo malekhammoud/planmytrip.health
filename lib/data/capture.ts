@@ -45,8 +45,6 @@ export async function capturePlannerRun(
     destination: request.destination,
     days: request.days,
     condition: request.condition,
-    medication: request.medication,
-    hasSunLifeTravelCoverage: request.hasSunLifeTravelCoverage === true,
   });
   const dossier = buildTripDossier({
     runId,
@@ -56,12 +54,10 @@ export async function capturePlannerRun(
       destination: request.destination,
       days: request.days,
       condition: request.condition,
-      medication: request.medication,
       interests: request.interests,
       budget: request.budget,
       checkIn: request.checkIn,
       travelers: request.travelers,
-      hasSunLifeTravelCoverage: request.hasSunLifeTravelCoverage === true,
     },
     enginePlan,
     agentPlan: input.plan,

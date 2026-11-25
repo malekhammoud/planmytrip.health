@@ -1,8 +1,8 @@
 /**
- * Designed pre-run state for the three workers.
+ * Designed pre-run state for the live worker.
  *
- * Inputs: the trip destination, condition, and medication.
- * Outputs: three ruled rows with the target host, what will be checked, and a disclosure
+ * Inputs: the trip destination and condition.
+ * Outputs: one ruled row with the target host, what will be checked, and a disclosure
  * showing the exact goal text sent to the agent.
  * Invariants: no progress, counts, or fake activity appear before a run; every row names
  * a real source and the instruction is the same string the runner sends.
@@ -22,18 +22,17 @@ import type { Condition } from "@/lib/types";
 export interface PreRunProps {
   destination: string;
   condition: Condition;
-  medication: string;
 }
 
-/** Three rows that explain exactly what will happen. */
-export function PreRun({ destination, condition, medication }: PreRunProps) {
-  const input = { destination, condition, medication };
+/** One row that explains exactly what will happen. */
+export function PreRun({ destination, condition }: PreRunProps) {
+  const input = { destination, condition };
 
   return (
     <div>
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-solid border-hairline pb-2">
         <p className="t-label text-muted">Will check</p>
-        <p className="t-data-sm text-muted">3 agents</p>
+        <p className="t-data-sm text-muted">{missionWorkers().length} live check</p>
       </div>
       {missionWorkers().map((worker) => {
         const meta = MISSION_WORKERS[worker];

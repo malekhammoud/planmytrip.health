@@ -18,30 +18,18 @@ export interface MissionWorkerMeta {
   checks: string;
 }
 
-/** Worker order and copy used by the status bar, tiles, and pre-run rows. */
+/** Worker order and copy used by the status line, live view, and pre-run rows. */
 export const MISSION_WORKERS: Record<WorkerId, MissionWorkerMeta> = {
   advisory: {
     name: "Travel advisory",
     host: "travel.gc.ca",
     checks: "Destination risk level, health notices, and environmental hazards.",
   },
-  pharmacy: {
-    name: "Medication and customs",
-    host: "drugs.com",
-    checks: "Generic name, local brands, customs rules, and carry rules.",
-  },
-  coverage: {
-    name: "Emergency medical coverage",
-    host: "sunlife.ca",
-    checks: "Emergency medical limit and pre-authorization rules.",
-  },
 };
 
 /** Short worker tag used in the feed and source rows. */
 export const WORKER_TAG: Record<WorkerId, string> = {
   advisory: "Advisory",
-  pharmacy: "Pharmacy",
-  coverage: "Coverage",
 };
 
 /** Phase copy. The internal queued token never renders as Queued. */

@@ -61,10 +61,8 @@ function dossier(index: number): TripDossier {
       destination: "Lisbon, Portugal",
       days,
       condition,
-      medication: "listed medication",
       interests: "",
       budget: "balanced",
-      hasSunLifeTravelCoverage: false,
     },
     engine: {
       healthSafetyScore: 45 + (index % 9) * 5,

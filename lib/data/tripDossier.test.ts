@@ -84,8 +84,6 @@ describe("buildTripDossier", () => {
       destination: "Lisbon, Portugal",
       days: 2,
       condition: "asthma_respiratory",
-      medication: "albuterol inhaler",
-      hasSunLifeTravelCoverage: false,
     });
     const dossier = buildTripDossier({
       runId: "run-12345678",
@@ -95,10 +93,8 @@ describe("buildTripDossier", () => {
         destination: "Lisbon, Portugal",
         days: 2,
         condition: "asthma_respiratory",
-        medication: "albuterol inhaler",
         interests: "",
         budget: "balanced",
-        hasSunLifeTravelCoverage: false,
       },
       enginePlan,
       agentPlan,
@@ -120,8 +116,6 @@ describe("buildTripDossier", () => {
       destination: "Lisbon, Portugal",
       days: 2,
       condition: "asthma_respiratory",
-      medication: "albuterol inhaler",
-      hasSunLifeTravelCoverage: false,
     });
     const dossier = buildTripDossier({
       runId: "run-12345678",
@@ -131,10 +125,8 @@ describe("buildTripDossier", () => {
         destination: "Lisbon, Portugal",
         days: 2,
         condition: "asthma_respiratory",
-        medication: "albuterol inhaler",
         interests: "",
         budget: "balanced",
-        hasSunLifeTravelCoverage: false,
       },
       enginePlan,
       agentPlan: { ...agentPlan, degraded: true },

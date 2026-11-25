@@ -1,8 +1,8 @@
 /**
- * Step 3 rules, validation, documentation, and module-boundary tests.
+ * Engine rules, validation, documentation, and module-boundary tests.
  *
- * Covers Sun Life boundaries and notices, invalid inputs, profile floor/VERIFY text,
- * medication safety copy, module re-export identity, and the pacing policy.
+ * Covers invalid inputs, profile floor/VERIFY text, module re-export identity, and the
+ * pacing policy.
  */
 
 import { readFileSync } from "node:fs";
@@ -12,15 +12,10 @@ import { CONDITIONS, type Condition } from "@/lib/types";
 import {
   buildHealthTripPlan,
   buildItinerary,
-  checkSunLifeCoverage,
   computeHealthScores,
   CONDITION_PROFILES,
-  DEFAULT_MEDICATION_BY_CONDITION,
   HealthTripInputError,
-  MEDICATION_DISCLAIMER,
   PACING_POLICY,
-  SUN_LIFE_RULES,
-  SUN_LIFE_STABILITY_WINDOW_DAYS_PLACEHOLDER,
   TRIP_DAYS_MAX,
   TRIP_DAYS_MIN,
   type HealthTripInput,
@@ -32,7 +27,6 @@ import {
   PACING_POLICY as PACING_POLICY_MODULE,
   buildItinerary as buildItineraryModule,
 } from "@/lib/itineraryBuilder";
-import { SUN_LIFE_RULES as SUN_LIFE_RULES_MODULE } from "@/lib/sunLifeRules";
 import { BASE_INPUT, planFor } from "@/tests/healthTripFixtures";
 
 function captureInputError(action: () => unknown): HealthTripInputError {
@@ -44,61 +38,6 @@ function captureInputError(action: () => unknown): HealthTripInputError {
   }
   throw new Error("Expected action to throw HealthTripInputError");
 }
-
-describe("Sun Life rules", () => {
-  it("allows 1 and 60 days with coverage", () => {
-    expect(checkSunLifeCoverage(1, true).severity).toBe("ok");
-    expect(checkSunLifeCoverage(60, true).severity).toBe("ok");
-  });
-
-  it("blocks 61 days and carries the shared notices", () => {
-    const alert = checkSunLifeCoverage(61, true);
-    expect(alert.severity).toBe("blocking");
-    expect(alert.messages).toContain(SUN_LIFE_RULES.administratorNotice);
-    expect(alert.messages).toContain(SUN_LIFE_RULES.stabilityWindow.note);
-    expect(alert.messages.join(" ")).toContain("not confirmed");
-  });
-
-  it("cautions when coverage is absent", () => {
-    const alert = checkSunLifeCoverage(30, false);
-    expect(alert.severity).toBe("caution");
-    expect(alert.messages).toContain(SUN_LIFE_RULES.administratorNotice);
-    expect(alert.messages.length).toBeGreaterThan(0);
-  });
-
-  it("binds the stability window to the null placeholder", () => {
-    expect(SUN_LIFE_RULES.tripDayCap).toBe(60);
-    expect(SUN_LIFE_RULES.stabilityWindow.days).toBe(
-      SUN_LIFE_STABILITY_WINDOW_DAYS_PLACEHOLDER,
-    );
-    expect(SUN_LIFE_RULES.stabilityWindow.days).toBeNull();
-    expect(SUN_LIFE_RULES.stabilityWindow.isPlaceholder).toBe(true);
-    expect(SUN_LIFE_RULES.stabilityWindow.note).toContain("not confirmed");
-    expect(SUN_LIFE_RULES.stabilityWindow.note).not.toContain(
-      "Verify with your plan administrator",
-    );
-  });
-
-  it("builds every severity from the administrator notice constant", () => {
-    for (const alert of [
-      checkSunLifeCoverage(1, true),
-      checkSunLifeCoverage(30, false),
-      checkSunLifeCoverage(61, true),
-    ]) {
-      expect(alert.messages).toContain(SUN_LIFE_RULES.administratorNotice);
-    }
-  });
-
-  it("rejects 0 and 1.5 trip days", () => {
-    for (const tripDays of [0, 1.5]) {
-      const error = captureInputError(() =>
-        checkSunLifeCoverage(tripDays, true),
-      );
-      expect(error.code).toBe("invalid_days");
-      expect(error.field).toBe("days");
-    }
-  });
-});
 
 describe("input validation", () => {
   it("throws typed errors with stable code and field", () => {
@@ -117,19 +56,6 @@ describe("input validation", () => {
         code: "invalid_condition",
         field: "condition",
       },
-      {
-        input: { ...BASE_INPUT, medication: 42 as unknown as string },
-        code: "invalid_medication",
-        field: "medication",
-      },
-      {
-        input: {
-          ...BASE_INPUT,
-          hasSunLifeTravelCoverage: "yes" as unknown as boolean,
-        },
-        code: "invalid_coverage",
-        field: "hasSunLifeTravelCoverage",
-      },
     ];
 
     for (const testCase of cases) {
@@ -142,9 +68,16 @@ describe("input validation", () => {
       expect(error.field).toBe(testCase.field);
     }
   });
+
+  it("builds a plan without coverage or medication fields", () => {
+    const plan = planFor("asthma_respiratory", 4);
+    expect("sunLifeAlert" in plan).toBe(false);
+    expect("medication" in plan).toBe(false);
+    expect("hasSunLifeTravelCoverage" in plan).toBe(false);
+  });
 });
 
-describe("profile documentation and medication names", () => {
+describe("profile documentation", () => {
   it("mentions the residual-risk floor in every rationale", () => {
     for (const condition of CONDITIONS) {
       const profile = CONDITION_PROFILES[condition];
@@ -155,13 +88,9 @@ describe("profile documentation and medication names", () => {
     }
   });
 
-  it("keeps floor-aware profile VERIFY lines and policy VERIFY markers", () => {
+  it("keeps floor-aware profile VERIFY lines", () => {
     const profilesSource = readFileSync(
       fileURLToPath(new URL("./conditionProfiles.ts", import.meta.url)),
-      "utf8",
-    );
-    const rulesSource = readFileSync(
-      fileURLToPath(new URL("./sunLifeRules.ts", import.meta.url)),
       "utf8",
     );
     expect(
@@ -175,26 +104,12 @@ describe("profile documentation and medication names", () => {
         `residual-risk floor (${CONDITION_PROFILES[condition].residualRiskFloor}/100)`,
       );
     }
-    expect(
-      (rulesSource.match(/\/\/\s*VERIFY\b/g) ?? []).length,
-    ).toBeGreaterThanOrEqual(2);
-    expect(rulesSource).toContain("// VERIFY against current group policy");
-  });
-
-  it("lists generic medication names without doses", () => {
-    for (const condition of CONDITIONS) {
-      const medication = DEFAULT_MEDICATION_BY_CONDITION[condition];
-      expect(medication.trim().length).toBeGreaterThan(0);
-      expect(medication).not.toMatch(/\d/);
-    }
-    expect(MEDICATION_DISCLAIMER.length).toBeGreaterThan(20);
   });
 });
 
 describe("module boundaries and re-exports", () => {
   it("re-exports the split modules and policy constants", () => {
     expect(CONDITION_PROFILES).toBe(CONDITION_PROFILES_MODULE);
-    expect(SUN_LIFE_RULES).toBe(SUN_LIFE_RULES_MODULE);
     expect(buildItinerary).toBe(buildItineraryModule);
     expect(computeHealthScores).toBe(computeHealthScoresModule);
     expect(PACING_POLICY).toBe(PACING_POLICY_MODULE);
@@ -215,7 +130,6 @@ describe("module boundaries and re-exports", () => {
       profile,
       "asthma_respiratory",
       "Tokyo, Japan",
-      "albuterol",
     );
     const plan = planFor("asthma_respiratory", 3);
 
@@ -234,7 +148,6 @@ describe("module boundaries and re-exports", () => {
         CONDITION_PROFILES.asthma_respiratory,
         "asthma_respiratory",
         "Tokyo, Japan",
-        "albuterol",
       ),
     );
     expect(error.code).toBe("invalid_days");

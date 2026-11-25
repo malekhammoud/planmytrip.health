@@ -226,7 +226,7 @@ export function CommandBar({
           <span className="hidden sm:inline-flex">
             <Count value={summary.sources.toString()} unit="sources" />
           </span>
-          <Count value={`${summary.findings}/3`} unit="findings" tick />
+          <Count value={`${summary.findings}/${WORKER_IDS.length}`} unit="findings" tick />
 
           {line !== null ? (
             <span
@@ -266,16 +266,16 @@ export function CommandBar({
         </div>
         <div
           role="progressbar"
-          aria-label="Verification workers complete"
+          aria-label="Verification worker complete"
           aria-valuemin={0}
-          aria-valuemax={3}
+          aria-valuemax={WORKER_IDS.length}
           aria-valuenow={summary.completed + summary.failed}
-          aria-valuetext={`${summary.completed + summary.failed} of 3 checks settled`}
+          aria-valuetext={`${summary.completed + summary.failed} of ${WORKER_IDS.length} check settled`}
           className="h-0.5 bg-paper"
         >
           <div
             className="mission-progress__fill h-full bg-ink"
-            style={{ width: `${((summary.completed + summary.failed) / 3) * 100}%` }}
+            style={{ width: `${((summary.completed + summary.failed) / WORKER_IDS.length) * 100}%` }}
           />
         </div>
       </div>

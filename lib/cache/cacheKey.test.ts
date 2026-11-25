@@ -17,7 +17,6 @@ function request(overrides: Partial<PlannerRequest> = {}): PlannerRequest {
     origin: "",
     days: 4,
     condition: "asthma_respiratory",
-    medication: "albuterol",
     interests: "healthy vegan food",
     budget: "balanced",
     transport: "mixed",
@@ -38,7 +37,6 @@ describe("cache keys", () => {
     const right = buildPlanCacheKey(
       request({
         destination: "  london, ON ",
-        medication: "Albuterol",
         runId: "93575f5b-169d-4a9b-a1e3-0a95ce523f60",
         installId: "979aa7db-905e-4959-aa1a-ae300f2fc87f",
       }),
@@ -68,28 +66,25 @@ describe("cache keys", () => {
       destination: "london ontario",
       days: 4,
       condition: "asthma_respiratory",
-      medication: "albuterol",
     });
   });
 
-  it("keys verification by destination, condition, and medication", () => {
+  it("keys verification by destination and condition only", () => {
     const base = buildSwarmCacheKey({
       destination: "London, Ontario",
       condition: "asthma_respiratory",
-      medication: "albuterol",
     });
     expect(
       buildSwarmCacheKey({
         destination: "london ontario",
         condition: "asthma_respiratory",
-        medication: "ALBUTEROL",
       }),
     ).toBe(base);
+    expect(base).not.toContain("albuterol");
     expect(
       buildSwarmCacheKey({
         destination: "London, Ontario",
         condition: "cardiac_hypertension",
-        medication: "albuterol",
       }),
     ).not.toBe(base);
   });

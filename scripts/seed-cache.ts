@@ -54,8 +54,7 @@ async function seedSwarm(runId: string): Promise<number> {
   if (
     !isRecord(request) ||
     typeof request.destination !== "string" ||
-    !isCondition(request.condition) ||
-    typeof request.medication !== "string"
+    !isCondition(request.condition)
   ) {
     throw new Error("That capture has no usable request.");
   }
@@ -83,13 +82,14 @@ async function seedSwarm(runId: string): Promise<number> {
   }
   const present = WORKER_IDS.filter((worker) => values[worker] !== undefined);
   if (present.length !== WORKER_IDS.length) {
-    throw new Error(`Only ${present.length} of 3 workers were usable.`);
+    throw new Error(
+      `Only ${present.length} of ${WORKER_IDS.length} workers were usable.`,
+    );
   }
   await writeCachedSwarm(
     {
       destination: request.destination,
       condition: request.condition,
-      medication: request.medication,
     },
     WORKER_IDS,
     values,

@@ -575,8 +575,7 @@ function mockOptions(): MockRunOptions {
   const fail = process.env.SWARM_MOCK_FAIL;
   return {
     speed,
-    failWorker:
-      fail === "advisory" || fail === "pharmacy" || fail === "coverage" ? fail : null,
+    failWorker: fail === "advisory" ? fail : null,
   };
 }
 

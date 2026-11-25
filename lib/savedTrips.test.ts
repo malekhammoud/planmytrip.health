@@ -6,12 +6,10 @@ const TRIP = {
   origin: "Toronto, Canada",
   days: 4,
   condition: "asthma_respiratory",
-  medication: "albuterol inhaler",
   interests: "Quiet food",
   budget: "balanced",
   transport: "mixed",
   captureConsent: true,
-  hasSunLifeTravelCoverage: true,
 };
 
 const PLAN = {
@@ -66,8 +64,26 @@ describe("saved trip contract", () => {
     expect(parsed?.runId).toBe("run-12345678");
     expect(parsed?.trip.destination).toBe("Lisbon, Portugal");
     expect(parsed?.trip.captureConsent).toBe(false);
-    expect(parsed?.trip.hasSunLifeTravelCoverage).toBe(true);
     expect(parsed?.plan.days).toHaveLength(1);
+  });
+
+  it("reads a saved snapshot written before removed fields", () => {
+    const parsed = parseSaveTripBody(
+      {
+        runId: "run-12345678",
+        trip: {
+          ...TRIP,
+          medication: "albuterol inhaler",
+          hasSunLifeTravelCoverage: true,
+        },
+        plan: PLAN,
+      },
+      "2026-11-21T10:05:00.000Z",
+    );
+    expect(parsed).not.toBeNull();
+    expect(parsed?.trip.destination).toBe("Lisbon, Portugal");
+    expect("medication" in (parsed?.trip ?? {})).toBe(false);
+    expect("hasSunLifeTravelCoverage" in (parsed?.trip ?? {})).toBe(false);
   });
 
   it("rejects a bad run id, trip, or plan", () => {

@@ -10,15 +10,14 @@ import type { SwarmEvent } from "@/lib/swarmTypes";
 const input = {
   destination: "Lisbon, Portugal",
   condition: "asthma_respiratory" as const,
-  medication: "albuterol inhaler",
 };
 
 const options: MockRunOptions = { speed: 100_000, failWorker: null };
 
 describe("createMockTimeline", () => {
   it("is deterministic and stays inside the documented bounds", () => {
-    const first = createMockTimeline("coverage", input, { speed: 1, failWorker: null });
-    const second = createMockTimeline("coverage", input, { speed: 1, failWorker: null });
+    const first = createMockTimeline("advisory", input, { speed: 1, failWorker: null });
+    const second = createMockTimeline("advisory", input, { speed: 1, failWorker: null });
     expect(second).toEqual(first);
     const progress = first.filter((entry) => entry.kind === "progress");
     const sources = first.filter((entry) => entry.kind === "sources");
@@ -32,15 +31,15 @@ describe("createMockTimeline", () => {
   });
 
   it("moves the failure before completion for the named worker", () => {
-    const failed = createMockTimeline("coverage", input, {
+    const failed = createMockTimeline("advisory", input, {
       speed: 1,
-      failWorker: "coverage",
+      failWorker: "advisory",
     });
     expect(failed.some((entry) => entry.kind === "fail")).toBe(true);
     expect(failed.some((entry) => entry.kind === "complete")).toBe(false);
     const healthy = createMockTimeline("advisory", input, {
       speed: 1,
-      failWorker: "coverage",
+      failWorker: null,
     });
     expect(healthy.some((entry) => entry.kind === "complete")).toBe(true);
   });
@@ -72,12 +71,12 @@ describe("runMockWorker", () => {
   it("fails the named worker with site_blocked after real progress", async () => {
     const events: SwarmEvent[] = [];
     let counter = 0;
-    const outcome = await runMockWorker("coverage", input, (event) => events.push(event), () => {
+    const outcome = await runMockWorker("advisory", input, (event) => events.push(event), () => {
       counter += 1;
       return counter;
-    }, { speed: 100_000, failWorker: "coverage" });
+    }, { speed: 100_000, failWorker: "advisory" });
 
-    expect(outcome).toEqual({ worker: "coverage", ok: false });
+    expect(outcome).toEqual({ worker: "advisory", ok: false });
     expect(events.filter((event) => event.event === "worker_progress").length).toBeGreaterThan(0);
     const error = events.find((event) => event.event === "worker_error");
     if (error?.event !== "worker_error") throw new Error("expected worker_error");

@@ -12,10 +12,10 @@
 import { isCondition, type Condition } from "@/lib/types";
 import { parseInstallId, parseRunId } from "@/lib/data/validation";
 
-/** The three research workers, in stable display order. */
-export const WORKER_IDS = ["advisory", "pharmacy", "coverage"] as const;
+/** The live research worker, in stable display order. */
+export const WORKER_IDS = ["advisory"] as const;
 
-/** Destination and medication are prompt inputs and stored summaries, so both are bounded. */
+/** Destination is a prompt input and stored summary, so it is bounded. */
 const SWARM_TEXT_MAX = 120;
 
 /** Collapses whitespace so a newline cannot turn one prompt field into instructions. */
@@ -31,7 +31,7 @@ function boundedText(value: unknown, allowEmpty = false): string | null {
   return text;
 }
 
-/** One of the three research workers. */
+/** One of the live research workers. */
 export type WorkerId = (typeof WORKER_IDS)[number];
 
 /** Narrows an untrusted value to a WorkerId. */
@@ -43,7 +43,6 @@ export function isWorkerId(value: unknown): value is WorkerId {
 export interface SwarmRequestBody {
   destination: string;
   condition: Condition;
-  medication: string;
   workers?: WorkerId[];
   /** Opaque browser run id shared with the planner capture. */
   runId?: string;
@@ -62,7 +61,6 @@ export function isSwarmRequestBody(value: unknown): value is SwarmRequestBody {
   const body = value as Record<string, unknown>;
   if (boundedText(body.destination) === null) return false;
   if (!isCondition(body.condition)) return false;
-  if (boundedText(body.medication, true) === null) return false;
   if (body.runId !== undefined && parseRunId(body.runId) === null) return false;
   if (body.installId !== undefined && parseInstallId(body.installId) === null) {
     return false;
@@ -80,7 +78,7 @@ export function isSwarmRequestBody(value: unknown): value is SwarmRequestBody {
 
 /**
  * Resolves the requested workers to a de-duplicated canonical order.
- * Callers must pass a validated body; undefined means all three.
+ * Callers must pass a validated body; undefined means every configured worker.
  */
 export function resolveWorkers(workers: readonly WorkerId[] | undefined): WorkerId[] {
   if (workers === undefined) return [...WORKER_IDS];
@@ -95,53 +93,16 @@ export interface AdvisoryFindings {
   environmentalHazards: string[];
 }
 
-/** Findings from the international pharmacy worker. */
-export interface PharmacyFindings {
-  genericName: string | null;
-  localBrandNames: string[];
-  customsRules: string | null;
-  carryRules: string | null;
-}
-
-/** Provenance tag attached to every coverage checklist item. */
-export type CoverageSource = "page" | "inferred";
-
-/** One pre-departure checklist item and whether the page stated it. */
-export interface CoverageChecklistItem {
-  item: string;
-  source: CoverageSource;
-}
-
-/** Findings from the emergency travel medical coverage worker. */
-export interface CoverageFindings {
-  emergencyMedicalLimit: string | null;
-  preAuthorizationRules: string | null;
-  checklist: CoverageChecklistItem[];
-}
-
-/** Findings for any worker, discriminated by the event's worker id. */
-export type SwarmFindings =
-  | AdvisoryFindings
-  | PharmacyFindings
-  | CoverageFindings;
+/** Findings for the configured worker. */
+export type SwarmFindings = AdvisoryFindings;
 
 /** Normalised advisory result including the page it came from. */
 export interface AdvisoryResult extends AdvisoryFindings {
   sourceUrl: string;
 }
 
-/** Normalised pharmacy result including the page it came from. */
-export interface PharmacyResult extends PharmacyFindings {
-  sourceUrl: string;
-}
-
-/** Normalised coverage result including the page it came from. */
-export interface CoverageResult extends CoverageFindings {
-  sourceUrl: string;
-}
-
 /** Any normalised worker result. */
-export type WorkerResult = AdvisoryResult | PharmacyResult | CoverageResult;
+export type WorkerResult = AdvisoryResult;
 
 /** Findings plus resolved source URL, as stored by the route. */
 export interface NormalizedWorkerResult {

@@ -61,7 +61,6 @@ export interface SwarmSummary {
 export interface SwarmCompareInput {
   destination: string;
   condition: Condition;
-  medication: string;
 }
 
 function firstStepAt(worker: WorkerState): number | null {
@@ -201,7 +200,6 @@ export function isStale(
   if (runInputs === null) return false;
   return (
     runInputs.destination.trim() !== currentInputs.destination.trim() ||
-    runInputs.condition !== currentInputs.condition ||
-    runInputs.medication.trim() !== currentInputs.medication.trim()
+    runInputs.condition !== currentInputs.condition
   );
 }

@@ -56,7 +56,6 @@ const cachedPlan: CachedPlan = {
     destination: "london ontario",
     days: 4,
     condition: "asthma_respiratory",
-    medication: "albuterol",
     interests: "healthy vegan food",
     budget: "balanced",
     transport: "mixed",
@@ -105,9 +104,9 @@ describe("cached planner events", () => {
 describe("cached swarm events", () => {
   it("replays real purposes, sources, findings, and ends with swarm_done", () => {
     const events = buildCachedSwarmEvents(cachedSwarm, WORKER_IDS, now);
-    expect(events.filter((event) => event.event === "worker_complete")).toHaveLength(3);
-    expect(events.filter((event) => event.event === "worker_progress")).toHaveLength(3);
-    expect(events.filter((event) => event.event === "worker_sources")).toHaveLength(3);
+    expect(events.filter((event) => event.event === "worker_complete")).toHaveLength(1);
+    expect(events.filter((event) => event.event === "worker_progress")).toHaveLength(1);
+    expect(events.filter((event) => event.event === "worker_sources")).toHaveLength(1);
     const done = events.at(-1);
     expect(done?.event).toBe("swarm_done");
     expect(done?.data).toMatchObject({
@@ -115,7 +114,7 @@ describe("cached swarm events", () => {
       cachedAt: "2026-11-22T00:30:00.000Z",
       completed: [...WORKER_IDS],
       failed: [],
-      summary: { steps: 3, sources: 1, findings: 3, unknownEvents: 0 },
+      summary: { steps: 1, sources: 1, findings: 1, unknownEvents: 0 },
     });
   });
 });

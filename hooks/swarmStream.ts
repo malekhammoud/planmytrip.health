@@ -31,8 +31,6 @@ export interface SwarmRequestInput {
   destination: string;
   /** Condition used by the worker goals. */
   condition: Condition;
-  /** Medication name; never a dose. */
-  medication: string;
   /** Opaque browser run id shared with the planner capture. */
   runId: string;
   /** Anonymous install id. */
@@ -101,7 +99,6 @@ export function streamSwarmRequest(input: SwarmRequestInput): void {
         body: JSON.stringify({
           destination: input.destination,
           condition: input.condition,
-          medication: input.medication,
           runId: input.runId,
           installId: input.installId,
           captureConsent: input.captureConsent,

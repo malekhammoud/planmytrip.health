@@ -5,7 +5,6 @@ const valid = {
   destination: "  Lisbon, Portugal ",
   days: 4,
   condition: "asthma_respiratory",
-  medication: " albuterol ",
   interests: "  quiet food and short walks ",
   budget: "balanced",
 };
@@ -17,14 +16,12 @@ describe("parsePlannerRequest", () => {
       origin: "",
       days: 4,
       condition: "asthma_respiratory",
-      medication: "albuterol",
       interests: "quiet food and short walks",
       budget: "balanced",
       transport: "mixed",
       checkIn: "",
       travelers: 1,
       captureConsent: false,
-      hasSunLifeTravelCoverage: false,
     });
   });
 
@@ -56,6 +53,17 @@ describe("parsePlannerRequest", () => {
     });
   });
 
+  it("ignores removed fields from an older client", () => {
+    const parsed = parsePlannerRequest({
+      ...valid,
+      medication: "albuterol",
+      hasSunLifeTravelCoverage: true,
+    });
+    expect(parsed).not.toBeNull();
+    expect(parsed !== null && "medication" in parsed).toBe(false);
+    expect(parsed !== null && "hasSunLifeTravelCoverage" in parsed).toBe(false);
+  });
+
   it("accepts a 20-day trip and normalises the date and travellers", () => {
     expect(
       parsePlannerRequest({
@@ -77,7 +85,6 @@ describe("parsePlannerRequest", () => {
     ["travellers fraction", { ...valid, travelers: 1.5 }],
     ["days fraction", { ...valid, days: 3.5 }],
     ["condition", { ...valid, condition: "unknown" }],
-    ["medication", { ...valid, medication: 3 }],
     ["interests long", { ...valid, interests: "x".repeat(241) }],
     ["origin long", { ...valid, origin: "x".repeat(121) }],
     ["origin type", { ...valid, origin: 7 }],

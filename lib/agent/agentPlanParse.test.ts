@@ -15,7 +15,6 @@ const request: PlannerRequest = {
   travelers: 1,
   days: 4,
   condition: "asthma_respiratory",
-  medication: "albuterol",
   interests: "quiet food",
   budget: "balanced",
 };
@@ -180,7 +179,7 @@ const raw = {
   selectedHikes: ["Garden loop"],
   selectedVisits: ["Museum C"],
   selectedCare: ["Central Hospital"],
-  safetyNotes: ["Carry the reliever."],
+  safetyNotes: ["Carry water."],
   bookingChecklist: ["Confirm the museum hours."],
   budget: {
     level: "balanced",

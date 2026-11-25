@@ -57,7 +57,7 @@ export async function POST(request: Request): Promise<Response> {
   if (plannerRequest === null) {
     return jsonError(
       400,
-      "Send a destination, 2 to 20 days, a supported condition, a medication value, preferences, and a budget.",
+      "Send a destination, 2 to 20 days, a supported condition, preferences, and a budget.",
     );
   }
   if (plannerRequest.days > entitlements.maxTripDays) {

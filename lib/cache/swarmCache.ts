@@ -1,8 +1,8 @@
 /**
- * Verification result cache for the three TinyFish workers.
+ * Verification result cache for the live TinyFish worker.
  *
- * Inputs: a destination, condition, and medication identity plus worker results observed
- * during one live swarm run.
+ * Inputs: a destination and condition identity plus worker results observed during one
+ * live swarm run.
  * Outputs: a complete cached worker set or a merged cache write.
  * Invariants: a hit requires every requested worker; findings pass the same normaliser
  * the route uses; sources and progress lines are bounded real telemetry; recordings are
@@ -14,12 +14,12 @@ import { WORKER_IDS, type SwarmFindings, type SwarmSourceItem, type TinyfishApi,
 import {
   buildSwarmCacheKey,
   cacheDestination,
-  normalizeCacheText,
   type SwarmCacheIdentity,
 } from "./cacheKey";
 import {
   cacheEnabled,
   readCacheRow,
+  readSwarmRowByIdentity,
   touchCacheRow,
   writeCacheRow,
 } from "./cacheStore";
@@ -174,7 +174,11 @@ export async function readCachedSwarm(
   workers: readonly WorkerId[],
 ): Promise<CachedSwarm | null> {
   if (!cacheEnabled()) return null;
-  const row = await readCacheRow(buildSwarmCacheKey(identity));
+  // The exact key is the current contract. The identity lookup keeps rows written
+  // before the removed medication field readable.
+  const row =
+    (await readCacheRow(buildSwarmCacheKey(identity))) ??
+    (await readSwarmRowByIdentity(identity));
   if (row === null || !isRecord(row.payload) || !isRecord(row.payload.workers)) {
     return null;
   }
@@ -220,7 +224,6 @@ export async function writeCachedSwarm(
       destination: cacheDestination(identity),
       days: null,
       condition: identity.condition,
-      medication: normalizeCacheText(identity.medication),
       interests: "",
       budget: "",
       transport: "",

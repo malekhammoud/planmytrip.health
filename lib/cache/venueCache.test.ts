@@ -124,7 +124,6 @@ describe("venue cache", () => {
         destination: "",
         days: null,
         condition: null,
-        medication: "",
         interests: "",
         budget: "",
         transport: "",

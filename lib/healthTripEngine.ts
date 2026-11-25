@@ -12,7 +12,6 @@ import { isCondition } from "./types";
 import { CONDITION_PROFILES } from "./conditionProfiles";
 import { buildItinerary } from "./itineraryBuilder";
 import { computeHealthScores } from "./healthScore";
-import { checkSunLifeCoverage } from "./sunLifeRules";
 import {
   HealthTripInputError,
   TRIP_DAYS_MAX,
@@ -23,7 +22,6 @@ import {
 
 function normalizeAndValidateInput(input: HealthTripInput): {
   destination: string;
-  medication: string;
 } {
   const destination =
     typeof input?.destination === "string" ? input.destination.trim() : "";
@@ -52,23 +50,8 @@ function normalizeAndValidateInput(input: HealthTripInput): {
       "Condition must be one of the supported condition identifiers.",
     );
   }
-  if (typeof input.medication !== "string") {
-    throw new HealthTripInputError(
-      "invalid_medication",
-      "medication",
-      "Medication must be a string; an empty value means none recorded.",
-    );
-  }
-  if (typeof input.hasSunLifeTravelCoverage !== "boolean") {
-    throw new HealthTripInputError(
-      "invalid_coverage",
-      "hasSunLifeTravelCoverage",
-      "Coverage must be a boolean.",
-    );
-  }
   return {
     destination: destination.replace(/\s+/g, " "),
-    medication: input.medication.trim().replace(/\s+/g, " "),
   };
 }
 
@@ -77,22 +60,17 @@ function normalizeAndValidateInput(input: HealthTripInput): {
  * with a stable code and field when the input is invalid.
  */
 export function buildHealthTripPlan(input: HealthTripInput): HealthTripPlan {
-  const { destination, medication } = normalizeAndValidateInput(input);
+  const { destination } = normalizeAndValidateInput(input);
   const profile = CONDITION_PROFILES[input.condition];
   const itinerary = buildItinerary(
     input.days,
     profile,
     input.condition,
     destination,
-    medication,
   );
   return {
     ...computeHealthScores(itinerary, profile, input.days),
     dailyStepCeiling: profile.dailyStepCeiling,
-    sunLifeAlert: checkSunLifeCoverage(
-      input.days,
-      input.hasSunLifeTravelCoverage,
-    ),
     itinerary,
   };
 }
@@ -118,19 +96,8 @@ export type {
   HeatConstraint,
   ItineraryBlock,
   ItineraryInvariantErrorCode,
-  SunLifeAlert,
-  SunLifeSeverity,
 } from "./healthTripTypes";
-export {
-  CONDITION_PROFILES,
-  DEFAULT_MEDICATION_BY_CONDITION,
-  MEDICATION_DISCLAIMER,
-} from "./conditionProfiles";
-export {
-  SUN_LIFE_RULES,
-  SUN_LIFE_STABILITY_WINDOW_DAYS_PLACEHOLDER,
-  checkSunLifeCoverage,
-} from "./sunLifeRules";
+export { CONDITION_PROFILES } from "./conditionProfiles";
 export {
   MODELED_LOAD_ASSUMPTIONS,
   computeHealthScores,

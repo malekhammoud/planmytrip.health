@@ -58,14 +58,12 @@ export interface TripRequestRecord {
   destination: string;
   days: number;
   condition: Condition;
-  medication: string;
   interests: string;
   budget: BudgetLevel;
   /** Start date in YYYY-MM-DD form, when supplied. */
   checkIn?: string;
   /** Traveler count, when supplied. */
   travelers?: number;
-  hasSunLifeTravelCoverage: boolean;
 }
 
 /** Engine output summary; the full itinerary is not stored. */

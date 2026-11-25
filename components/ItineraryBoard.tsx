@@ -21,7 +21,6 @@ export interface ItineraryBoardProps {
   plan: HealthTripPlan;
   destination: string;
   condition: Condition;
-  medication: string;
   /** Verification adjustments with their current applied flags. */
   adjustments?: readonly VerificationAdjustment[];
   /** Live count of workers that returned findings. */
@@ -36,7 +35,6 @@ export interface ItineraryBoardProps {
 export interface CareCardButtonProps {
   destination: string;
   condition: Condition;
-  medication: string;
   plan: HealthTripPlan;
   /** Applied adjustments are appended to the care card with provenance. */
   adjustments?: readonly VerificationAdjustment[];
@@ -310,19 +308,12 @@ export function ItineraryBoard({
 export function CareCardButton({
   destination,
   condition,
-  medication,
   plan,
   adjustments,
 }: CareCardButtonProps) {
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const fallbackId = useId();
-  const careCardText = buildCareCard(
-    destination,
-    condition,
-    medication,
-    plan,
-    adjustments,
-  );
+  const careCardText = buildCareCard(destination, condition, plan, adjustments);
 
   useEffect(() => {
     if (copyState !== "copied") return;

@@ -31,7 +31,7 @@ describe("POST /api/travel-swarm", () => {
       { ...BODY, condition: "not_a_condition" },
       { ...BODY, workers: [] },
       { ...BODY, workers: ["advisory", "unknown"] },
-      { ...BODY, medication: 42 },
+      { ...BODY, condition: 42 },
     ];
     for (const body of invalidBodies) {
       const response = await POST(makeRequest(body));
@@ -50,7 +50,7 @@ describe("POST /api/travel-swarm", () => {
     expect(malformed.status).toBe(400);
   });
 
-  it("streams missing_api_key errors per worker, then swarm_done, without fetching", async () => {
+  it("streams a missing_api_key error, then swarm_done, without fetching", async () => {
     vi.stubEnv("TINYFISH_API_KEY", "");
     vi.stubEnv("SWARM_MOCK", "");
     const fetchMock = vi.fn<typeof fetch>();
@@ -65,22 +65,18 @@ describe("POST /api/travel-swarm", () => {
     const frames = parseFrames(await readResponse(response));
     expect(fetchMock).not.toHaveBeenCalled();
     const errors = frames.filter((frame) => frame.event === "worker_error");
-    expect(errors.map((frame) => frame.data.worker)).toEqual([
-      "advisory",
-      "pharmacy",
-      "coverage",
-    ]);
+    expect(errors.map((frame) => frame.data.worker)).toEqual(["advisory"]);
     expect(errors.every((frame) => frame.data.code === "missing_api_key")).toBe(true);
     expect(frames.some((frame) => frame.event === "worker_complete")).toBe(false);
     expect(lastFrame(frames).event).toBe("swarm_done");
     expect(lastFrame(frames).data).toMatchObject({
       worker: "swarm",
       completed: [],
-      failed: ["advisory", "pharmacy", "coverage"],
+      failed: ["advisory"],
     });
   });
 
-  it("completes all three workers, sends schemas, and never echoes the key", async () => {
+  it("completes the worker, sends its schema, and never echoes the key", async () => {
     vi.stubEnv("TINYFISH_API_KEY", SECRET);
     vi.stubEnv("SWARM_MOCK", "");
     const fetchMock = installFetch((worker) => sseResponse(completedFrames(worker)));
@@ -90,7 +86,7 @@ describe("POST /api/travel-swarm", () => {
     const text = await readResponse(response);
     expect(text).not.toContain(SECRET);
 
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     for (const [, init] of fetchMock.mock.calls) {
       const requestBody = JSON.parse(String(init?.body)) as {
         goal: string;
@@ -101,14 +97,14 @@ describe("POST /api/travel-swarm", () => {
       expect(new Headers(init?.headers).get("x-api-key")).toBe(SECRET);
       expect(requestBody.output_schema).toEqual(WORKER_SCHEMAS[worker]);
       expect(requestBody.goal).toContain("Lisbon, Portugal");
-      expect(requestBody.goal).toContain("albuterol inhaler");
       expect(requestBody.goal).toContain("asthma");
+      expect(requestBody.goal).not.toContain("medication");
       expect(requestBody.goal).toContain("Return only JSON");
     }
 
     const frames = parseFrames(text);
     const completes = frames.filter((frame) => frame.event === "worker_complete");
-    expect(completes).toHaveLength(3);
+    expect(completes).toHaveLength(1);
     for (const frame of completes) {
       const worker = frame.data.worker as WorkerId;
       expect(frame.data.findings).toEqual(FINDINGS[worker]);
@@ -117,19 +113,15 @@ describe("POST /api/travel-swarm", () => {
     }
     expect(lastFrame(frames).event).toBe("swarm_done");
     expect(lastFrame(frames).data).toMatchObject({
-      completed: ["advisory", "pharmacy", "coverage"],
+      completed: ["advisory"],
       failed: [],
     });
   });
 
-  it("isolates one upstream failure and still completes the others", async () => {
+  it("turns an upstream failure into a calm worker error", async () => {
     vi.stubEnv("TINYFISH_API_KEY", SECRET);
     vi.stubEnv("SWARM_MOCK", "");
-    installFetch((worker) =>
-      worker === "advisory"
-        ? new Response("upstream exploded", { status: 503 })
-        : sseResponse(completedFrames(worker)),
-    );
+    installFetch(() => new Response("upstream exploded", { status: 503 }));
 
     const response = await POST(makeRequest(BODY));
     expect(response.status).toBe(200);
@@ -142,29 +134,26 @@ describe("POST /api/travel-swarm", () => {
       code: "upstream_error",
     });
     expect(errors[0].data.message).toBeTypeOf("string");
-    const completes = frames.filter((frame) => frame.event === "worker_complete");
-    expect(completes.map((frame) => frame.data.worker)).toEqual(["pharmacy", "coverage"]);
+    expect(frames.some((frame) => frame.event === "worker_complete")).toBe(false);
     expect(lastFrame(frames).data).toMatchObject({
-      completed: ["pharmacy", "coverage"],
+      completed: [],
       failed: ["advisory"],
     });
   });
 
-  it("runs only the requested worker subset", async () => {
+  it("runs the requested advisory worker", async () => {
     vi.stubEnv("TINYFISH_API_KEY", SECRET);
     vi.stubEnv("SWARM_MOCK", "");
     const fetchMock = installFetch((worker) => sseResponse(completedFrames(worker)));
 
-    const response = await POST(makeRequest({ ...BODY, workers: ["pharmacy"] }));
+    const response = await POST(makeRequest({ ...BODY, workers: ["advisory"] }));
     const frames = parseFrames(await readResponse(response));
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(frames.some((frame) => frame.data.worker === "advisory")).toBe(false);
-    expect(frames.some((frame) => frame.data.worker === "coverage")).toBe(false);
     expect(frames.filter((frame) => frame.event === "worker_complete").map((frame) => frame.data.worker)).toEqual([
-      "pharmacy",
+      "advisory",
     ]);
     expect(lastFrame(frames).data).toMatchObject({
-      completed: ["pharmacy"],
+      completed: ["advisory"],
       failed: [],
     });
   });
@@ -186,17 +175,15 @@ describe("POST /api/travel-swarm", () => {
     const streaming = frames.filter((frame) => frame.event === "streaming_url");
     expect(streaming.map((frame) => frame.data.streamingUrl)).toEqual([
       "/mock-browser/advisory",
-      "/mock-browser/pharmacy",
-      "/mock-browser/coverage",
     ]);
     expect(lastFrame(frames).event).toBe("swarm_done");
     expect(lastFrame(frames).data.mock).toBe(true);
-    expect(lastFrame(frames).data.summary).toMatchObject({ findings: 3 });
+    expect(lastFrame(frames).data.summary).toMatchObject({ findings: 1 });
 
     const names = frames.map((frame) => frame.event);
     expect(names[0]).toBe("worker_status");
     expect(names.indexOf("worker_started")).toBeLessThan(names.indexOf("streaming_url"));
-    for (const worker of ["advisory", "pharmacy", "coverage"] as const) {
+    for (const worker of ["advisory"] as const) {
       const workerFrames = frames.filter((frame) => frame.data.worker === worker);
       const seq = workerFrames.map((frame) => frame.data.seq);
       expect(seq).toEqual([...seq].sort((left, right) => Number(left) - Number(right)));
@@ -219,7 +206,7 @@ describe("POST /api/travel-swarm", () => {
 
     const frames = parseFrames(await readResponse(await POST(makeRequest(BODY))));
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(frames.filter((frame) => frame.event === "worker_error")).toHaveLength(3);
+    expect(frames.filter((frame) => frame.event === "worker_error")).toHaveLength(1);
     expect(frames.some((frame) => frame.data.mock === true)).toBe(false);
   });
 

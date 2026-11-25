@@ -9,7 +9,7 @@ import type { SwarmAction } from "@/lib/swarmReducer";
 import type { SseMessage } from "@/lib/sse";
 import type { WorkerId } from "@/lib/swarmTypes";
 
-const LATEST: Record<WorkerId, number> = { advisory: 1, pharmacy: 1, coverage: 1 };
+const LATEST: Record<WorkerId, number> = { advisory: 1 };
 
 function frame(event: string, data: unknown): SseMessage {
   return { event, data: JSON.stringify(data) };

@@ -1,6 +1,6 @@
 /**
  * Swarm reducer transition and reset contract: idle/queued/running, the idle event gate,
- * allowlisted preview URLs, per-worker retry, stream_failed scoping, and new-run reset.
+ * allowlisted preview URLs, retry, and stream_failed scoping.
  */
 
 import { describe, expect, it } from "vitest";
@@ -11,7 +11,7 @@ import {
   type SwarmAction,
   type SwarmState,
 } from "@/lib/swarmReducer";
-import { WORKER_IDS, type AdvisoryFindings, type WorkerId } from "@/lib/swarmTypes";
+import { WORKER_IDS, type AdvisoryFindings } from "@/lib/swarmTypes";
 
 const ADVISORY_FINDINGS: AdvisoryFindings = {
   destinationRiskLevel: "Exercise a high degree of caution",
@@ -20,14 +20,11 @@ const ADVISORY_FINDINGS: AdvisoryFindings = {
   environmentalHazards: ["Heat and humidity."],
 };
 
-function started(
-  runToken = 1,
-  workers: readonly WorkerId[] = WORKER_IDS,
-): SwarmState {
+function started(runToken = 1): SwarmState {
   return swarmReducer(createSwarmState(), {
     type: "run_started",
     runToken,
-    workers,
+    workers: WORKER_IDS,
   });
 }
 
@@ -53,22 +50,16 @@ describe("swarmReducer transitions", () => {
       expect(state.workers[worker].progress).toEqual([]);
       expect(state.workers[worker].findings).toBeNull();
     }
-    expect(createQueuedSwarmState(4).workers.coverage.phase).toBe("queued");
+    expect(createQueuedSwarmState(4).workers.advisory.phase).toBe("queued");
   });
 
-  it("resets every worker for a new run token", () => {
+  it("resets the worker for a new run token", () => {
     let state = started();
     state = completeAdvisory(state);
     state = swarmReducer(state, {
-      type: "worker_error",
-      worker: "pharmacy",
-      message: "The agent stopped.",
-      code: "upstream_error",
-    });
-    state = swarmReducer(state, {
       type: "swarm_done",
       completed: ["advisory"],
-      failed: ["pharmacy"],
+      failed: [],
     });
 
     state = swarmReducer(state, {
@@ -119,6 +110,7 @@ describe("swarmReducer transitions", () => {
       "https://planmytrip.health/stream/advisory",
       "javascript:alert(1)",
       "data:text/html,<p>preview</p>",
+      "/mock-browser/pharmacy",
     ];
     for (const streamingUrl of rejected) {
       const next = swarmReducer(state, {
@@ -134,6 +126,7 @@ describe("swarmReducer transitions", () => {
       "https://preview-abc123.unikraft.app/session/1",
       "https://ip-13-56-19-124.tetra-data.production.tinyfish.io/tf-abc/stream/0",
       "https://mock.invalid/stream/advisory",
+      "/mock-browser/advisory",
     ]) {
       state = swarmReducer(state, {
         type: "streaming_url",
@@ -144,14 +137,14 @@ describe("swarmReducer transitions", () => {
     }
   });
 
-  it("ignores every worker event while a worker is idle", () => {
+  it("ignores every worker event while the worker is idle", () => {
     const initial = createSwarmState();
     const events: SwarmAction[] = [
       { type: "worker_status", worker: "advisory", status: "running" },
       {
         type: "streaming_url",
         worker: "advisory",
-        streamingUrl: "https://mock.invalid/stream/advisory",
+        streamingUrl: "/mock-browser/advisory",
       },
       { type: "worker_progress", worker: "advisory", purpose: "Reading" },
       {
@@ -177,57 +170,40 @@ describe("swarmReducer transitions", () => {
     expect(state.mock).toBe(false);
   });
 
-  it("retries only the named worker and preserves finished siblings", () => {
+  it("resets only the named worker on a retry", () => {
     let state = started();
     state = completeAdvisory(state);
-    state = swarmReducer(state, {
-      type: "worker_status",
-      worker: "pharmacy",
-      status: "running",
-    });
-    state = swarmReducer(state, {
-      type: "worker_error",
-      worker: "coverage",
-      message: "The service returned an error. Retry this check.",
-    });
-    const advisoryBefore = state.workers.advisory;
 
     state = swarmReducer(state, {
       type: "run_started",
       runToken: 1,
-      workers: ["coverage"],
+      workers: ["advisory"],
     });
-    expect(state.workers.coverage.phase).toBe("queued");
-    expect(state.workers.coverage.errorMessage).toBeNull();
-    expect(state.workers.pharmacy.phase).toBe("running");
-    expect(state.workers.advisory).toBe(advisoryBefore);
+    expect(state.workers.advisory.phase).toBe("queued");
+    expect(state.workers.advisory.errorMessage).toBeNull();
+    expect(state.workers.advisory.findings).toBeNull();
+    expect(state.done).toBeNull();
   });
 
-  it("fails only the requested pending workers when a stream breaks", () => {
+  it("fails a pending worker when a stream breaks and leaves a completed one alone", () => {
     let state = started();
-    state = completeAdvisory(state);
-    state = swarmReducer(state, {
-      type: "worker_status",
-      worker: "pharmacy",
-      status: "running",
-    });
-    state = swarmReducer(state, {
-      type: "worker_status",
-      worker: "coverage",
-      status: "running",
-    });
-
     state = swarmReducer(state, {
       type: "stream_failed",
       message: "The verification service could not be reached.",
-      workers: ["coverage"],
+      workers: ["advisory"],
     });
-    expect(state.workers.coverage.phase).toBe("error");
-    expect(state.workers.coverage.errorMessage).toBe(
+    expect(state.workers.advisory.phase).toBe("error");
+    expect(state.workers.advisory.errorMessage).toBe(
       "The verification service could not be reached.",
     );
-    expect(state.workers.coverage.errorCode).toBeNull();
-    expect(state.workers.pharmacy.phase).toBe("running");
+    expect(state.workers.advisory.errorCode).toBeNull();
+
+    state = started();
+    state = completeAdvisory(state);
+    state = swarmReducer(state, {
+      type: "stream_failed",
+      message: "Too late.",
+    });
     expect(state.workers.advisory.phase).toBe("complete");
   });
 });

@@ -31,7 +31,6 @@ const request: PlannerRequest = {
   origin: "",
   days: 4,
   condition: "asthma_respiratory",
-  medication: "albuterol",
   interests: "healthy vegan food",
   budget: "balanced",
   transport: "mixed",

@@ -196,8 +196,6 @@ describe("computeEngineDose", () => {
       destination: "Lisbon, Portugal",
       days: 4,
       condition: "asthma_respiratory",
-      medication: "albuterol inhaler",
-      hasSunLifeTravelCoverage: false,
     });
     const dose = computeEngineDose(plan.itinerary);
     expect(dose).toHaveLength(4);

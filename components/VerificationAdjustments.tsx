@@ -26,9 +26,6 @@ function detail(adjustment: VerificationAdjustment): string {
   if (adjustment.kind === "recovery") {
     return `Afternoon recovery ${adjustment.fromValue ?? 0} to ${adjustment.toValue ?? 0} min. ${reason}.`;
   }
-  if (adjustment.kind === "checklist") {
-    return `Display only. ${reason}.`;
-  }
   return `Day checkpoints. ${reason}.`;
 }
 

@@ -1,5 +1,5 @@
 /**
- * Live source ledger for the three workers.
+ * Live source ledger for the verification worker.
  *
  * Inputs: the swarm state.
  * Outputs: deduplicated source rows with host, title, worker, API tag, and a safe link.

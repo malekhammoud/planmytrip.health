@@ -30,7 +30,6 @@ export interface UseAgentPlanInput {
   origin: string;
   days: number;
   condition: Condition;
-  medication: string;
   interests: string;
   budget: BudgetLevel;
   transport: TransportMode;
@@ -42,8 +41,6 @@ export interface UseAgentPlanInput {
   installId: string;
   /** Explicit opt-in; capture is skipped unless true. */
   captureConsent: boolean;
-  /** Coverage answer needed to rebuild the engine plan for capture. */
-  hasSunLifeTravelCoverage: boolean;
   /** 0 before the first Deploy. */
   runToken: number;
 }
@@ -54,7 +51,6 @@ export interface AgentPlanRunInput {
   origin: string;
   days: number;
   condition: Condition;
-  medication: string;
   interests: string;
   budget: BudgetLevel;
   transport: TransportMode;
@@ -67,7 +63,6 @@ interface StoredRunInput extends AgentPlanRunInput {
   runId: string;
   installId: string;
   captureConsent: boolean;
-  hasSunLifeTravelCoverage: boolean;
 }
 
 /** Result of {@link useAgentPlan}. */
@@ -86,7 +81,6 @@ export function useAgentPlan({
   origin,
   days,
   condition,
-  medication,
   interests,
   budget,
   transport,
@@ -95,7 +89,6 @@ export function useAgentPlan({
   runId,
   installId,
   captureConsent,
-  hasSunLifeTravelCoverage,
   runToken,
 }: UseAgentPlanInput): UseAgentPlanResult {
   const [state, dispatch] = useReducer(plannerReducer, createPlannerState());
@@ -154,7 +147,6 @@ export function useAgentPlan({
           origin: origin.trim(),
           days,
           condition,
-          medication: medication.trim(),
           interests: interests.trim(),
           budget,
           transport,
@@ -163,7 +155,6 @@ export function useAgentPlan({
           runId,
           installId,
           captureConsent,
-          hasSunLifeTravelCoverage,
         };
         runInputRef.current = snapshot;
         setStoredInput(snapshot);
@@ -172,7 +163,6 @@ export function useAgentPlan({
           origin: snapshot.origin,
           days: snapshot.days,
           condition: snapshot.condition,
-          medication: snapshot.medication,
           interests: snapshot.interests,
           budget: snapshot.budget,
           transport: snapshot.transport,
@@ -181,7 +171,6 @@ export function useAgentPlan({
           runId: snapshot.runId,
           installId: snapshot.installId,
           captureConsent: snapshot.captureConsent,
-          hasSunLifeTravelCoverage: snapshot.hasSunLifeTravelCoverage,
         });
       }
       startedTokenRef.current = runToken;
@@ -201,10 +190,8 @@ export function useAgentPlan({
     condition,
     days,
     destination,
-    hasSunLifeTravelCoverage,
     installId,
     interests,
-    medication,
     origin,
     runId,
     runToken,
@@ -222,7 +209,6 @@ export function useAgentPlan({
       origin: snapshot.origin,
       days: snapshot.days,
       condition: snapshot.condition,
-      medication: snapshot.medication,
       interests: snapshot.interests,
       budget: snapshot.budget,
       transport: snapshot.transport,
@@ -231,7 +217,6 @@ export function useAgentPlan({
       runId: snapshot.runId,
       installId: snapshot.installId,
       captureConsent: snapshot.captureConsent,
-      hasSunLifeTravelCoverage: snapshot.hasSunLifeTravelCoverage,
     });
   }, [abortAll, runToken, start]);
 
@@ -249,7 +234,6 @@ export function useAgentPlan({
           origin: storedInput.origin,
           days: storedInput.days,
           condition: storedInput.condition,
-          medication: storedInput.medication,
           interests: storedInput.interests,
           budget: storedInput.budget,
           transport: storedInput.transport,

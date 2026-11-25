@@ -10,7 +10,7 @@ import {
   swarmReducer,
   type SwarmState,
 } from "@/lib/swarmReducer";
-import { WORKER_IDS, type AdvisoryFindings, type WorkerId } from "@/lib/swarmTypes";
+import { WORKER_IDS, type AdvisoryFindings } from "@/lib/swarmTypes";
 
 const ADVISORY_FINDINGS: AdvisoryFindings = {
   destinationRiskLevel: "Exercise a high degree of caution",
@@ -19,14 +19,11 @@ const ADVISORY_FINDINGS: AdvisoryFindings = {
   environmentalHazards: ["Heat and humidity."],
 };
 
-function started(
-  runToken = 1,
-  workers: readonly WorkerId[] = WORKER_IDS,
-): SwarmState {
+function started(runToken = 1): SwarmState {
   return swarmReducer(createSwarmState(), {
     type: "run_started",
     runToken,
-    workers,
+    workers: WORKER_IDS,
   });
 }
 
@@ -47,19 +44,19 @@ describe("swarmReducer results", () => {
     for (const purpose of ["one", "two", "three", "four", "five"]) {
       state = swarmReducer(state, {
         type: "worker_progress",
-        worker: "pharmacy",
+        worker: "advisory",
         purpose,
       });
     }
-    expect(state.workers.pharmacy.progress).toEqual(["three", "four", "five"]);
-    expect(state.workers.pharmacy.progress).toHaveLength(PROGRESS_LIMIT);
+    expect(state.workers.advisory.progress).toEqual(["three", "four", "five"]);
+    expect(state.workers.advisory.progress).toHaveLength(PROGRESS_LIMIT);
 
     state = swarmReducer(state, {
       type: "worker_progress",
-      worker: "pharmacy",
+      worker: "advisory",
       purpose: "   ",
     });
-    expect(state.workers.pharmacy.progress).toHaveLength(3);
+    expect(state.workers.advisory.progress).toHaveLength(3);
   });
 
   it("stores typed findings and provenance on completion", () => {
@@ -85,11 +82,11 @@ describe("swarmReducer results", () => {
     let state = started();
     state = swarmReducer(state, {
       type: "worker_error",
-      worker: "coverage",
+      worker: "advisory",
       message: "The agent did not finish within 5 minutes. Retry this check.",
       code: "timeout",
     });
-    expect(state.workers.coverage).toMatchObject({
+    expect(state.workers.advisory).toMatchObject({
       phase: "error",
       errorCode: "timeout",
       errorMessage: "The agent did not finish within 5 minutes. Retry this check.",
@@ -98,13 +95,14 @@ describe("swarmReducer results", () => {
 
     state = swarmReducer(state, {
       type: "worker_complete",
-      worker: "coverage",
+      worker: "advisory",
       findings: ADVISORY_FINDINGS,
-      sourceUrl: "https://www.sunlife.ca/",
+      sourceUrl: "https://travel.gc.ca/travelling/advisories",
       retrievedAt: "2026-11-21T04:29:00.000Z",
     });
-    expect(state.workers.coverage.phase).toBe("error");
+    expect(state.workers.advisory.phase).toBe("error");
 
+    state = started(2);
     state = completeAdvisory(state);
     state = swarmReducer(state, {
       type: "worker_error",
@@ -119,14 +117,11 @@ describe("swarmReducer results", () => {
     let state = started();
     state = swarmReducer(state, {
       type: "swarm_done",
-      completed: ["coverage", "advisory"],
-      failed: ["pharmacy"],
+      completed: ["advisory"],
+      failed: [],
       mock: true,
     });
-    expect(state.done).toEqual({
-      completed: ["advisory", "coverage"],
-      failed: ["pharmacy"],
-    });
+    expect(state.done).toEqual({ completed: ["advisory"], failed: [] });
     expect(state.mock).toBe(true);
   });
 
@@ -137,13 +132,6 @@ describe("swarmReducer results", () => {
       worker: "advisory",
       status: "running",
       mock: true,
-    });
-    expect(state.mock).toBe(true);
-
-    state = swarmReducer(state, {
-      type: "run_started",
-      runToken: 1,
-      workers: ["coverage"],
     });
     expect(state.mock).toBe(true);
 

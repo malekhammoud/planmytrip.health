@@ -27,7 +27,7 @@
       },
       "live_verification": {
         "name": "Live browser verification",
-        "description": "Run the three browser checks for advisory, medication, and coverage details.",
+        "description": "Run the live destination advisory check and the live venue menu and room-rate research.",
         "publicly_visible": true,
         "include_in_jwt": true
       },
@@ -74,7 +74,7 @@
         "amount": 900,
         "annual_monthly_amount": 500,
         "currency": "usd",
-        "description": "For patients and caregivers planning up to two trips a month, with live checks and unlimited saved trips. Annual is the intended plan; monthly is the flexible option.",
+        "description": "For frequent travelers planning up to two trips a month, with live checks and unlimited saved trips. Annual is the intended plan; monthly is the flexible option.",
         "features": [
           "safety_envelope",
           "long_trips",

@@ -14,7 +14,6 @@ import type { HealthTripPlan } from "@/lib/healthTripEngine";
 import type { Condition } from "@/lib/types";
 import type {
   AdvisoryFindings,
-  CoverageFindings,
   SwarmFindings,
   WorkerId,
 } from "@/lib/swarmTypes";
@@ -128,7 +127,7 @@ export interface OverlayOptions {
 /** One applied or available adjustment. */
 export interface VerificationAdjustment {
   id: string;
-  kind: "checkpoint" | "recovery" | "checklist";
+  kind: "checkpoint" | "recovery";
   /** Zero-based day index for a recovery adjustment. */
   dayIndex?: number;
   /** Short title for the adjustment list. */
@@ -207,7 +206,7 @@ function enabled(id: string, options: OverlayOptions): boolean {
 /**
  * Applies the overlay. A checkpoint adjustment appends one verified note to every day's
  * checkpoint; a recovery adjustment extends that day's recovery block to the profile
- * minimum plus 30 minutes; a checklist adjustment is display only.
+ * minimum plus 30 minutes.
  */
 export function applyVerification(
   plan: HealthTripPlan,
@@ -220,7 +219,6 @@ export function applyVerification(
   if (!findings || findings.length === 0) return { plan: next, adjustments };
 
   const advisory = findings.find((entry) => entry.worker === "advisory");
-  const coverage = findings.find((entry) => entry.worker === "coverage");
   const matches = advisory === undefined ? [] : matchRules(advisory.findings);
   const profile = CONDITION_PROFILES[input.condition];
 
@@ -275,24 +273,6 @@ export function applyVerification(
         applied,
         fromValue: before,
         toValue: applied ? Math.max(before, after) : before,
-      });
-    }
-  }
-
-  if (coverage !== undefined) {
-    const rules = (coverage.findings as CoverageFindings).preAuthorizationRules;
-    if (typeof rules === "string" && rules.trim().length > 0) {
-      const id = "coverage:preauthorization";
-      const applied = enabled(id, options);
-      adjustments.push({
-        id,
-        kind: "checklist",
-        title: "Pre-departure checklist",
-        reason: rules.trim().slice(0, 220),
-        sourceUrl: coverage.sourceUrl,
-        sourceWorker: "coverage",
-        retrievedAt: coverage.retrievedAt,
-        applied,
       });
     }
   }

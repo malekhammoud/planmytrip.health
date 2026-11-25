@@ -9,7 +9,7 @@ import {
 
 describe("missionMeta", () => {
   it("keeps the canonical worker order", () => {
-    expect(missionWorkers()).toEqual(["advisory", "pharmacy", "coverage"]);
+    expect(missionWorkers()).toEqual(["advisory"]);
   });
 
   it("formats durations and offsets without locale output", () => {

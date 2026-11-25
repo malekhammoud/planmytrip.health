@@ -39,7 +39,7 @@ export function FindingsReveal({ state, dimmed = false, worker }: FindingsReveal
         <p className="t-label text-muted">
           Findings{worker === undefined ? "" : ` · ${MISSION_WORKERS[worker].name}`}
         </p>
-        <p className="t-data-sm text-muted">{completed.length} of 3</p>
+        <p className="t-data-sm text-muted">{completed.length} of {WORKER_IDS.length}</p>
       </div>
       {completed.length === 0 ? (
         <p className="t-small py-4 text-muted">

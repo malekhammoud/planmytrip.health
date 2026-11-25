@@ -30,7 +30,7 @@ function start(): SwarmState {
   return swarmReducer(createSwarmState(), {
     type: "run_started",
     runToken: 1,
-    workers: ["advisory", "pharmacy", "coverage"],
+    workers: ["advisory"],
   });
 }
 
@@ -38,14 +38,14 @@ function apply(state: SwarmState, actions: readonly SwarmAction[]): SwarmState {
   return actions.reduce(swarmReducer, state);
 }
 
-function worker(state: SwarmState, id: "advisory" | "pharmacy" | "coverage") {
+function worker(state: SwarmState, id: "advisory") {
   return state.workers[id];
 }
 
 describe("elapsedMs", () => {
   it("returns zero without a start and freezes at the terminal frame", () => {
     expect(elapsedMs(worker(start(), "advisory"), T0)).toBe(0);
-    let state = apply(start(), [
+    const state = apply(start(), [
       {
         type: "worker_started",
         worker: "advisory",
@@ -77,10 +77,6 @@ describe("elapsedMs", () => {
       },
     ]);
     expect(elapsedMs(worker(state, "advisory"), T0 + 60_000)).toBe(9_000);
-    state = apply(state, [
-      { type: "worker_started", worker: "pharmacy", runId: "run_2", startedAt: iso(0), seq: 1, ts: iso(0) },
-    ]);
-    expect(elapsedMs(worker(state, "pharmacy"), T0 + 12_500)).toBe(12_500);
   });
 });
 
@@ -125,6 +121,17 @@ describe("swarmSummary", () => {
         seq: 3,
         ts: iso(2_000),
       },
+    ]);
+    expect(swarmSummary(state)).toEqual({
+      running: 1,
+      steps: 1,
+      sources: 2,
+      findings: 0,
+      completed: 0,
+      failed: 0,
+    });
+    expect(isSwarmLive(state)).toBe(true);
+    state = apply(state, [
       {
         type: "worker_complete",
         worker: "advisory",
@@ -139,20 +146,8 @@ describe("swarmSummary", () => {
         seq: 4,
         ts: iso(3_000),
       },
-      { type: "worker_error", worker: "pharmacy", code: "timeout", message: "Timed out.", seq: 1, ts: iso(3_000) },
     ]);
-    expect(swarmSummary(state)).toEqual({
-      running: 1,
-      steps: 1,
-      sources: 2,
-      findings: 1,
-      completed: 1,
-      failed: 1,
-    });
-    expect(isSwarmLive(state)).toBe(true);
-    state = apply(state, [
-      { type: "worker_complete", worker: "coverage", findings: { emergencyMedicalLimit: null, preAuthorizationRules: null, checklist: [] }, sourceUrl: "https://sunlife.ca", retrievedAt: iso(4_000), seq: 1, ts: iso(4_000) },
-    ]);
+    expect(swarmSummary(state)).toMatchObject({ running: 0, findings: 1, completed: 1 });
     expect(isSwarmLive(state)).toBe(false);
   });
 
@@ -175,19 +170,17 @@ describe("mergedFeed", () => {
 
   it("orders by receive time, filters by worker, and never includes heartbeats", () => {
     const state = apply(start(), [
-      { type: "worker_progress", worker: "pharmacy", purpose: "Pharmacy first", seq: 1, ts: iso(3_000) },
-      { type: "worker_progress", worker: "advisory", purpose: "Advisory later", seq: 1, ts: iso(1_000) },
+      { type: "worker_progress", worker: "advisory", purpose: "Advisory first", seq: 1, ts: iso(1_000) },
       { type: "worker_heartbeat", worker: "advisory", seq: 2, ts: iso(2_000) },
       { type: "worker_note", worker: "advisory", message: "Retrying with stealth.", seq: 3, ts: iso(5_000) },
     ]);
     const feed = mergedFeed(state);
     expect(feed.map((line) => line.text)).toEqual([
-      "Advisory later",
-      "Pharmacy first",
+      "Advisory first",
       "Retrying with stealth.",
     ]);
-    expect(feed).toHaveLength(3);
-    expect(mergedFeed(state, "pharmacy").map((line) => line.text)).toEqual(["Pharmacy first"]);
+    expect(feed).toHaveLength(2);
+    expect(mergedFeed(state, "advisory")).toHaveLength(2);
   });
 
   it("keeps only the newest cap lines", () => {
@@ -301,14 +294,13 @@ describe("reducer telemetry invariants", () => {
 });
 
 describe("isStale", () => {
-  const run = { destination: "Lisbon, Portugal", condition: "asthma_respiratory" as const, medication: "albuterol" };
+  const run = { destination: "Lisbon, Portugal", condition: "asthma_respiratory" as const };
   it("compares the trimmed snapshot fields", () => {
     expect(isStale(null, run)).toBe(false);
     expect(isStale(run, run)).toBe(false);
     expect(isStale(run, { ...run, destination: "Porto, Portugal" })).toBe(true);
     expect(isStale(run, { ...run, condition: "cardiac_hypertension" })).toBe(true);
-    expect(isStale(run, { ...run, medication: "ventolin" })).toBe(true);
-    expect(isStale({ ...run, destination: " Lisbon, Portugal " }, run)).toBe(false);
+    expect(isStale(run, { ...run, destination: " Lisbon, Portugal " })).toBe(false);
   });
 });
 

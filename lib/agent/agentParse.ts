@@ -261,18 +261,14 @@ export function normalizeSpecialistResult(
       const hospitals = (Array.isArray(record.hospitals) ? record.hospitals : [])
         .map((entry) => pick("care", entry, "hospital"))
         .filter((entry): entry is DraftPlace => entry !== null);
-      const pharmacies = (Array.isArray(record.pharmacies) ? record.pharmacies : [])
-        .map((entry) => pick("care", entry, "pharmacy"))
-        .filter((entry): entry is DraftPlace => entry !== null);
       const emergency = asText(record.emergencyNumber, 80);
       const notes = [
         ...(emergency === null ? [] : [`Emergency number: ${emergency}`]),
         ...asList(record.localRisks, 5),
         ...asList(record.notes, 5),
       ];
-      const picks = [...hospitals, ...pharmacies];
-      return result("care", picks, notes, [
-        ...sourcesFromPicks(picks),
+      return result("care", hospitals, notes, [
+        ...sourcesFromPicks(hospitals),
         ...asSources(record.sources),
       ]);
     }

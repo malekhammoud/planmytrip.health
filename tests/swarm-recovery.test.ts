@@ -46,7 +46,6 @@ import type { SwarmEvent } from "@/lib/swarmTypes";
 const input = {
   destination: "Lisbon, Portugal",
   condition: "asthma_respiratory" as const,
-  medication: "albuterol inhaler",
 };
 
 async function run(): Promise<SwarmEvent[]> {

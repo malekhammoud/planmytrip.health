@@ -6,23 +6,14 @@ import { DeleteSavedTripButton } from "@/components/DeleteSavedTripButton";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { CareCardButton, ItineraryBoard } from "@/components/ItineraryBoard";
 import { UpgradeCallout } from "@/components/UpgradeCallout";
-import { Callout, LinkButton, type CalloutTone } from "@/components/ui";
+import { LinkButton } from "@/components/ui";
 import { VenueMissionControl } from "@/components/venue/VenueMissionControl";
 import { useVenueResearch } from "@/hooks/useVenueResearch";
 import type { BillingEntitlements } from "@/lib/billing/plans";
 import { describeTrip } from "@/lib/describeTrip";
-import {
-  buildHealthTripPlan,
-  type SunLifeSeverity,
-} from "@/lib/healthTripEngine";
+import { buildHealthTripPlan } from "@/lib/healthTripEngine";
 import type { SavedTrip } from "@/lib/savedTrips";
 import { CONDITION_LABELS } from "@/lib/types";
-
-const ALERT_TONES: Record<SunLifeSeverity, CalloutTone> = {
-  ok: "info",
-  caution: "caution",
-  blocking: "risk",
-};
 
 function savedDate(value: string): string {
   const date = new Date(value);
@@ -48,8 +39,6 @@ export function SavedTripView({
         destination: saved.trip.destination,
         days: saved.trip.days,
         condition: saved.trip.condition,
-        medication: saved.trip.medication,
-        hasSunLifeTravelCoverage: saved.trip.hasSunLifeTravelCoverage,
       }),
     [saved.trip],
   );
@@ -129,28 +118,14 @@ export function SavedTripView({
             <CareCardButton
               destination={saved.trip.destination}
               condition={saved.trip.condition}
-              medication={saved.trip.medication}
               plan={enginePlan}
             />
-          </div>
-          <div className="mt-4">
-            <Callout
-              tone={ALERT_TONES[enginePlan.sunLifeAlert.severity]}
-              title={enginePlan.sunLifeAlert.title}
-            >
-              <div className="flex flex-col gap-1">
-                {enginePlan.sunLifeAlert.messages.map((message) => (
-                  <p key={message}>{message}</p>
-                ))}
-              </div>
-            </Callout>
           </div>
           <div className="mt-6">
             <ItineraryBoard
               plan={enginePlan}
               destination={saved.trip.destination}
               condition={saved.trip.condition}
-              medication={saved.trip.medication}
               activeDay={activeDay}
             />
           </div>

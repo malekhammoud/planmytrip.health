@@ -11,7 +11,6 @@ import { PlanPanel } from "@/components/PlanPanel";
 import { AdjustmentsPanel } from "@/components/VerificationAdjustments";
 import { WorkspaceSection } from "@/components/WorkspaceSection";
 import { UpgradeCallout } from "@/components/UpgradeCallout";
-import { Callout, type CalloutTone } from "@/components/ui";
 import { useAgentPlan } from "@/hooks/useAgentPlan";
 import { useSwarm } from "@/hooks/useSwarm";
 import { useVenueResearch } from "@/hooks/useVenueResearch";
@@ -22,7 +21,7 @@ import {
   type VerificationFindingInput,
 } from "@/lib/verificationOverlay";
 import { WORKER_IDS } from "@/lib/swarmTypes";
-import type { HealthTripPlan, SunLifeSeverity } from "@/lib/healthTripEngine";
+import type { HealthTripPlan } from "@/lib/healthTripEngine";
 import type { TripConfig } from "@/lib/agent/agentTypes";
 import type { BillingEntitlements } from "@/lib/billing/plans";
 
@@ -43,12 +42,6 @@ export interface PlanWorkspaceProps {
   onReplan: () => void;
 }
 
-const ALERT_TONES: Record<SunLifeSeverity, CalloutTone> = {
-  ok: "info",
-  caution: "caution",
-  blocking: "risk",
-};
-
 function count(value: number): string {
   return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
@@ -58,7 +51,7 @@ function count(value: number): string {
  * and counts; below it a named-area grid reorders as real events land: the team leads
  * while sessions open, stage and team sit together as research arrives, the stage takes
  * the width while the concierge composes, and the finished stage leads with the team
- * compacted to a strip. Both agent streams and all three preview frames stay mounted
+ * compacted to a strip. Both agent streams and the live preview frame stay mounted
  * for the whole workspace, so nothing aborts when panels move.
  */
 export function PlanWorkspace({
@@ -77,7 +70,6 @@ export function PlanWorkspace({
     origin: trip.origin,
     days: trip.days,
     condition: trip.condition,
-    medication: trip.medication,
     interests: trip.interests,
     budget: trip.budget,
     transport: trip.transport,
@@ -86,7 +78,6 @@ export function PlanWorkspace({
     runId,
     installId,
     captureConsent: trip.captureConsent,
-    hasSunLifeTravelCoverage: trip.hasSunLifeTravelCoverage,
     runToken,
   });
 
@@ -102,7 +93,6 @@ export function PlanWorkspace({
   const swarm = useSwarm({
     destination: trip.destination,
     condition: trip.condition,
-    medication: trip.medication,
     runId,
     installId,
     captureConsent: trip.captureConsent,
@@ -286,7 +276,7 @@ export function PlanWorkspace({
                     }`}
                   />
                   {verification.running} running · {verification.steps} steps ·{" "}
-                  {verification.sources} sources · {verification.findings}/3 findings
+                  {verification.sources} sources · {verification.findings}/{WORKER_IDS.length} findings
                   {recordedRuns.length > 0
                     ? ` · ${recordedRuns.length} recordings`
                     : ""}
@@ -304,7 +294,6 @@ export function PlanWorkspace({
                 runInput={swarm.runInput}
                 destination={trip.destination}
                 condition={trip.condition}
-                medication={trip.medication}
                 onRetry={swarm.retry}
                 onRerun={swarm.rerun}
                 expanded={stage === "ready"}
@@ -325,7 +314,6 @@ export function PlanWorkspace({
               <CareCardButton
                 destination={trip.destination}
                 condition={trip.condition}
-                medication={trip.medication}
                 plan={overlay.plan}
                 adjustments={overlay.adjustments}
               />
@@ -338,26 +326,13 @@ export function PlanWorkspace({
                 onToggle={toggleAdjustment}
               />
             ) : null}
-            <div className="mt-4">
-              <Callout
-                tone={ALERT_TONES[plan.sunLifeAlert.severity]}
-                title={plan.sunLifeAlert.title}
-              >
-                <div className="flex flex-col gap-1">
-                  {plan.sunLifeAlert.messages.map((message) => (
-                    <p key={message}>{message}</p>
-                  ))}
-                </div>
-              </Callout>
-            </div>
             <div className="mt-6">
               <ItineraryBoard
                 plan={overlay.plan}
                 destination={trip.destination}
                 condition={trip.condition}
-                medication={trip.medication}
                 adjustments={overlay.adjustments}
-                verification={{ checked: verification.findings, total: 3 }}
+                verification={{ checked: verification.findings, total: WORKER_IDS.length }}
                 activeDay={activeDay}
                 onSelectDay={setActiveDay}
               />

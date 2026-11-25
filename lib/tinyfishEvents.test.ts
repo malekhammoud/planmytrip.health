@@ -192,21 +192,21 @@ describe("mapTinyfishEvent", () => {
       run_id: "run_1",
       status: "COMPLETED",
       result: JSON.stringify({
-        genericName: "albuterol",
-        localBrandNames: ["Ventolin"],
-        customsRules: null,
-        carryRules: "Carry a copy of the prescription.",
-        sourceUrl: WORKER_SOURCES.pharmacy,
+        destinationRiskLevel: "Exercise a high degree of caution",
+        riskSummary: null,
+        healthNotices: ["A health notice."],
+        environmentalHazards: [],
+        sourceUrl: WORKER_SOURCES.advisory,
       }),
-    }, "pharmacy");
+    });
     if (event === null || event.event !== "worker_complete") {
       throw new Error("expected worker_complete");
     }
     expect(event.data.findings).toEqual({
-      genericName: "albuterol",
-      localBrandNames: ["Ventolin"],
-      customsRules: null,
-      carryRules: "Carry a copy of the prescription.",
+      destinationRiskLevel: "Exercise a high degree of caution",
+      riskSummary: null,
+      healthNotices: ["A health notice."],
+      environmentalHazards: [],
     });
   });
 
@@ -322,35 +322,5 @@ describe("mapTinyfishEvent", () => {
     }
     expect(raw.data.rawResult?.length).toBeLessThanOrEqual(2_000);
     expect(raw.data.rawResult?.endsWith("…")).toBe(true);
-  });
-
-  it("tags coverage checklist items as page or inferred, never guessing page", () => {
-    const event = mapFixture({
-      type: "COMPLETE",
-      status: "COMPLETED",
-      result: {
-        emergencyMedicalLimit: "Mock limit",
-        preAuthorizationRules: null,
-        checklist: [
-          { item: "Carry your policy card.", source: "page" },
-          { item: "Call before non-emergency care.", source: "guessed" },
-          { item: "   ", source: "page" },
-          { item: "Unknown tag", source: null },
-        ],
-        sourceUrl: WORKER_SOURCES.coverage,
-      },
-    }, "coverage");
-    if (event === null || event.event !== "worker_complete") {
-      throw new Error("expected worker_complete");
-    }
-    expect(event.data.findings).toEqual({
-      emergencyMedicalLimit: "Mock limit",
-      preAuthorizationRules: null,
-      checklist: [
-        { item: "Carry your policy card.", source: "page" },
-        { item: "Call before non-emergency care.", source: "inferred" },
-        { item: "Unknown tag", source: "inferred" },
-      ],
-    });
   });
 });

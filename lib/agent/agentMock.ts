@@ -162,16 +162,6 @@ function mockRaw(agentId: SpecialistAgentId, request: PlannerRequest): unknown {
             sourceUrl: "https://mock.invalid/hospital",
           },
         ],
-        pharmacies: [
-          {
-            name: "Sample late pharmacy",
-            address: "2 Sample Street",
-            lat: place(12).lat,
-            lng: place(12).lng,
-            phone: "+00 000 001",
-            sourceUrl: "https://mock.invalid/pharmacy",
-          },
-        ],
         emergencyNumber: "112",
         localRisks: ["Summer heat can make midday walking uncomfortable."],
         notes: ["Confirm the hospital route before the first full day."],

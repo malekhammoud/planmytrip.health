@@ -4,7 +4,8 @@
  * Inputs: untrusted save bodies and rows from PostgreSQL. Outputs: validated trip and
  * plan snapshots for the saved-trip pages and API.
  * Invariants: a saved plan is rebuilt through the same wire normaliser as live plans;
- * mock plans are never saved; an account owns its rows by Clerk user id.
+ * mock plans are never saved; an account owns its rows by Clerk user id; stored JSON
+ * written before removed fields existed still normalises.
  */
 
 import type {
@@ -64,13 +65,11 @@ export function parseSaveTripBody(
     origin: request.origin,
     days: request.days,
     condition: request.condition,
-    medication: request.medication,
     interests: request.interests,
     budget: request.budget,
     transport: request.transport,
     checkIn: request.checkIn,
     travelers: request.travelers,
-    hasSunLifeTravelCoverage: request.hasSunLifeTravelCoverage === true,
     // A saved snapshot never reruns capture. Consent belongs to the live run.
     captureConsent: false,
   };

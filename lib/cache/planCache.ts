@@ -20,7 +20,6 @@ import { normalizeWirePlan } from "@/lib/agent/agentPlanParse";
 import {
   buildPlanCacheKey,
   cacheDestination,
-  normalizeCacheText,
   planCacheIdentity,
   planCacheSignature,
   type PlanCacheSignature,
@@ -128,7 +127,6 @@ function signatureFrom(row: CacheRow): PlanCacheSignature | null {
     typeof value.destination !== "string" ||
     typeof value.days !== "number" ||
     typeof value.condition !== "string" ||
-    typeof value.medication !== "string" ||
     typeof value.interests !== "string" ||
     typeof value.budget !== "string" ||
     typeof value.transport !== "string"
@@ -190,7 +188,6 @@ export async function writeCachedPlan(
       destination: cacheDestination(request),
       days: request.days,
       condition: request.condition,
-      medication: normalizeCacheText(request.medication),
       interests: request.interests,
       budget: request.budget,
       transport: request.transport,

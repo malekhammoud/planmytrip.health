@@ -4,7 +4,7 @@
  * Inputs: a validated PlannerRequest, specialist research, and the engine's day caps.
  * Outputs: one user prompt per agent, including an exact JSON shape.
  * Invariants: every prompt carries the condition's modeled limits, forbids invented
- * facts, and keeps research and synthesis separate. Medication is a name only.
+ * facts, and keeps research and synthesis separate.
  */
 
 import { CONDITION_PROFILES } from "@/lib/conditionProfiles";
@@ -124,13 +124,12 @@ export const SPECIALIST_SCHEMAS: Readonly<
     type: "object",
     properties: {
       hospitals: { type: "array", items: { type: "object", properties: { name: text, address: text, lat: nullableNumber, lng: nullableNumber, phone: nullableText, sourceUrl: source }, required: ["name", "address", "lat", "lng", "phone", "sourceUrl"] } },
-      pharmacies: { type: "array", items: { type: "object", properties: { name: text, address: text, lat: nullableNumber, lng: nullableNumber, phone: nullableText, sourceUrl: source }, required: ["name", "address", "lat", "lng", "phone", "sourceUrl"] } },
       emergencyNumber: nullableText,
       localRisks: { type: "array", items: text },
       notes: { type: "array", items: text },
       sources: { type: "array", items: sourceItem },
     },
-    required: ["hospitals", "pharmacies", "emergencyNumber", "localRisks", "notes", "sources"],
+    required: ["hospitals", "emergencyNumber", "localRisks", "notes", "sources"],
   },
 };
 
@@ -194,7 +193,7 @@ const ROLE_TASK: Readonly<Record<SpecialistAgentId, string>> = {
   trail: "Find 3 to 5 real hikes or outdoor walks. Every route must fit the daily walking ceiling or explicitly describe a shortened section.",
   culture: "Find 5 to 8 real sights or experiences. Favor indoor, seated, or bookable options that need little standing.",
   transit: "Give practical current guidance for the airport transfer, local transit, walking, taxis, and accessibility. Include at least two sources.",
-  care: "Find 1 to 2 hospitals, 2 to 3 pharmacies, the emergency number, and two local health risks. Do not diagnose or recommend treatment. Include source URLs.",
+  care: "Find 1 to 2 hospitals or urgent-care clinics, the emergency number, and two local health risks. Do not diagnose or recommend treatment. Include source URLs.",
 };
 
 function limitsLine(request: PlannerRequest): string {
@@ -208,14 +207,12 @@ function limitsLine(request: PlannerRequest): string {
 }
 
 function tripLine(request: PlannerRequest): string {
-  const medication = request.medication || "none recorded";
   return [
     `Destination: ${request.destination}.`,
     `Starting from: ${request.origin || "not provided"}.`,
     `Trip length: ${request.days} days.`,
     `Start date: ${request.checkIn || "not provided"}. Travelers: ${request.travelers}.`,
     `Condition: ${CONDITION_LABELS[request.condition]}.`,
-    `Medication name only: ${medication}.`,
     `Getting around: ${TRANSPORT_LABELS[request.transport]}.`,
     `Budget: ${BUDGET_LABELS[request.budget]}.`,
     `Preferences: ${request.interests || "no extra preferences"}.`,
@@ -258,7 +255,7 @@ export function buildConciergePrompt(
     "Use one stay as the base. Include real meals, transit, the day's anchor, recovery, and check-in or checkout where relevant.",
     "For placeName, use the exact name from the research. Use null for generic blocks such as rest, meals without a named venue, or transit.",
     "stepEstimate and walkingKm are your honest estimates for the day. recoveryMinutes must meet the profile's recovery length.",
-    "Write calm, specific copy. No exclamation marks. No medical advice and no doses. Never tell the traveler to take or use a medication; refer to their clinician's plan.",
+    "Write calm, specific copy. No exclamation marks. No medical advice or doses. Never tell the traveler to take or use a medication; refer to their clinician's plan.",
     "Keep the summary under 120 words. Write the base area and route theme as single short sentences.",
     "Return exactly one JSON object. Do not wrap it in markdown. Do not add commentary.",
     "Exact shape:",

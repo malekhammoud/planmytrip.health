@@ -14,7 +14,6 @@ const previousDatabase = process.env.DATABASE_URL;
 const identity = {
   destination: "London, Ontario",
   condition: "asthma_respiratory" as const,
-  medication: "albuterol",
 };
 
 function worker(workerId: WorkerId): SwarmCacheWriteWorker {
@@ -51,18 +50,17 @@ describe("verification cache", () => {
     expect(cached?.cachedAt).toBe("2026-11-22T01:00:00.000Z");
     expect(cached?.workers.advisory?.sources).toHaveLength(1);
     expect(cached?.workers.advisory?.purposes[0]?.purpose).toBe("Read the source");
-    expect(cached?.workers.pharmacy?.sourceUrl).toBe("https://example.com/source");
+    expect(cached?.workers.advisory?.sourceUrl).toBe("https://example.com/source");
   });
 
-  it("serves a single-worker retry from a complete set", async () => {
+  it("serves the requested worker from a complete set", async () => {
     await writeCachedSwarm(identity, WORKER_IDS, values());
-    const cached = await readCachedSwarm(identity, ["pharmacy"]);
-    expect(cached?.workers.pharmacy).toBeDefined();
-    expect(cached?.workers.advisory).toBeUndefined();
+    const cached = await readCachedSwarm(identity, ["advisory"]);
+    expect(cached?.workers.advisory).toBeDefined();
   });
 
-  it("refuses a partial set", async () => {
-    await writeCachedSwarm(identity, ["advisory"], values());
+  it("refuses a set with no stored worker", async () => {
+    await writeCachedSwarm(identity, WORKER_IDS, {});
     expect(await readCachedSwarm(identity, WORKER_IDS)).toBeNull();
   });
 

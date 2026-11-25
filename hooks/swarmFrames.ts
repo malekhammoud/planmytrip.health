@@ -16,7 +16,6 @@ import { isAllowedPreviewUrl } from "@/lib/swarmState";
 import {
   WORKER_IDS,
   isWorkerId,
-  type CoverageSource,
   type SwarmErrorCode,
   type SwarmFindings,
   type SwarmSourceItem,
@@ -134,29 +133,6 @@ function asFindings(worker: WorkerId, value: unknown): SwarmFindings {
         healthNotices: asTextList(data.healthNotices),
         environmentalHazards: asTextList(data.environmentalHazards),
       };
-    case "pharmacy":
-      return {
-        genericName: asText(data.genericName),
-        localBrandNames: asTextList(data.localBrandNames),
-        customsRules: asText(data.customsRules),
-        carryRules: asText(data.carryRules),
-      };
-    case "coverage": {
-      const checklist = Array.isArray(data.checklist)
-        ? data.checklist.flatMap((entry) => {
-            if (!isRecord(entry)) return [];
-            const item = asText(entry.item);
-            if (item === null) return [];
-            const source: CoverageSource = entry.source === "page" ? "page" : "inferred";
-            return [{ item, source }];
-          })
-        : [];
-      return {
-        emergencyMedicalLimit: asText(data.emergencyMedicalLimit),
-        preAuthorizationRules: asText(data.preAuthorizationRules),
-        checklist,
-      };
-    }
   }
 }
 

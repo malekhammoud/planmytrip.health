@@ -53,8 +53,6 @@ export function PlannerHome({
       destination: trip.destination,
       days: trip.days,
       condition: trip.condition,
-      medication: trip.medication,
-      hasSunLifeTravelCoverage: trip.hasSunLifeTravelCoverage,
     });
   }, [trip]);
 

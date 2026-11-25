@@ -4,9 +4,9 @@
  * Inputs: worker id, worker state, and a retry action.
  * Outputs: a 16:10 embedded TinyFish frame with a 32px chrome bar, the current purpose,
  * a tempo strip, completion choreography, or a calm error frame.
- * Invariants: all three focus views stay mounted so a hidden stream never reloads;
- * completion shows "Run complete" for one second and unmounts the iframe after 1.5s;
- * the static frame reports only the final purpose, steps, and duration.
+ * Invariants: the view stays mounted so the stream never reloads; completion shows
+ * "Run complete" for one second and unmounts the iframe after 1.5s; the static frame
+ * reports only the final purpose, steps, and duration.
  */
 
 "use client";
@@ -51,11 +51,7 @@ function useFullscreenSupported(): boolean {
   return useSyncExternalStore(subscribeFullscreen, getFullscreen, () => false);
 }
 
-// VERIFY: three distinct TinyFish preview streams can be embedded at once while the
-// hidden ones stay mounted. A provider that limits concurrent viewers would need the
-// hidden frames paused rather than left attached. Recheck on a real three-worker run.
-
-/** One mounted live view; `visible` only controls which chrome is shown. */
+/** One mounted live view; `visible` only controls whether the frame is shown. */
 export function FocusView({ worker, state, visible, onRetry }: FocusViewProps) {
   const meta = MISSION_WORKERS[worker];
   const frameRef = useRef<HTMLDivElement>(null);
@@ -100,9 +96,8 @@ export function FocusView({ worker, state, visible, onRetry }: FocusViewProps) {
         visible ? "block" : "hidden",
         "overflow-hidden rounded-frame border border-solid border-hairline-strong bg-surface",
       ].join(" ")}
-      role="tabpanel"
-      id={`mission-panel-${worker}`}
-      aria-labelledby={`mission-tab-${worker}`}
+      role="region"
+      aria-label={`${meta.name} live check`}
     >
       <div className="flex min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-solid border-hairline px-3 py-1">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">

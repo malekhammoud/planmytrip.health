@@ -20,8 +20,6 @@ function build(condition: Condition, days: number): HealthTripPlan {
     destination: DESTINATION,
     days,
     condition,
-    medication: "albuterol",
-    hasSunLifeTravelCoverage: true,
   };
   return buildHealthTripPlan(input);
 }
@@ -38,17 +36,6 @@ const advisory: VerificationFindingInput = {
   retrievedAt: "2026-11-21T12:00:00.000Z",
 };
 
-const coverage: VerificationFindingInput = {
-  worker: "coverage",
-  findings: {
-    emergencyMedicalLimit: "CAD 5,000,000",
-    preAuthorizationRules: "Call Allianz Global Assistance before non-emergency care.",
-    checklist: [],
-  },
-  sourceUrl: "https://www.sunlife.ca/en/health/emergency-travel-medical-insurance/",
-  retrievedAt: "2026-11-21T12:05:00.000Z",
-};
-
 function recoveryMinutes(plan: HealthTripPlan, dayIndex: number): number {
   return (
     plan.itinerary[dayIndex]?.blocks.find((block) => block.kind === "recovery")
@@ -61,7 +48,7 @@ describe("applyVerification", () => {
     for (const condition of CONDITIONS) {
       for (let days = 2; days <= 20; days += 1) {
         const base = build(condition, days);
-        const result = applyVerification(base, { condition }, [advisory, coverage]);
+        const result = applyVerification(base, { condition }, [advisory]);
         expect(result.plan.healthSafetyScore).toBe(base.healthSafetyScore);
         expect(result.plan.baselineScore).toBe(base.baselineScore);
         expect(result.plan.riskReductionPct).toBe(base.riskReductionPct);
@@ -79,20 +66,19 @@ describe("applyVerification", () => {
           expect(day.healthCheckpoint).toContain("Verified note: Heat notice");
         }
         expect(result.adjustments.some((entry) => entry.kind === "recovery")).toBe(true);
-        expect(result.adjustments.some((entry) => entry.kind === "checklist")).toBe(true);
       }
     }
   });
 
   it("is deterministic and idempotent", () => {
     const base = build("chronic_fatigue_pots", 5);
-    const first = applyVerification(base, { condition: "chronic_fatigue_pots" }, [advisory, coverage]);
-    const second = applyVerification(base, { condition: "chronic_fatigue_pots" }, [advisory, coverage]);
+    const first = applyVerification(base, { condition: "chronic_fatigue_pots" }, [advisory]);
+    const second = applyVerification(base, { condition: "chronic_fatigue_pots" }, [advisory]);
     expect(JSON.stringify(second)).toBe(JSON.stringify(first));
     const again = applyVerification(
       first.plan,
       { condition: "chronic_fatigue_pots" },
-      [advisory, coverage],
+      [advisory],
     );
     expect(JSON.stringify(again.plan)).toBe(JSON.stringify(first.plan));
   });
@@ -138,7 +124,7 @@ describe("applyVerification", () => {
 
   it("honours the master switch and per-adjustment toggles", () => {
     const base = build("asthma_respiratory", 4);
-    const off = applyVerification(base, { condition: "asthma_respiratory" }, [advisory, coverage], {
+    const off = applyVerification(base, { condition: "asthma_respiratory" }, [advisory], {
       master: false,
     });
     expect(JSON.stringify(off.plan)).toBe(JSON.stringify(base));
@@ -159,14 +145,4 @@ describe("applyVerification", () => {
     ).toBe(false);
   });
 
-  it("adds the coverage checklist as display-only provenance", () => {
-    const base = build("severe_food_allergy", 2);
-    const result = applyVerification(base, { condition: "severe_food_allergy" }, [coverage]);
-    const checklist = result.adjustments.find((entry) => entry.kind === "checklist");
-    expect(checklist?.applied).toBe(true);
-    expect(checklist?.sourceWorker).toBe("coverage");
-    expect(checklist?.sourceUrl).toBe(coverage.sourceUrl);
-    expect(checklist?.retrievedAt).toBe(coverage.retrievedAt);
-    expect(JSON.stringify(result.plan)).toBe(JSON.stringify(base));
-  });
 });

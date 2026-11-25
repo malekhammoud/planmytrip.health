@@ -223,7 +223,7 @@ export function isLive(
  * javascript, data, http, and third-party frames out of the live columns.
  */
 export function isAllowedPreviewUrl(value: string): boolean {
-  if (/^\/mock-browser\/(?:advisory|pharmacy|coverage)$/.test(value)) return true;
+  if (/^\/mock-browser\/advisory$/.test(value)) return true;
   try {
     const url = new URL(value);
     if (url.protocol !== "https:") return false;
@@ -268,8 +268,6 @@ export function createWorker(phase: WorkerPhase): WorkerState {
 function createWorkerMap(phase: WorkerPhase): Record<WorkerId, WorkerState> {
   return {
     advisory: createWorker(phase),
-    pharmacy: createWorker(phase),
-    coverage: createWorker(phase),
   };
 }
 
@@ -302,7 +300,7 @@ export function createSwarmState(runToken = 0): SwarmState {
 }
 
 /**
- * Creates a fresh state with all three workers queued. The hook returns this for one
+ * Creates a fresh state with every worker queued. The hook returns this for one
  * render when the page's token has advanced but the effect has not dispatched yet, so
  * a new Deploy never flashes the previous run's findings.
  */

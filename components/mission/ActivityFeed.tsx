@@ -1,8 +1,8 @@
 /**
- * Streaming activity for the three workers.
+ * Streaming activity for the live workers.
  *
  * Inputs: the swarm state and the selected filter.
- * Outputs: the latest three real lines, a filter row, and one collapsed archive. New
+ * Outputs: the latest three real lines, an optional filter row, and one collapsed archive. New
  * lines type in when they arrive alone; older lines settle to muted after two seconds.
  * Invariants: heartbeats never appear; the feed is capped; the newest line is the only
  * one that types; the archive is a disclosure so the rail never grows into a report.
@@ -105,20 +105,22 @@ export function ActivityFeed({ state }: ActivityFeedProps) {
 
   return (
     <div className="mt-6 border-y border-solid border-hairline">
-      <div className="flex flex-wrap items-center gap-2 py-2">
-        <p className="t-label mr-2 text-muted">Activity</p>
-        {FILTERS.map((entry) => (
-          <Button
-            key={entry.id}
-            variant={filter === entry.id ? "primary" : "secondary"}
-            size="sm"
-            aria-pressed={filter === entry.id}
-            onClick={() => setFilter(entry.id)}
-          >
-            {entry.label}
-          </Button>
-        ))}
-      </div>
+      {WORKER_IDS.length > 1 ? (
+        <div className="flex flex-wrap items-center gap-2 py-2">
+          <p className="t-label mr-2 text-muted">Activity</p>
+          {FILTERS.map((entry) => (
+            <Button
+              key={entry.id}
+              variant={filter === entry.id ? "primary" : "secondary"}
+              size="sm"
+              aria-pressed={filter === entry.id}
+              onClick={() => setFilter(entry.id)}
+            >
+              {entry.label}
+            </Button>
+          ))}
+        </div>
+      ) : null}
       <div aria-live="off" aria-label="Agent activity" className="border-t border-solid border-hairline">
         {shown.length === 0 ? (
           <p className="t-small py-6 text-muted">No activity yet.</p>

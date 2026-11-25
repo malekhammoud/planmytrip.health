@@ -4,7 +4,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { closeDatabase, ensureSchema, resetDatabaseForTests } from "./postgres";
+import { closeDatabase, ensureSchema, getPool, resetDatabaseForTests } from "./postgres";
 import { readCachedPlan, writeCachedPlan } from "@/lib/cache/planCache";
 import { readCachedSwarm, writeCachedSwarm } from "@/lib/cache/swarmCache";
 import { resetCacheMemory } from "@/lib/cache/cacheStore";
@@ -20,7 +20,6 @@ const request: PlannerRequest = {
   origin: "",
   days: 3,
   condition: "asthma_respiratory",
-  medication: "albuterol",
   interests: "quiet food",
   budget: "balanced",
   transport: "mixed",
@@ -107,7 +106,6 @@ describeIfDatabase("trip cache in PostgreSQL", () => {
       {
         destination: "Test Cache City",
         condition: "asthma_respiratory",
-        medication: "albuterol",
       },
       WORKER_IDS,
       values,
@@ -118,12 +116,47 @@ describeIfDatabase("trip cache in PostgreSQL", () => {
       {
         destination: "test cache city",
         condition: "asthma_respiratory",
-        medication: "albuterol",
       },
-      ["advisory", "coverage"],
+      ["advisory"],
     );
     expect(cached?.workers.advisory).toBeDefined();
-    expect(cached?.workers.coverage).toBeDefined();
-    expect(cached?.workers.pharmacy).toBeUndefined();
+  });
+
+  it("reads a verification row written before the medication field was removed", async () => {
+    const cachedAt = "2026-11-22T00:30:00.000Z";
+    const payload = {
+      cachedAt,
+      workers: {
+        advisory: {
+          findings: emptyFindings("advisory"),
+          sourceUrl: "https://travel.gc.ca/travelling/advisories",
+          retrievedAt: "2026-11-22T00:20:00.000Z",
+          sources: [],
+          purposes: [],
+        },
+      },
+    };
+    await getPool().query(
+      `INSERT INTO trip_cache (
+        cache_key, kind, destination_norm, days, condition, medication_norm,
+        interest_norm, budget, transport, payload, created_at, expires_at
+      ) VALUES ($1, 'swarm', $2, NULL, $3, $4, '', '', '', $5::jsonb, $6::timestamptz, $7::timestamptz)`,
+      [
+        "v1|swarm|legacy cache city|asthma_respiratory|albuterol",
+        "legacy cache city",
+        "asthma_respiratory",
+        "albuterol",
+        JSON.stringify(payload),
+        cachedAt,
+        "2026-12-06T00:30:00.000Z",
+      ],
+    );
+    resetCacheMemory();
+    const cached = await readCachedSwarm(
+      { destination: "legacy cache city", condition: "asthma_respiratory" },
+      ["advisory"],
+    );
+    expect(cached?.workers.advisory).toBeDefined();
+    expect(cached?.cachedAt).toBe(cachedAt);
   });
 });

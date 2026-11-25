@@ -23,7 +23,6 @@ const body = {
   destination: "Lisbon, Portugal",
   days: 4,
   condition: "asthma_respiratory",
-  medication: "albuterol",
   interests: "quiet food",
   budget: "balanced",
 };

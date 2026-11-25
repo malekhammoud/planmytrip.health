@@ -172,12 +172,14 @@ function buildTrip(
   const destination = pick(random, DESTINATIONS);
   const budget = pick(random, BUDGETS);
   const profile = CONDITION_PROFILES[condition];
+  // Keep the generator's random sequence stable. The committed cohort and model
+  // artifact predate the removed coverage field, so a dropped draw would silently
+  // produce a different file. This draw is reproducibility, not a product input.
+  random();
   const enginePlan = buildHealthTripPlan({
     destination,
     days,
     condition,
-    medication: "synthetic medication",
-    hasSunLifeTravelCoverage: random() < 0.5,
   });
 
   const places: PlannerPlace[] = [];
@@ -355,10 +357,8 @@ function buildTrip(
       destination,
       days,
       condition,
-      medication: "synthetic medication",
       interests: "",
       budget,
-      hasSunLifeTravelCoverage: false,
     },
     enginePlan,
     agentPlan,
