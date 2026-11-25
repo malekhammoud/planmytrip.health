@@ -16,7 +16,14 @@ export interface SiteHeaderProps {
 /** Sticky 64px letterhead: brand lockup, public anchors, and the account control. */
 export function SiteHeader({ publicView = false }: SiteHeaderProps) {
   return (
-    <header className="sticky top-0 z-30 h-16 border-b border-hairline bg-paper">
+    <>
+      <DestinationAd
+        variant="bar"
+        intent={publicView ? "plan" : "upgrade"}
+        placement="site-top"
+        signedIn={!publicView}
+      />
+      <header className="sticky top-0 z-30 h-16 border-b border-hairline bg-paper">
       <div className="page-container flex h-full items-center justify-between gap-4 sm:gap-6">
         <LogoLink />
         {publicView ? (
@@ -75,7 +82,8 @@ export function SiteHeader({ publicView = false }: SiteHeaderProps) {
           </nav>
         )}
       </div>
-    </header>
+      </header>
+    </>
   );
 }
 

@@ -1204,6 +1204,9 @@ thresholds and Sun Life stability window remain VERIFY.
   accounts and "Plan another Paris trip" for Care Circle accounts. The account page, privacy,
   terms, model report, sign-in, and sign-up gained placements as well; every public page now
   carries at least one labelled ad.
+- **Above the fold.** Added a compact top bar above the sticky site header on every page that
+  uses `SiteHeader`, plus the sign-in, sign-up, and model headers. Public pages show the plan
+  CTA; signed-in pages show the Care Circle CTA, so the bar cannot replace an unsaved plan.
 - **Report context.** `campaignFor(destination, intent, "report")` adds the report-specific
   headline and body without changing the destination, link, or aggregate click record. The
   ad still never reads a health profile.

@@ -17,7 +17,7 @@ export type AdIntent = "plan" | "upgrade";
 export type AdContext = "default" | "report";
 
 /** The three house-ad layouts. */
-export type AdVariant = "poster" | "strip" | "inline";
+export type AdVariant = "poster" | "strip" | "bar" | "inline";
 
 /** One row in the campaign file. */
 export interface CampaignRow {

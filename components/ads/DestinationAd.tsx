@@ -30,6 +30,7 @@ import {
 } from "@/lib/ads/destinationMemory";
 import { trackAdClick } from "@/lib/ads/trackClick";
 import { capture } from "@/lib/analytics";
+import { AdBar } from "./AdBar";
 import { AdInline } from "./AdInline";
 import { AdPoster } from "./AdPoster";
 import { AdStrip } from "./AdStrip";
@@ -141,6 +142,8 @@ export function DestinationAd({
         <AdPoster {...layout} />
       ) : variant === "strip" ? (
         <AdStrip {...layout} />
+      ) : variant === "bar" ? (
+        <AdBar {...layout} />
       ) : (
         <AdInline {...layout} />
       )}

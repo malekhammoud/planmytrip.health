@@ -27,7 +27,7 @@ export interface AdClickEvent {
 
 const PLACEMENT = /^[a-z0-9-]{1,40}$/;
 const INTENTS = new Set<AdIntent>(["plan", "upgrade"]);
-const VARIANTS = new Set<AdVariant>(["poster", "strip", "inline"]);
+const VARIANTS = new Set<AdVariant>(["poster", "strip", "bar", "inline"]);
 const TARGETS = new Set<AdTarget>(["plan", "pricing"]);
 
 /** Returns the validated event, or null when any field is missing or out of bounds. */

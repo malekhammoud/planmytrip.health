@@ -133,6 +133,10 @@ describe("ad click validation", () => {
 
   it("accepts a bounded click", () => {
     expect(parseAdClick(valid)).toEqual(valid);
+    expect(parseAdClick({ ...valid, variant: "bar" })).toEqual({
+      ...valid,
+      variant: "bar",
+    });
   });
 
   it("rejects unknown fields and out-of-range values", () => {

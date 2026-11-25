@@ -24,6 +24,7 @@ export default async function SignUpPage({
     safeReturnPath(Array.isArray(requested) ? requested[0] : requested) ?? "/";
   return (
     <>
+    <DestinationAd variant="bar" intent="upgrade" placement="sign-up" />
     <main className="page-container flex min-h-dvh flex-col justify-center py-12 md:py-20">
       <div className="mx-auto w-full max-w-md">
         <LogoLink />
@@ -56,7 +57,6 @@ export default async function SignUpPage({
         </p>
       </div>
     </main>
-    <DestinationAd variant="strip" intent="upgrade" placement="sign-up" />
     </>
   );
 }

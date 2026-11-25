@@ -109,6 +109,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 69. General relaxation default | [x] | `feat(profile): add a general relaxation default` |
 | 70. Destination house ads | [x] | `feat(ads): add destination-personalized house ads` |
 | 71. Report ads and conversion analytics | [x] | `feat(ads): extend house ads to every report` |
+| 72. Above-the-fold ad bar | [x] | `fix(ads): show the campaign above the fold` |
 
 ## 3. Commands
 
@@ -1106,14 +1107,15 @@ prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.5:1 or better.
 
 ### House destination advertisements
 
-`components/ads/DestinationAd.tsx` renders first-party house advertisements in three
-layouts: a landing poster, a site-footer strip, and an inline card. The footer strip is in
-`SiteFooter`, so every page that carries the closing notice also carries one labelled ad.
-Prominent placements are the landing poster, the pricing inline card, the saved-trip list
-inline card, every saved-trip report, the workspace report, the account page, privacy, terms,
-the model report, and the sign-in and sign-up strips. Every public page now carries at least
-one labelled ad; the error boundaries, the dev-only mock browser, and the static pitch deck
-remain ad-free.
+`components/ads/DestinationAd.tsx` renders first-party house advertisements in four
+layouts: a top-of-page bar, a landing poster, a site-footer strip, and an inline card. The top
+bar sits above the sticky site header on every page that uses `SiteHeader`, so the campaign is
+visible before any scrolling. The footer strip is in `SiteFooter`, so every page that carries
+the closing notice also carries one labelled ad. Prominent placements are the landing poster,
+the pricing inline card, the saved-trip list inline card, every saved-trip report, the
+workspace report, the account page, privacy, terms, the model report, and the sign-in and
+sign-up bars. Every public page now carries at least one labelled ad; the error boundaries,
+the dev-only mock browser, and the static pitch deck remain ad-free.
 
 Copy lives in `lib/ads/campaign.ts`. `plan` campaigns ask for a trip start; `upgrade`
 campaigns sell Care Circle and link to `/pricing`; `context="report"` swaps in copy written

@@ -153,6 +153,7 @@ export default function ModelPage() {
 
   return (
     <div className="flex min-h-dvh flex-col">
+      <DestinationAd variant="bar" intent="plan" placement="model-top" />
       <header className="border-b border-hairline">
         <div className="page-container flex h-16 items-center justify-between gap-6">
           <LogoLink />
