@@ -1,14 +1,14 @@
 /**
- * Live mission control for the TinyFish browser agent.
+ * The destination check surface.
  *
  * Inputs: the swarm state and run snapshot from useSwarm, the current trip inputs, and
  * retry/re-run actions.
- * Outputs: a status row, one hero live view, the source ledger, findings, the pre-run
- * state, and the stale-input caution. The chronological activity feed lives in the
- * workspace's persistent rail.
- * Invariants: every visible change comes from an accepted event; no percentage, ETA, or
- * partial finding is invented; nothing ticks while idle; the browser title reflects the
- * real running or verified count; mock runs stay labelled.
+ * Outputs: a pre-run row, one compact running card, completed findings with provenance,
+ * a cached-date note, a stale-input caution, and the re-run action. The chronological
+ * activity feed lives in the workspace's persistent rail.
+ * Invariants: every visible change comes from an accepted event; no percentage, ETA, step
+ * count, or partial finding is invented; nothing ticks while idle; the browser title
+ * reflects only checking, checked, or the plain product name; sample runs stay labelled.
  */
 
 "use client";
@@ -18,8 +18,12 @@ import { FindingsReveal } from "@/components/mission/FindingsReveal";
 import { FocusView } from "@/components/mission/FocusView";
 import { PreRun } from "@/components/mission/PreRun";
 import { SourcesList } from "@/components/mission/SourcesList";
-import { MISSION_WORKERS } from "@/components/mission/missionMeta";
-import { Button, Callout, Disclosure } from "@/components/ui";
+import {
+  MISSION_WORKERS,
+  checkTitle,
+  formatCheckedDate,
+} from "@/components/mission/missionMeta";
+import { Button, Callout, Disclosure, StatusGlyph } from "@/components/ui";
 import type { SwarmRunInput } from "@/hooks/useSwarm";
 import { usePhaseAnnouncement } from "@/hooks/usePhaseAnnouncement";
 import type { SwarmState } from "@/lib/swarmReducer";
@@ -35,11 +39,11 @@ export interface MissionControlProps {
   condition: Condition;
   onRetry: (worker: WorkerId) => void;
   onRerun: () => void;
-  /** True once the plan is ready: sources and findings share the full width. */
+  /** Kept for the workspace layout; the consumer surface always reads as one column. */
   expanded?: boolean;
 }
 
-/** The one mission surface. */
+/** The one destination check surface. */
 export function MissionControl({
   state,
   runInput,
@@ -47,19 +51,18 @@ export function MissionControl({
   condition,
   onRetry,
   onRerun,
-  expanded = false,
 }: MissionControlProps) {
-  const [preRunOpen, setPreRunOpen] = useState(false);
-  const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   const previousTitleRef = useRef<string | null>(null);
+  const worker = WORKER_IDS[0];
+  const meta = MISSION_WORKERS[worker];
+  const workerState = state.workers[worker];
+  const phase = workerState.phase;
   const summary = swarmSummary(state);
   const live = isSwarmLive(state);
-  const worker = WORKER_IDS[0];
-  const preRun = state.workers[worker].phase === "idle";
+  const preRun = phase === "idle";
   const stale =
-    runInput !== null &&
-    !preRun &&
-    isStale(runInput, { destination, condition });
+    runInput !== null && !preRun && isStale(runInput, { destination, condition });
   const announcement = usePhaseAnnouncement(state);
 
   useEffect(() => {
@@ -71,46 +74,43 @@ export function MissionControl({
 
   useEffect(() => {
     if (live) {
-      document.title = `(1 running) PlanMyTrip.health`;
-    } else if (!preRun && summary.completed + summary.failed >= WORKER_IDS.length) {
-      document.title = `Verified ${summary.completed}/${WORKER_IDS.length} - PlanMyTrip.health`;
+      document.title = "Checking destination - PlanMyTrip.health";
+    } else if (phase === "complete") {
+      document.title = "Destination checked - PlanMyTrip.health";
     } else {
       document.title = "PlanMyTrip.health";
     }
-  }, [live, preRun, summary.completed, summary.failed]);
+  }, [live, phase]);
 
   return (
     <div>
       {state.mock ? (
         <div className="mb-4">
-          <Callout tone="caution" title="Mock data">
-            This check ran in mock mode. The activity, sources, and findings are scripted
-            sample data, not a live result.
+          <Callout tone="caution" title="Sample result">
+            This check used sample data, not the live page. The facts and sources are
+            scripted for the demo.
           </Callout>
         </div>
       ) : null}
 
       {state.cachedAt !== null ? (
         <div className="mb-4">
-          <Callout tone="info" title="Cached verification">
-            These findings and the recorded browser run are a verified cache from{" "}
-            {new Date(state.cachedAt).toLocaleDateString("en-CA", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })}
-            . Live pages may have changed; re-run before relying on a detail.
+          <Callout
+            tone="info"
+            title={`Checked ${formatCheckedDate(state.cachedAt)}`}
+          >
+            These findings are a saved result. Pages may have changed since then.
           </Callout>
         </div>
       ) : null}
 
       {stale ? (
         <div className="mb-4">
-          <Callout tone="caution" title="Inputs changed since this check ran">
-            <p>The result may not apply to the current trip.</p>
+          <Callout tone="caution" title="This check used older trip details">
+            <p>The destination or health profile changed after it ran.</p>
             <div className="mt-3">
               <Button variant="secondary" onClick={onRerun}>
-                Re-run verification
+                Re-run check
               </Button>
             </div>
           </Callout>
@@ -122,41 +122,58 @@ export function MissionControl({
       </p>
 
       {preRun ? (
-        <Disclosure
-          title="What will be checked"
-          summary={`${WORKER_IDS.length} live check · exact instructions`}
-          open={preRunOpen}
-          onToggle={() => setPreRunOpen((current) => !current)}
-        >
-          <div className="pt-4">
-            <PreRun destination={destination} condition={condition} />
+        <PreRun />
+      ) : phase === "complete" ? (
+        <div className="overflow-hidden rounded-frame border border-solid border-hairline-strong bg-surface">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-solid border-hairline px-4 py-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+              <StatusGlyph state="done" label={checkTitle(phase, meta.host)} />
+              <p className="t-data-sm text-muted">{meta.name}</p>
+            </div>
+            <p className="t-data-sm text-muted">
+              {summary.sources} {summary.sources === 1 ? "source" : "sources"}
+            </p>
           </div>
-        </Disclosure>
-      ) : (
-        <>
-          <div className="mt-3">
-            <FocusView
-              worker={worker}
-              state={state.workers[worker]}
-              visible
-              onRetry={() => onRetry(worker)}
-            />
-          </div>
+          <div className="px-4 py-4">
+            {workerState.findings === null ? (
+              <p className="t-small text-muted">
+                No findings were returned. Re-run the check to try again.
+              </p>
+            ) : (
+              <FindingsReveal state={state} worker={worker} />
+            )}
 
-          <div className="mt-3">
-            <Disclosure
-              title="Sources and findings"
-              summary={`${MISSION_WORKERS[worker].name} · ${summary.findings}/${WORKER_IDS.length} complete`}
-              open={evidenceOpen}
-              onToggle={() => setEvidenceOpen((current) => !current)}
-            >
-              <div className={expanded ? "grid gap-x-10 lg:grid-cols-2" : undefined}>
-                <SourcesList state={state} worker={worker} />
-                <FindingsReveal state={state} worker={worker} dimmed={stale} />
+            {summary.sources > 0 ? (
+              <div className="mt-4">
+                <Disclosure
+                  title="Sources"
+                  summary={`${summary.sources} ${summary.sources === 1 ? "source" : "sources"}`}
+                  open={sourcesOpen}
+                  onToggle={() => setSourcesOpen((current) => !current)}
+                >
+                  <div className="pt-3">
+                    <SourcesList state={state} />
+                  </div>
+                </Disclosure>
               </div>
-            </Disclosure>
+            ) : null}
+
+            {stale ? null : (
+              <div className="mt-4">
+                <Button variant="secondary" onClick={onRerun}>
+                  Re-run check
+                </Button>
+              </div>
+            )}
           </div>
-        </>
+        </div>
+      ) : (
+        <FocusView
+          worker={worker}
+          state={workerState}
+          visible
+          onRetry={() => onRetry(worker)}
+        />
       )}
     </div>
   );

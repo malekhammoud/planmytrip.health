@@ -12,7 +12,7 @@
 // so the client budget is 280 seconds inside a 300-second route. The provider's documented
 // default is 150 steps. Recheck after the account is enabled for custom max steps.
 export const SWARM_RUN_LIMITS = {
-  /** Provider default steps, used only for display; we do not send max_steps. */
+  /** Provider default step ceiling, recorded for the run limits; never sent. */
   providerDefaultMaxSteps: 150,
   /** Upstream wall-clock cap per worker, in seconds. */
   maxDurationSeconds: 100,
@@ -26,7 +26,7 @@ export const SWARM_RUN_LIMITS = {
 
 /** Calm copy emitted as worker_note immediately before a retry. */
 export const SWARM_RETRY_NOTES = {
-  schema: "The service rejected the output schema. Retrying without it.",
-  stealth: "Site blocked the standard browser. Retrying with stealth.",
+  schema: "The page needed a simpler request. Retrying.",
+  stealth: "The page blocked the first visit. Retrying once.",
   transient: "The check was interrupted. Retrying once.",
 } as const;

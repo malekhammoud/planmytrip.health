@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  checkTitle,
+  formatCheckedDate,
   formatDuration,
   formatOffset,
   formatRetrievedAt,
@@ -10,6 +12,14 @@ import {
 describe("missionMeta", () => {
   it("keeps the canonical worker order", () => {
     expect(missionWorkers()).toEqual(["advisory"]);
+  });
+
+  it("names the page being checked without provider copy", () => {
+    expect(checkTitle("idle", "travel.gc.ca")).toBe("Not checked yet");
+    expect(checkTitle("queued", "travel.gc.ca")).toBe("Preparing travel.gc.ca");
+    expect(checkTitle("running", "travel.gc.ca")).toBe("Checking travel.gc.ca");
+    expect(checkTitle("complete", "travel.gc.ca")).toBe("Checked travel.gc.ca");
+    expect(checkTitle("error", "travel.gc.ca")).toBe("Could not check travel.gc.ca");
   });
 
   it("formats durations and offsets without locale output", () => {
@@ -31,5 +41,11 @@ describe("missionMeta", () => {
     expect(formatRetrievedAt("2026-11-21T12:34:56.000Z")).toBe("2026-11-21 12:34 UTC");
     expect(formatRetrievedAt(null)).toBe("Not found");
     expect(formatRetrievedAt("nonsense")).toBe("Not found");
+  });
+
+  it("formats a cache timestamp as a short checked date", () => {
+    expect(formatCheckedDate("2026-11-21T12:34:56.000Z")).toBe("21 Nov 2026");
+    expect(formatCheckedDate(null)).toBe("Not found");
+    expect(formatCheckedDate("nonsense")).toBe("Not found");
   });
 });

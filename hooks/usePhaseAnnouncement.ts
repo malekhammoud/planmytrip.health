@@ -1,11 +1,10 @@
 /**
- * Throttled polite announcement for worker phase changes.
+ * Polite announcement for destination check phase changes.
  *
  * Inputs: the swarm state.
- * Outputs: one short sentence about a started, finished, or failed worker, at most once
- * per three seconds.
- * Invariants: heartbeats and progress do not trigger announcements; the previous phase
- * map is updated even when a message is throttled.
+ * Outputs: one short sentence when the check starts, finishes, or fails.
+ * Invariants: heartbeats and progress do not trigger announcements; each accepted phase
+ * change announces once; the previous phase map updates even when nothing is announced.
  */
 
 "use client";
@@ -13,17 +12,15 @@
 import { useEffect, useRef, useState } from "react";
 import type { SwarmState, WorkerPhase } from "@/lib/swarmReducer";
 import { WORKER_IDS } from "@/lib/swarmTypes";
-import { MISSION_WORKERS } from "@/components/mission/missionMeta";
 
 function snapshot(state: SwarmState): Record<string, WorkerPhase> {
   return Object.fromEntries(WORKER_IDS.map((worker) => [worker, state.workers[worker].phase]));
 }
 
-/** Returns a throttled sentence for the status bar's live region. */
+/** Returns a sentence for the status area's live region. */
 export function usePhaseAnnouncement(state: SwarmState): string {
   const [announcement, setAnnouncement] = useState("");
   const previousRef = useRef<Record<string, WorkerPhase>>(snapshot(state));
-  const announcedAtRef = useRef(0);
   const phases = WORKER_IDS.map((worker) => state.workers[worker].phase).join(",");
 
   useEffect(() => {
@@ -34,12 +31,12 @@ export function usePhaseAnnouncement(state: SwarmState): string {
     if (changed === undefined) return;
     const phase = next[changed];
     if (phase !== "running" && phase !== "complete" && phase !== "error") return;
-    const now = Date.now();
-    if (now - announcedAtRef.current < 3000) return;
-    announcedAtRef.current = now;
-    const verb =
-      phase === "running" ? "started" : phase === "complete" ? "finished" : "failed";
-    const message = `${MISSION_WORKERS[changed].name} ${verb}.`;
+    const message =
+      phase === "running"
+        ? "Destination check started."
+        : phase === "complete"
+          ? "Destination check finished."
+          : "Destination check failed.";
     const timer = setTimeout(() => setAnnouncement(message), 0);
     return () => clearTimeout(timer);
     // The joined phase string is the only input that should announce.

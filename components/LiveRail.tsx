@@ -1,9 +1,10 @@
 /**
- * The persistent activity rail: planning signal and verification feed in one column.
+ * The persistent activity rail: planning signal and destination check in one column.
  *
  * Inputs: the planner state and the swarm state.
  * Outputs: a stream switch, a follow/pin line, the planning signal graph and ticker,
- * and the workers' real activity feed. Both feeds stay mounted; only one is shown.
+ * and the destination check's real activity feed. Both feeds stay mounted; only one is
+ * shown.
  * Invariants: every line traces to an accepted event; heartbeats never appear; the rail
  * follows the live stream unless the reader pins one; nothing ticks while both are idle.
  */
@@ -18,7 +19,7 @@ import type { PlannerState } from "@/lib/agent/plannerReducer";
 import type { SwarmState } from "@/lib/swarmReducer";
 import { isSwarmLive, mergedFeed } from "@/lib/swarmTelemetry";
 
-type RailStream = "planning" | "checks";
+type RailStream = "planning" | "destination";
 
 /** Props for {@link LiveRail}. */
 export interface LiveRailProps {
@@ -33,7 +34,7 @@ function lastPlannerAt(state: PlannerState): number {
   return Number.isNaN(at) ? 0 : at;
 }
 
-function lastCheckAt(swarm: SwarmState): number {
+function lastDestinationAt(swarm: SwarmState): number {
   const line = mergedFeed(swarm, "all", 1)[0];
   return line?.at ?? 0;
 }
@@ -41,17 +42,17 @@ function lastCheckAt(swarm: SwarmState): number {
 /** One sticky column of real telemetry beside the main stage. */
 export function LiveRail({ state, swarm }: LiveRailProps) {
   const plannerLive = state.status === "running";
-  const checksLive = isSwarmLive(swarm);
-  const checks = mergedFeed(swarm, "all").length;
+  const destinationLive = isSwarmLive(swarm);
+  const destinationLines = mergedFeed(swarm).length;
   const auto: RailStream =
-    plannerLive && !checksLive
+    plannerLive && !destinationLive
       ? "planning"
-      : checksLive && !plannerLive
-        ? "checks"
-        : lastCheckAt(swarm) > lastPlannerAt(state)
-          ? "checks"
-          : state.plan !== null && checks > 0
-            ? "checks"
+      : destinationLive && !plannerLive
+        ? "destination"
+        : lastDestinationAt(swarm) > lastPlannerAt(state)
+          ? "destination"
+          : state.plan !== null && destinationLines > 0
+            ? "destination"
             : "planning";
   const [pinned, setPinned] = useState<RailStream | null>(null);
   const active = pinned ?? auto;
@@ -73,20 +74,20 @@ export function LiveRail({ state, swarm }: LiveRailProps) {
           Planning · {state.log.length}
         </Button>
         <Button
-          variant={active === "checks" ? "primary" : "secondary"}
-          aria-pressed={active === "checks"}
-          onClick={() => setPinned("checks")}
+          variant={active === "destination" ? "primary" : "secondary"}
+          aria-pressed={active === "destination"}
+          onClick={() => setPinned("destination")}
           fullWidth
         >
-          Checks · {checks}
+          Destination · {destinationLines}
         </Button>
       </div>
 
       <div className="mt-2 flex min-h-6 flex-wrap items-center justify-between gap-2">
         <p className="t-data-sm text-muted">
           {following
-            ? `Following the ${active === "planning" ? "planning" : "verification"} stream`
-            : `Pinned to ${active === "planning" ? "planning" : "verification"}`}
+            ? `Following the ${active === "planning" ? "planning" : "destination"} stream`
+            : `Pinned to ${active === "planning" ? "planning" : "destination"}`}
         </p>
         {following ? null : (
           <Button variant="ghost" size="sm" onClick={() => setPinned(null)}>
@@ -98,7 +99,7 @@ export function LiveRail({ state, swarm }: LiveRailProps) {
       <div hidden={active !== "planning"}>
         <AgentActivityFeed log={state.log} live={plannerLive} />
       </div>
-      <div hidden={active !== "checks"}>
+      <div hidden={active !== "destination"}>
         <ActivityFeed state={swarm} />
       </div>
     </div>

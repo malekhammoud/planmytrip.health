@@ -21,15 +21,17 @@ describe("swarmErrorCopy", () => {
       const copy = swarmErrorCopy(code);
       expect(copy.message.length).toBeGreaterThan(0);
       expect(copy.message.endsWith(".")).toBe(true);
-      expect(copy.message).not.toMatch(/API|HTTP|stack|undefined/i);
+      expect(copy.message).not.toMatch(
+        /API|HTTP|stack|undefined|tinyfish|credit|stealth|rate limit|step limit|account/i,
+      );
     }
   });
 
   it("has a safe default for an unknown code", () => {
     expect(swarmErrorCopy(null).retryable).toBe(true);
-    expect(
-      swarmErrorCopy("future_code" as SwarmErrorCode).message,
-    ).toBe("The agent check stopped unexpectedly. Retry this worker.");
+    expect(swarmErrorCopy("future_code" as SwarmErrorCode).message).toBe(
+      "The destination check did not finish. Try again.",
+    );
   });
 
   it("marks missing credentials and exhausted credits as not retryable", () => {

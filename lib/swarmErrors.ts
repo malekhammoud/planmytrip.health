@@ -1,8 +1,9 @@
 /**
- * Calm, user-facing copy for every TinyFish failure code.
+ * Calm, user-facing copy for every destination check failure code.
  *
  * Inputs: a SwarmErrorCode from a worker_error frame.
- * Outputs: one short sentence with no provider internals, plus a retryable flag.
+ * Outputs: one short sentence with no provider, billing, or account internals, plus a
+ * retryable flag.
  * Invariants: unknown codes fall back to safe copy; no raw provider text is echoed.
  */
 
@@ -17,49 +18,49 @@ export interface SwarmErrorCopy {
 
 const COPY: Record<SwarmErrorCode, SwarmErrorCopy> = {
   missing_api_key: {
-    message: "The live check is not configured on this server. Retry after the key is set.",
+    message: "The destination check is not available right now. Try again later.",
     retryable: false,
   },
   timeout: {
-    message: "The agent did not finish in time. Retry this check.",
+    message: "The destination check took too long. Try again.",
     retryable: true,
   },
   site_blocked: {
-    message: "The site blocked the browser. Retry once; the stealth profile will be used.",
+    message: "The advisory page could not be opened. Try again.",
     retryable: true,
   },
   max_steps_exceeded: {
-    message: "The agent hit its step limit before finishing. Retry this check.",
+    message: "The check ended before it finished reading the page. Try again.",
     retryable: true,
   },
   rate_limit: {
-    message: "TinyFish rate limit reached. Try again in a minute.",
+    message: "The check is busy right now. Try again in a minute.",
     retryable: true,
   },
   insufficient_credits: {
-    message: "The TinyFish account has no credits left. Check the plan.",
+    message: "The destination check is not available right now. Try again later.",
     retryable: false,
   },
   invalid_input: {
-    message: "The agent service rejected this check. Retry this worker.",
+    message: "This trip could not be checked. Try again.",
     retryable: true,
   },
   forbidden: {
-    message: "The live check is not enabled for this account. Check the TinyFish plan and retry.",
+    message: "The destination check is not available right now. Try again later.",
     retryable: false,
   },
   cancelled: {
-    message: "The agent run was cancelled. Retry this check.",
+    message: "The check stopped before it finished. Try again.",
     retryable: true,
   },
   upstream_error: {
-    message: "The agent check stopped unexpectedly. Retry this worker.",
+    message: "Something interrupted the check. Try again.",
     retryable: true,
   },
 };
 
 const SAFE_DEFAULT: SwarmErrorCopy = {
-  message: "The agent check stopped unexpectedly. Retry this worker.",
+  message: "The destination check did not finish. Try again.",
   retryable: true,
 };
 
