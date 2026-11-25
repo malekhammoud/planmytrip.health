@@ -55,9 +55,10 @@ export default function PrivacyPage() {
             </p>
             <p className="t-small mt-3 text-muted">
               Because the research capture is not linked to your account, closing your
-              account does not remove it. To delete the anonymous capture from this
-              browser, clear this site&apos;s local storage, or contact us and we will help.
-              An unanswered outcome is never treated as a negative result.
+              account does not remove it. Clearing this site&apos;s local storage removes
+              the install id from your browser, but it does not delete a capture already
+              stored. Contact us to delete a capture. An unanswered outcome is never
+              treated as a negative result.
             </p>
           </section>
 

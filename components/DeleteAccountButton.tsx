@@ -60,8 +60,9 @@ export function DeleteAccountButton() {
       <p className="t-small measure text-muted">
         Deleting your account removes your saved trips and closes your Clerk account. Your
         anonymous research capture is not linked to the account and is not removed by this
-        action. You can clear this browser&apos;s site data or contact privacy@planmytrip.health
-        for that capture.
+        action. Clearing this browser&apos;s site data removes the local install id but does
+        not delete a capture already stored; contact privacy@planmytrip.health to delete
+        that capture.
       </p>
       {state === "confirm" || state === "deleting" ? (
         <div className="mt-4">
