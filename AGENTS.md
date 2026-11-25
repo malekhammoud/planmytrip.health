@@ -99,7 +99,11 @@ and this file agree at that commit. Only the orchestrator commits.
 | 59. Route stays open, check exposed | [x] | `fix(ui): keep the route open and expose the destination check` |
 | 60. Privacy and account deletion | [x] | `feat(privacy): remove recordings and add account deletion` |
 | 61. Cross-origin deletion guard | [x] | `fix(account): reject cross-origin deletion requests` |
-| 62. Consumer reset documentation | [x] | `docs(agents): document the consumer product reset` |
+| 62. Anonymous capture privacy copy | [x] | `fix(privacy): clarify anonymous capture deletion` |
+| 63. First-day hospital guidance | [x] | `fix(engine): keep hospital guidance to the first day` |
+| 64. Sign-up legal links | [x] | `fix(auth): link terms and privacy on sign-up` |
+| 65. Investor deck alignment | [x] | `docs(pitch): align the investor deck with the consumer reset` |
+| 66. Consumer reset documentation | [x] | `docs(agents): document the consumer product reset` |
 
 ## 3. Commands
 
@@ -453,8 +457,8 @@ signal shows the newest two lines with an "Earlier updates" disclosure; the dest
 shows the newest three with an "Earlier activity" archive. The destination check itself is one
 calm card: pre-run copy, a status line, a "Watch live" disclosure, and source-backed findings;
 it shows no raw JSON, step count, tempo strip, or provider internals. The safety envelope keeps
-every day's step and walking caps and the over-cap caution visible; the focused day opens its
-pacing strip, block list, and checkpoint.
+the KPI strip, every day's caps, and the checkpoint visible; the generic blocks and pacing strip
+sit behind a "How this day is modeled" disclosure.
 
 While the route is forming, `PlanPanel` holds the space with a designed route skeleton, seven
 real phase ticks, and the trip's true day slots. `DayFocus` labels the focused day with the
@@ -699,8 +703,8 @@ PlanMyTrip.health` when complete, and the plain title otherwise. A hidden `aria-
 line announces only started, finished, and failed phase changes, at most once every three
 seconds. `FocusView` shows the phase glyph, page name, elapsed time, source count, the current
 purpose, a retry on failure, and an optional live iframe in a `referrerPolicy="no-referrer"` /
-`sandbox="allow-scripts allow-same-origin"` frame. `PreRun` names the target host, what will be
-checked, and the exact goal in a disclosure. `FindingsReveal` renders typed rows only after
+`sandbox="allow-scripts allow-same-origin"` frame. `PreRun` names the target host and what will
+be checked; the raw goal is not exposed in the consumer view. `FindingsReveal` renders typed rows only after
 COMPLETE, with provenance and retrieved time; `SourcesList` deduplicates by URL or title and
 links with `noopener noreferrer`. `lib/swarmErrors.ts` maps every error code to calm copy and a
 retryable flag.
@@ -755,11 +759,12 @@ numbers tween over 300ms with `lib/planMotion.ts`; a changed value shows a hairl
 such as `Step ceiling 6,000 to 5,000 steps` for four seconds. `hooks/usePlanMotion.ts` owns the
 tween and the four-second diff lifetime; reduced motion returns the final value immediately.
 
-Each day is a hairline row, not a card: a 64px day number using `.t-metric-day`, title, pacing
-rule, strip, block list, and accent-soft checkpoint. A 160px column carries step and walk caps
-as stacked DataRows (one-decimal km); mobile shows two columns. `.day-row` applies the global
-240ms rise and 40ms stagger; reduced motion disables both. A day with an applied recovery
-adjustment gets `.anim-arrive`, an "Adjusted by the destination check" t-label, the
+Each day is a hairline row, not a card: a 64px day number using `.t-metric-day`, title, caps,
+and accent-soft checkpoint; a "How this day is modeled" disclosure holds the pacing rule, SVG
+strip, and block list. A 160px column carries step and walk caps as stacked DataRows
+(one-decimal km); mobile shows two columns. `.day-row` applies the global 240ms rise and 40ms
+stagger; reduced motion disables both. A day with an applied recovery adjustment gets
+`.anim-arrive`, an "Adjusted by the destination check" t-label, the
 `Afternoon recovery 30 to 60 min` diff line, and the source link and retrieved time. The inline
 SVG strip in `components/PacingStrip.tsx` has a 64px plot, an HTML 16px axis, ink bars at
 `exertion / 3`, a hatched 12px recovery bar, and two-hour labels from 08:00. Exertion bars use
