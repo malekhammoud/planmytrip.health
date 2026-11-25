@@ -5,6 +5,7 @@ import { LogoLink } from "@/components/Logo";
 
 export const metadata: Metadata = {
   title: "Sign in - PlanMyTrip.health",
+  description: "Sign in to plan a trip and keep your saved trips in one place.",
 };
 
 /**
@@ -18,9 +19,9 @@ export default function SignInPage() {
       <div className="mx-auto w-full max-w-md">
         <LogoLink />
         <p className="t-label mt-10 text-muted">Account</p>
-        <h1 className="t-title mt-2">Sign in to plan</h1>
+        <h1 className="t-title mt-2">Plan a trip that fits your health.</h1>
         <p className="t-body mt-3 text-muted">
-          Sign in to build a trip and keep it in your saved trips.
+          Your account keeps saved trips and plans, so you can pick up where you left off.
         </p>
         <div className="mt-8">
           <Suspense fallback={<p className="t-small text-muted">Loading sign-in.</p>}>
@@ -33,8 +34,7 @@ export default function SignInPage() {
           </Suspense>
         </div>
         <p className="t-small measure mt-8 text-muted">
-          Planning aid only. Not medical advice. Confirm every limit with your clinician
-          and insurer before you travel.
+          Planning aid only. Not medical advice. Check the details before you book.
         </p>
       </div>
     </main>

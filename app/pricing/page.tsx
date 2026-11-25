@@ -10,10 +10,40 @@ import { CLERK_APPEARANCE } from "@/lib/clerkAppearance";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Plans - PlanMyTrip.health",
+  title: "Plans and pricing - PlanMyTrip.health",
   description:
-    "Choose a PlanMyTrip.health plan for health-first trip planning, live venue checks, and saved trips.",
+    "A day-by-day plan, a route, and a safety envelope with daily limits. Compare the free plan with Care Circle.",
 };
+
+const FREE_INCLUDES = [
+  "Day-by-day plan and route",
+  "Safety envelope with daily limits",
+  "Care card to share with your group",
+  "One live plan a year",
+  "Trips up to 7 days",
+  "One saved trip",
+] as const;
+
+const CARE_CIRCLE_INCLUDES = [
+  "Everything in Free Preview",
+  "Up to two live plans a month",
+  "Trips up to 20 days",
+  "Live menu and room-rate checks",
+  "Live destination advisory check",
+  "Unlimited saved trips",
+] as const;
+
+function PlanIncludes({ label, items }: { label: string; items: readonly string[] }) {
+  return (
+    <ul aria-label={`${label} includes`} className="mt-4 list-none p-0">
+      {items.map((item) => (
+        <li key={item} className="t-small border-t border-hairline py-3 text-ink">
+          {item}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /**
  * Public pricing page. Clerk renders the configured plans and checkout drawer; the
@@ -35,15 +65,14 @@ export default async function PricingPage({
       <SiteHeader publicView={userId === null} />
       <main className="page-container flex-1 pt-12 md:pt-20">
         <p className="t-label text-muted">Plans</p>
-        <h1 className="t-display measure mt-3">Plan around your health.</h1>
+        <h1 className="t-display measure mt-3">Plans for the way you travel.</h1>
         <p className="t-body measure mt-5 text-muted">
-          Start with the safety envelope and a saved trip. Care Circle adds up to two live
-          plans a month, longer trips, live browser checks of menus and room rates, and more
-          room for the places you keep.
+          Every plan gives you a day-by-day itinerary, a route with maps, a safety
+          envelope with daily limits, and a care card you can share. Care Circle adds
+          longer trips and live checks of your destination and the places you choose.
         </p>
         <p className="t-small measure mt-3 text-muted">
-          Care Circle is $9 per month or $60 per year. Annual is the better value.
-          Billing is in USD.
+          Care Circle is $9 per month or $60 per year, in USD.
         </p>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -76,7 +105,33 @@ export default async function PricingPage({
           </div>
         ) : null}
 
-        <div className="mt-10">
+        <section
+          aria-labelledby="compare-plans"
+          className="mt-12 border-t border-hairline pt-8"
+        >
+          <h2 id="compare-plans" className="t-title">
+            What each plan includes
+          </h2>
+          <div className="mt-6 grid gap-10 md:grid-cols-2 md:gap-16">
+            <div>
+              <p className="t-label text-muted">Free Preview</p>
+              <p className="t-heading mt-2">$0</p>
+              <p className="t-small mt-1 text-muted">For the occasional trip.</p>
+              <PlanIncludes label="Free Preview" items={FREE_INCLUDES} />
+            </div>
+            <div>
+              <p className="t-label text-muted">Care Circle</p>
+              <p className="t-heading mt-2">$9 / month</p>
+              <p className="t-small mt-1 text-muted">or $60 a year, in USD.</p>
+              <PlanIncludes label="Care Circle" items={CARE_CIRCLE_INCLUDES} />
+            </div>
+          </div>
+          <p className="t-small measure mt-6 text-muted">
+            The safety envelope, daily limits, and care card stay free on every plan.
+          </p>
+        </section>
+
+        <div className="mt-12">
           <Suspense
             fallback={
               <p className="t-small text-muted">Loading the current plans.</p>

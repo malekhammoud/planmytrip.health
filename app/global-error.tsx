@@ -23,15 +23,16 @@ export default function GlobalError({
       <body className="bg-paper text-ink">
         <main className="flex min-h-screen flex-col items-center justify-center px-5 py-16 text-center">
           <p className="t-label text-muted">PlanMyTrip.health</p>
-          <h1 className="t-title mt-3">Something went wrong</h1>
+          <h1 className="t-title mt-3">This page did not open.</h1>
           <p className="t-small mt-3 max-w-md leading-relaxed text-muted">
-            The planner hit an unrecoverable error. Nothing was submitted.
+            The page failed to load, and nothing was submitted. Try again, or open the
+            planner fresh.
           </p>
           <Button className="mt-5" onClick={() => retry()}>
             Try again
           </Button>
           <a href="/" className="t-small mt-3 inline-flex min-h-11 items-center text-accent hover:underline">
-            Return to the planner
+            Open the planner
           </a>
           {error.digest ? <p className="t-small mt-4 text-muted">Reference {error.digest}</p> : null}
         </main>

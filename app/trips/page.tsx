@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Saved trips - PlanMyTrip.health",
+  description: "Open a trip you saved, with its itinerary and safety envelope.",
 };
 
 function savedDate(value: string): string {
@@ -39,8 +40,8 @@ export default async function SavedTripsPage() {
         <p className="t-label text-muted">Account</p>
         <h1 className="t-display measure mt-3">Saved trips.</h1>
         <p className="t-body measure mt-5 text-muted">
-          These are the plans you saved while signed in. The snapshot keeps the trip,
-          the concierge plan, and the safety envelope. Live verification is not stored.
+          These are the plans you saved while signed in. Each one keeps the trip, the
+          itinerary, and the safety envelope, so you can reopen it later.
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <LinkButton href="/" variant="secondary">
@@ -68,8 +69,8 @@ export default async function SavedTripsPage() {
           <div className="mt-10 border-t border-hairline pt-6">
             <h2 className="t-title">No saved trips yet.</h2>
             <p className="t-small measure mt-2 text-muted">
-              Build a plan, then choose Save trip in the command bar. A saved trip can be
-              reopened from this page.
+              When a plan is ready, choose Save trip in the command bar. It will appear
+              here.
             </p>
           </div>
         ) : (

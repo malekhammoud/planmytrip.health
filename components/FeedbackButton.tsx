@@ -93,8 +93,8 @@ export function FeedbackButton({ className = "" }: { className?: string }) {
                   Tell us what to improve
                 </h2>
                 <p className="t-small mt-1 text-muted">
-                  Bug reports and repeated requests shape what we build. Please do not include
-                  your condition, medication, or other health details.
+                  Bug reports and repeated requests shape what we build. Please do not
+                  include personal health details.
                 </p>
               </div>
               <Button

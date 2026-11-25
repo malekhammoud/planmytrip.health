@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Account - PlanMyTrip.health",
+  description: "Manage your profile, plan, payment method, and invoices.",
 };
 
 /** Account and billing management. Clerk owns the profile, plan, and invoices. */
@@ -24,7 +25,7 @@ export default async function AccountPage() {
         <p className="t-label text-muted">Account</p>
         <h1 className="t-display measure mt-3">Your account.</h1>
         <p className="t-body measure mt-5 text-muted">
-          Manage your profile, current plan, payment method, and invoices here.
+          Manage your profile, plan, and billing here. Your saved trips have their own page.
         </p>
         <div className="mt-8">
           <Suspense

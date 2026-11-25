@@ -22,7 +22,7 @@ export default function Error({
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center px-5 py-16 text-center">
       <p className="t-label text-muted">PlanMyTrip.health</p>
-      <h1 className="t-title mt-3">The plan could not open.</h1>
+      <h1 className="t-title mt-3">This page did not open.</h1>
       <p className="t-small mt-3 max-w-md leading-relaxed text-muted">
         Something failed on our side, not on yours. Nothing you entered was lost.
         Try again, or return to the planner.

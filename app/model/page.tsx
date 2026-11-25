@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-html-link-for-pages -- account, billing, and saved-trip links deliberately use a full navigation so a stale client router cannot trap the click. */
+import type { Metadata } from "next";
 import { LogoLink } from "@/components/Logo";
 import { Callout } from "@/components/ui";
 import { MODEL_ARTIFACT, MODEL_AVAILABLE } from "@/lib/model/artifact";
@@ -11,6 +12,13 @@ import {
 
 const SAMPLE_SCORE = 72;
 const SAMPLE_CONDITION: Condition = "asthma_respiratory";
+
+export const metadata: Metadata = {
+  title: "Risk model - PlanMyTrip.health",
+  description:
+    "How PlanMyTrip.health calibrates a modeled health setback estimate from consented trip outcomes, and why the public artifact is never used for a live plan.",
+  robots: { index: false, follow: false },
+};
 
 function percent(value: number, digits = 1): string {
   return `${(value * 100).toFixed(digits)}%`;
@@ -82,9 +90,10 @@ export default function ModelPage() {
   if (!MODEL_AVAILABLE) {
     return (
       <main className="page-container py-16">
-        <h1 className="t-title">No model artifact</h1>
+        <h1 className="t-title">Model card unavailable.</h1>
         <p className="t-body mt-4 text-muted">
-          Run <span className="t-data">npm run model:train</span> to build one.
+          The model card is not available right now. The safety envelope still runs on
+          every plan.
         </p>
         <a href="/" className="t-small mt-6 inline-flex min-h-11 items-center text-accent hover:underline">
           Back to the planner
@@ -156,11 +165,11 @@ export default function ModelPage() {
 
       <main className="page-container flex-1 pt-12 md:pt-20">
         <p className="t-label text-muted">Model card</p>
-        <h1 className="t-display measure mt-3">Flare calibration</h1>
+        <h1 className="t-display measure mt-3">Risk calibration</h1>
         <p className="t-body measure mt-5 text-muted">
-          The pacing engine is the prior. This model learns the residual between its
-          modeled risk and the flare a traveler reports. It is a planning aid, not
-          medical advice.
+          The pacing engine sets a modeled risk from each trip&apos;s daily load and
+          recovery. This model learns from consented trip outcomes to adjust that
+          estimate. It is a planning aid, not medical advice.
         </p>
 
         <div className="mt-8">
@@ -188,7 +197,7 @@ export default function ModelPage() {
               <p className="t-data mt-1 text-ink">{artifact.training.n}</p>
             </div>
             <div className="border-t border-hairline pt-3">
-              <p className="t-label text-muted">Flares</p>
+              <p className="t-label text-muted">Reported setbacks</p>
               <p className="t-data mt-1 text-ink">
                 {artifact.training.events} ·{" "}
                 {percent(artifact.training.events / Math.max(1, artifact.training.n))}
@@ -259,7 +268,7 @@ export default function ModelPage() {
           </p>
           <div className="mt-5">
             <Table
-              caption="Probability of a reported flare by planned dose."
+              caption="Probability of a reported health setback by planned dose."
               headers={["Peak exposure", "Recovery 50%", "Recovery 80%", "Recovery 100%"]}
               rows={curveRows}
             />
@@ -277,7 +286,7 @@ export default function ModelPage() {
                   ? "Synthetic trips by condition."
                   : "Consented trips by condition."
               }
-              headers={["Condition", "Trips", "Flares", "Rate"]}
+              headers={["Condition", "Trips", "Setbacks", "Rate"]}
               rows={conditionRows}
             />
           </div>
@@ -292,7 +301,7 @@ export default function ModelPage() {
               synthetic
                 ? "Synthetic dose-response and synthetic outcomes."
                 : "Consented, self-reported outcomes; not a controlled cohort.",
-              "Self-reported flares are noisy; explicit negatives matter.",
+              "Self-reported setbacks are noisy; explicit negatives matter.",
               "Coefficients are predictive, not causal.",
               "A synthetic artifact never drives a live estimate.",
               "Recalibrate after any engine version change.",
@@ -314,8 +323,7 @@ export default function ModelPage() {
       <footer className="mt-16 border-t border-hairline md:mt-24">
         <div className="page-container py-6">
           <p className="t-small measure text-muted">
-            Planning aid only. Not medical advice. Confirm with your clinician and insurer
-            before you travel.
+            Planning aid only. Not medical advice.
           </p>
         </div>
       </footer>
