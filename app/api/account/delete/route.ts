@@ -21,8 +21,25 @@ function jsonError(status: number, message: string): Response {
   });
 }
 
+/** Rejects a browser request whose Origin is not this host. */
+function isSameOrigin(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (origin === null) return true;
+  const host =
+    request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  if (host === null) return false;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
 /** Deletes account-owned rows, then the Clerk account. */
-export async function POST(): Promise<Response> {
+export async function POST(request: Request): Promise<Response> {
+  if (!isSameOrigin(request)) {
+    return jsonError(403, "This request did not come from PlanMyTrip.health.");
+  }
   const { userId } = await readBilling();
   if (userId === null) return jsonError(401, "Sign in to delete your account.");
 
