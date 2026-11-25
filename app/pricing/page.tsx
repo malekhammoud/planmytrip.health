@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 const FREE_INCLUDES = [
   "Day-by-day plan and route",
   "Safety envelope with daily limits",
-  "Care card to share with your group",
+  "Care card to share with your travel group or clinician",
   "One live plan a year",
   "Trips up to 7 days",
   "One saved trip",

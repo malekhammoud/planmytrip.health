@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { CLERK_APPEARANCE } from "@/lib/clerkAppearance";
+import { signInHref } from "@/lib/redirects";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +15,18 @@ export const metadata: Metadata = {
 };
 
 /** Account and billing management. Clerk owns the profile, plan, and invoices. */
-export default async function AccountPage() {
+export default async function AccountPage({
+  params,
+}: {
+  params: Promise<{ account?: string[] }>;
+}) {
+  const segments = (await params).account ?? [];
+  const returnPath = `/account${segments
+    .filter((segment) => segment.length > 0 && segment !== "." && segment !== "..")
+    .map((segment) => `/${encodeURIComponent(segment)}`)
+    .join("")}`;
   const { userId } = await auth();
-  if (userId === null) redirect("/sign-in");
+  if (userId === null) redirect(signInHref(returnPath));
 
   return (
     <div className="flex min-h-dvh flex-col">

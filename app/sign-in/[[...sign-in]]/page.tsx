@@ -2,6 +2,7 @@ import { SignIn } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LogoLink } from "@/components/Logo";
+import { safeReturnPath } from "@/lib/redirects";
 
 export const metadata: Metadata = {
   title: "Sign in - PlanMyTrip.health",
@@ -13,7 +14,14 @@ export const metadata: Metadata = {
  * stable owner; the prebuilt Clerk form keeps password and provider handling out of the
  * product's own code.
  */
-export default function SignInPage() {
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirect_url?: string | string[] }>;
+}) {
+  const requested = (await searchParams).redirect_url;
+  const returnPath =
+    safeReturnPath(Array.isArray(requested) ? requested[0] : requested) ?? "/";
   return (
     <main className="page-container flex min-h-dvh flex-col justify-center py-12 md:py-20">
       <div className="mx-auto w-full max-w-md">
@@ -29,7 +37,8 @@ export default function SignInPage() {
               routing="path"
               path="/sign-in"
               signUpUrl="/sign-up"
-              fallbackRedirectUrl="/"
+              fallbackRedirectUrl={returnPath}
+              signUpFallbackRedirectUrl={returnPath}
             />
           </Suspense>
         </div>

@@ -2,6 +2,7 @@ import { SignUp } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LogoLink } from "@/components/Logo";
+import { safeReturnPath } from "@/lib/redirects";
 
 export const metadata: Metadata = {
   title: "Create an account - PlanMyTrip.health",
@@ -12,7 +13,14 @@ export const metadata: Metadata = {
  * The in-app sign-up screen. A successful sign-up returns to the planner, where the
  * newly created session can build and save a trip.
  */
-export default function SignUpPage() {
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirect_url?: string | string[] }>;
+}) {
+  const requested = (await searchParams).redirect_url;
+  const returnPath =
+    safeReturnPath(Array.isArray(requested) ? requested[0] : requested) ?? "/";
   return (
     <main className="page-container flex min-h-dvh flex-col justify-center py-12 md:py-20">
       <div className="mx-auto w-full max-w-md">
@@ -28,7 +36,8 @@ export default function SignUpPage() {
               routing="path"
               path="/sign-up"
               signInUrl="/sign-in"
-              fallbackRedirectUrl="/"
+              fallbackRedirectUrl={returnPath}
+              signInFallbackRedirectUrl={returnPath}
             />
           </Suspense>
         </div>

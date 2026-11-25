@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { Callout, LinkButton } from "@/components/ui";
 import { listSavedTrips } from "@/lib/db/savedTrips";
+import { signInHref } from "@/lib/redirects";
 import { CONDITION_LABELS } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ function savedDate(value: string): string {
 /** The account-owned trip list. Only summaries are read here. */
 export default async function SavedTripsPage() {
   const { userId, entitlements } = await readBilling();
-  if (userId === null) redirect("/sign-in");
+  if (userId === null) redirect(signInHref("/trips"));
 
   let trips: Awaited<ReturnType<typeof listSavedTrips>> = [];
   let failed = false;
