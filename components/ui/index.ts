@@ -50,5 +50,8 @@ export { sliderFillPercent } from "./sliderFill";
 export { StatusGlyph } from "./StatusGlyph";
 export type { StatusGlyphProps, StatusGlyphState } from "./StatusGlyph";
 
+export { TextArea } from "./TextArea";
+export type { TextAreaProps } from "./TextArea";
+
 export { TextInput } from "./TextInput";
 export type { TextInputProps } from "./TextInput";

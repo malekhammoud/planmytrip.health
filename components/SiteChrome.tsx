@@ -3,6 +3,7 @@
 
 import { UserButton } from "@clerk/nextjs";
 import { LogoLink, LogoMark } from "@/components/Logo";
+import { FeedbackButton } from "@/components/FeedbackButton";
 import { LinkButton } from "@/components/ui";
 
 const SISTER_PRODUCT_URL = "https://ismytripsafe.com";
@@ -40,6 +41,7 @@ export function SiteHeader({ publicView = false }: SiteHeaderProps) {
         {publicView ? (
           <nav aria-label="Account" className="relative z-10 flex items-center gap-2 sm:gap-3">
             <SisterProductLink className="hidden xl:inline-flex" />
+            <FeedbackButton className="hidden sm:inline-flex" />
             <a
               href="/pricing"
               className="t-small hidden min-h-11 items-center px-1 whitespace-nowrap text-muted transition-colors duration-150 hover:text-ink hover:underline sm:inline-flex"
@@ -76,6 +78,7 @@ export function SiteHeader({ publicView = false }: SiteHeaderProps) {
               Saved trips
             </a>
             <SisterProductLink className="hidden lg:inline-flex" />
+            <FeedbackButton className="hidden sm:inline-flex" />
             <UserButton />
           </nav>
         )}
@@ -115,6 +118,7 @@ export function SiteFooter() {
           >
             Model card
           </a>
+          <FeedbackButton />
           <SisterProductLink className="flex sm:hidden" />
         </div>
       </div>

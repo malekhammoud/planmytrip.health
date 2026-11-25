@@ -2,6 +2,7 @@
 
 import "./globals.css";
 import { useEffect } from "react";
+import { Button } from "@/components/ui";
 import { reportClientError } from "@/lib/ops/client";
 
 /** Last-resort boundary when the root layout itself fails. */
@@ -18,36 +19,20 @@ export default function GlobalError({
   const retry = unstable_retry ?? (() => window.location.reload());
   return (
     <html lang="en">
-      <body>
-        <main
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "2rem 1.25rem",
-            textAlign: "center",
-            fontFamily: "system-ui, sans-serif",
-            background: "#f7f5f0",
-            color: "#17212b",
-          }}
-        >
-          <p style={{ letterSpacing: "0.18em", textTransform: "uppercase", fontSize: "0.7rem", color: "#66727f" }}>
-            PlanMyTrip.health
-          </p>
-          <h1 style={{ margin: "0.8rem 0 0", fontSize: "1.6rem" }}>Something went wrong</h1>
-          <p style={{ maxWidth: "28rem", lineHeight: 1.65, color: "#66727f" }}>
+      <body className="bg-paper text-ink">
+        <main className="flex min-h-screen flex-col items-center justify-center px-5 py-16 text-center">
+          <p className="t-label text-muted">PlanMyTrip.health</p>
+          <h1 className="t-title mt-3">Something went wrong</h1>
+          <p className="t-small mt-3 max-w-md leading-relaxed text-muted">
             The planner hit an unrecoverable error. Nothing was submitted.
           </p>
-          <button
-            onClick={() => retry()}
-            style={{ marginTop: 18, borderRadius: 8, border: "1px solid #d8d3c8", padding: "8px 14px", background: "#17212b", color: "#f7f5f0", cursor: "pointer" }}
-          >
+          <Button className="mt-5" onClick={() => retry()}>
             Try again
-          </button>
-          <a href="/" style={{ marginTop: 14, color: "#2f6f5e" }}>Return to the planner</a>
-          {error.digest ? <p style={{ marginTop: 16, fontSize: 12, color: "#66727f" }}>Reference {error.digest}</p> : null}
+          </Button>
+          <a href="/" className="t-small mt-3 inline-flex min-h-11 items-center text-accent hover:underline">
+            Return to the planner
+          </a>
+          {error.digest ? <p className="t-small mt-4 text-muted">Reference {error.digest}</p> : null}
         </main>
       </body>
     </html>
