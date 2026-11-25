@@ -42,7 +42,15 @@ export default async function SignUpPage({
           </Suspense>
         </div>
         <p className="t-small measure mt-8 text-muted">
-          Planning aid only. Not medical advice. Check the details before you book.
+          By creating an account, you agree to our{" "}
+          <a href="/terms" className="text-accent hover:underline">
+            terms
+          </a>{" "}
+          and{" "}
+          <a href="/privacy" className="text-accent hover:underline">
+            privacy notice
+          </a>
+          . Planning aid only. Not medical advice.
         </p>
       </div>
     </main>
