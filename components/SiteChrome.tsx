@@ -3,6 +3,7 @@
 
 import { UserButton } from "@clerk/nextjs";
 import { LogoLink, LogoMark } from "@/components/Logo";
+import { DestinationAd } from "@/components/ads/DestinationAd";
 import { FeedbackButton } from "@/components/FeedbackButton";
 import { LinkButton } from "@/components/ui";
 
@@ -71,9 +72,15 @@ export function SiteHeader({ publicView = false }: SiteHeaderProps) {
 }
 
 /** Closing notice. Below 640px saved trips stay reachable here. */
-export function SiteFooter() {
+export function SiteFooter({ adDestination }: { adDestination?: string }) {
   return (
     <footer className="mt-16 border-t border-hairline md:mt-24">
+      <DestinationAd
+        variant="strip"
+        intent="upgrade"
+        placement="site-footer"
+        destination={adDestination}
+      />
       <div className="page-container flex flex-col gap-3 py-6 sm:flex-row sm:items-baseline sm:justify-between">
         <div className="flex items-start gap-3">
           <LogoMark size={18} className="mt-0.5 shrink-0 text-ink" />

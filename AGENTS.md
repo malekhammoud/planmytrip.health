@@ -107,6 +107,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 67. Reset documentation alignment | [x] | `docs(agents): align the reset with the final workflow` |
 | 68. Reset deployment record | [x] | `docs(agents): record the production reset deployment` |
 | 69. General relaxation default | [x] | `feat(profile): add a general relaxation default` |
+| 70. Destination house ads | [x] | `feat(ads): add destination-personalized house ads` |
 
 ## 3. Commands
 
@@ -127,6 +128,7 @@ npm run model:train         # JSONL -> lib/model/model.json + docs/MODEL_CARD.md
 npm run model:demo          # data:synthetic then model:train
 npm run cache:seed -- --run-id <id>   # seed the destination-check cache from a capture row
 npm run cache:seed -- --plan-file <json>  # seed a planner cache from a saved run
+npm run ads:report          # aggregate house-ad clicks from PLANMYTRIP_ADS_DIR
 npm run typecheck && npm test && npm run lint && npm run build   # full gate
 ```
 
@@ -179,6 +181,7 @@ host, build first, then `chown -R planmytrip:planmytrip .next` before restarting
 | `DATABASE_QUERY_TIMEOUT_MS` | Server only, Postgres pool | Per-query client timeout. Defaults to 10000; values below 1000 fall back. |
 | `PLANMYTRIP_CAPTURE_MOCK` | Server only, capture paths | Only when `1`; allows mock planner and destination runs to be stored for tests. Never enable in production. |
 | `PLANMYTRIP_FEEDBACK_DIR` | Server only, feedback route | Local JSONL fallback directory. Defaults to `/var/lib/planmytrip/feedback`; must be writable by the app user. |
+| `PLANMYTRIP_ADS_DIR` | Server only, ad-click route and report | Local JSONL fallback directory for aggregate house-ad clicks. Defaults to `/var/lib/planmytrip/ads`; must be writable by the app user. No account id, IP address, or health field is stored. |
 | `OPS_HEALTH_TOKEN` | Server only, `/api/health` | When set, the local probe requires `x-ops-token`; an empty value leaves it local-only and unauthenticated. Never expose it to the browser. |
 | `OPS_INGEST_URL` | Server only, ops and feedback routes | Local control-plane endpoint. Defaults to `http://127.0.0.1:3100`. |
 | `OPS_INGEST_TOKEN` | Server only, ops and feedback routes | Shared control-plane token. Reporting and central feedback stay disabled when empty. |
@@ -1097,6 +1100,33 @@ product captures in `components/landing/ProductShot.tsx`, and banned marketing c
 motion guard requires all six named motion classes and a reduced-motion block that switches
 them off. `design-guard-ignore` exempts a line. Twenty-two banned and five allowed fixtures
 prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.5:1 or better.
+
+### House destination advertisements
+
+`components/ads/DestinationAd.tsx` renders first-party house advertisements in three
+layouts: the landing poster, the site-footer strip, and the inline card. The footer strip is
+in `SiteFooter`, so every page that carries the closing notice also carries one labelled ad.
+Prominent placements are the landing poster, the pricing inline card, and the saved-trip list
+inline card. Sign-in and sign-up stay ad-free so the account step is not interrupted.
+
+Copy lives in `lib/ads/campaign.ts`. `plan` campaigns ask for a trip start; `upgrade`
+campaigns sell Care Circle and link to `/pricing`. A city note is used only when the
+destination's country matches the note's country, so "Paris, Texas" never borrows the Seine
+copy. Every destination gets the city name and the generic health-trip copy; no ad reads a
+health profile. `.ad-poster-city` in `globals.css` is campaign-only display type, not a
+general type class.
+
+The destination order is the current trip, then the last built destination in
+`localStorage` (`planmytrip.adDestination`), then the browser time zone, then a rotating
+featured city. No geolocation permission is requested and no inferred time zone is stored.
+The plan CTA opens the prefilled planner for a signed-in reader
+(`/?destination=<city>`) or sign-up with that planner path as the return for a visitor.
+
+Clicks are beacons to `POST /api/ads/click`. The route writes one JSONL row per click to
+`PLANMYTRIP_ADS_DIR` with destination, placement, campaign intent, layout, and CTA target.
+It stores no account id, IP address, health field, or free text; the IP is used only for an
+in-memory rate limit. Run `npm run ads:report` to print the aggregate counts. The privacy
+notice describes the local destination and the aggregate click count.
 
 ## 8. Medical safety rules
 

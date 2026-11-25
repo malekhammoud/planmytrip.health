@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AgentPlanView } from "@/components/AgentPlanView";
 import { DeleteSavedTripButton } from "@/components/DeleteSavedTripButton";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
@@ -10,6 +10,7 @@ import { Button, Callout, LinkButton } from "@/components/ui";
 import { VenueMissionControl } from "@/components/venue/VenueMissionControl";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useVenueResearch } from "@/hooks/useVenueResearch";
+import { rememberAdDestination } from "@/lib/ads/destinationMemory";
 import type { BillingEntitlements } from "@/lib/billing/plans";
 import { describeTrip } from "@/lib/describeTrip";
 import { buildHealthTripPlan } from "@/lib/healthTripEngine";
@@ -80,6 +81,11 @@ export function SavedTripView({
     travelers: saved.trip.travelers ?? 1,
     enabled: entitlements.venueResearch && venueRequested,
   });
+
+  // Keep the site-wide house ad on the same destination the reader came back to.
+  useEffect(() => {
+    rememberAdDestination(saved.trip.destination);
+  }, [saved.trip.destination]);
 
   const scrollToChecks = (): void => {
     window.setTimeout(() => {
@@ -223,7 +229,7 @@ export function SavedTripView({
           before booking.
         </p>
       </main>
-      <SiteFooter />
+      <SiteFooter adDestination={saved.trip.destination} />
     </div>
   );
 }

@@ -1175,6 +1175,28 @@ thresholds and Sun Life stability window remain VERIFY.
   used a reader proxy. Recording files and the two recording variables were removed from
   production.
 
+## House destination advertisements (2026-11-25)
+
+- **Campaign surface.** Added a first-party ad system with three layouts: a dark landing
+  poster, a site-footer strip, and a paper inline card. The footer strip appears on every page
+  with `SiteFooter`; the poster and inline cards sit on landing, pricing, and the saved-trip
+  list. Sign-in and sign-up stay ad-free.
+- **Destination personalization.** `lib/ads/campaign.ts` resolves a display city, applies a
+  curated city note only when the country matches, and otherwise keeps generic health-trip
+  copy. The destination comes from the trip, the last built destination in local storage, the
+  browser time zone, or a rotating featured city. No health profile is read and no geolocation
+  permission is requested.
+- **Click path.** Plan ads open the planner prefilled with `?destination=<city>` after
+  sign-up or directly for a signed-in reader. Care Circle ads link to `/pricing`. Plan clicks
+  and pricing clicks are separate targets.
+- **Measurement.** `POST /api/ads/click` writes aggregate JSONL rows to
+  `PLANMYTRIP_ADS_DIR` (default `/var/lib/planmytrip/ads`) with no account id, IP address, or
+  health field. `npm run ads:report` prints counts by destination, placement, intent, layout,
+  and target. The privacy notice documents the local destination and aggregate counts.
+- **Gate.** `npm run typecheck`, `npm run lint`, and `npm run build` pass. `npm test` passes
+  after the design-guard wording fix. The ad click route has isolated route tests for a valid
+  click, a cross-origin rejection, and a malformed payload.
+
 ## Next action
 
 Smoke account deletion with a real signed-in account, and confirm the `/privacy` and `/terms`

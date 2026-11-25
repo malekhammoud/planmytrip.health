@@ -11,6 +11,7 @@
 
 import { LinkButton } from "@/components/ui";
 import { LogoMark } from "@/components/Logo";
+import { DestinationAd } from "@/components/ads/DestinationAd";
 import { ProductShot } from "@/components/landing/ProductShot";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 
@@ -196,6 +197,10 @@ export function LandingPage() {
               />
             </div>
           </div>
+        </section>
+
+        <section className="page-container pb-16 md:pb-24">
+          <DestinationAd variant="poster" intent="plan" placement="landing" />
         </section>
 
         <section className="border-y border-solid border-hairline bg-sunken">

@@ -3,6 +3,7 @@ import { planLabel } from "@/lib/billing/plans";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
+import { DestinationAd } from "@/components/ads/DestinationAd";
 import { Callout, LinkButton } from "@/components/ui";
 import { listSavedTrips } from "@/lib/db/savedTrips";
 import { signInHref } from "@/lib/redirects";
@@ -150,8 +151,18 @@ export default async function SavedTripsPage({
             </div>
           </nav>
         ) : null}
+
+        <div className="mt-12">
+          <DestinationAd
+            variant="inline"
+            intent="plan"
+            placement="trips"
+            destination={trips[0]?.destination}
+            signedIn
+          />
+        </div>
       </main>
-      <SiteFooter />
+      <SiteFooter adDestination={trips[0]?.destination} />
     </div>
   );
 }

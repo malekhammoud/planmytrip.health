@@ -93,6 +93,23 @@ export default function PrivacyPage() {
             </p>
           </section>
 
+          <section aria-labelledby="privacy-promotions">
+            <h2 id="privacy-promotions" className="t-title text-ink">
+              House promotions
+            </h2>
+            <p className="t-small mt-3 text-muted">
+              PlanMyTrip.health promotions use the last destination you planned, kept in
+              your browser&apos;s local storage, or your browser&apos;s time zone to choose
+              a city. No health profile is used to choose a promotion. Clearing this
+              site&apos;s local storage removes the remembered destination.
+            </p>
+            <p className="t-small mt-3 text-muted">
+              Ad clicks are counted in aggregate by destination, placement, campaign,
+              layout, and click target. The count does not include your account id, IP
+              address, or health data.
+            </p>
+          </section>
+
           <section aria-labelledby="privacy-retention">
             <h2 id="privacy-retention" className="t-title text-ink">
               How long we keep it

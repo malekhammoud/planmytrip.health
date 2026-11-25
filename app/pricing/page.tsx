@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
+import { DestinationAd } from "@/components/ads/DestinationAd";
 import { Callout, LinkButton } from "@/components/ui";
 import { entitlementsFromHas, isPaidPlan, planLabel } from "@/lib/billing/plans";
 import { CLERK_APPEARANCE } from "@/lib/clerkAppearance";
@@ -142,6 +143,15 @@ export default async function PricingPage({
               newSubscriptionRedirectUrl="/pricing?checkout=success"
             />
           </Suspense>
+        </div>
+
+        <div className="mt-12">
+          <DestinationAd
+            variant="inline"
+            intent="plan"
+            placement="pricing"
+            signedIn={userId !== null}
+          />
         </div>
 
         <p className="t-small measure mt-10 border-t border-hairline pt-4 text-muted">

@@ -14,7 +14,8 @@
     "data:export": "tsx scripts/export-training.ts",
     "model:train": "tsx scripts/train-model.ts",
     "model:demo": "npm run data:synthetic && npm run model:train",
-    "cache:seed": "tsx scripts/seed-cache.ts"
+    "cache:seed": "tsx scripts/seed-cache.ts",
+    "ads:report": "tsx scripts/ad-report.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "7.10.7",
