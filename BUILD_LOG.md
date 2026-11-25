@@ -1112,10 +1112,9 @@ thresholds and Sun Life stability window remain VERIFY.
   trip planning for consumers. Remove medication, Sun Life insurance, pharmacy, coverage, the
   three-worker verification model, and the recording archive. Keep the safety envelope, care
   card, saved trips, venue evidence, and the consented calibration loop.
-- **Worktrees and agents.** The reset landed on `main` through 4d4a844. Separate worktrees
-  carried the core reset, backend, privacy, workspace, and destination-check work; this
-  documentation pass runs on `polish/docs` in `/tmp/opencode/pmt-docs`, based on that main.
-  No application code or tests were changed in the docs branch.
+- **Worktrees and agents.** The reset landed on `main` through 50a5db5. Separate worktrees
+  carried the core reset, backend, privacy, workspace, destination-check, onboarding, landing,
+  site, and documentation work; the docs branch changed no application code or tests.
 - **Core reset (`10b22db`).** Removed medication, insurance, pharmacy, and coverage from the
   engine input, planner prompts, dossier, cache signature, workers, copy, and tests. Replaced
   the three-worker TinyFish swarm with one destination advisory worker. Deleted
@@ -1150,27 +1149,35 @@ thresholds and Sun Life stability window remain VERIFY.
   the landing page instead of redirecting. Clerk Billing copy was updated in
   `scripts/clerk-billing.json` ("Live destination check", "Live menus and room rates") and the
   applied catalog is recorded in `docs/BILLING.md`.
-- **Docs.** AGENTS.md, AUTH.md, BILLING.md, ML.md, VENUE.md, and `.env.example` now describe
-  the consumer product, the live limits, the destination check, account deletion, privacy,
-  and the removed recording surface. This section is the reset's build record.
-- **Gate.** `npm run typecheck`, `npm test`, and `npm run lint` pass on the docs branch. The
-  suite reports 683 tests: 644 passed and 39 skipped without `DATABASE_URL`. The docs branch
-  does not change runtime behavior.
-- **Build and deploy.** The safe deploy script is the release step. This docs branch has not
-  been deployed; production deploy remains pending until the branch is merged and the safe
-  deploy is run and verified. Do not record a successful deploy before that check.
+- **Final polish (`19689ee`, `f8d4180`, `490648d`, `b30f09e`).** Clarified that clearing local
+  storage does not delete an anonymous capture already stored, kept hospital guidance to the
+  first day instead of every checkpoint, linked the terms and privacy notice from sign-up,
+  and aligned the investor deck with the consumer product. The docs branch was then merged.
+- **Docs.** AGENTS.md, AUTH.md, BILLING.md, ML.md, VENUE.md, PITCH.md, and `.env.example` now
+  describe the consumer product, the live limits, the destination check, account deletion,
+  privacy, and the removed recording surface. This section is the reset's build record.
+- **Gate.** `npm run typecheck`, `npm test`, and `npm run lint` pass. The suite reports 683
+  tests: 644 passed and 39 skipped without `DATABASE_URL`. `next build` also passes.
+- **Build and deploy.** `main` was pushed to `origin` and
+  `/usr/local/bin/planmytrip-deploy.sh --force` reported deploy OK at 2026-11-25 04:44. The
+  service is active, `.deploy-sha` is 50a5db5, and the local health probe returns `ok` with
+  database, TinyFish, Clerk, OpenCode, and cache checks true. `/`, `/pricing`, `/privacy`,
+  `/terms`, `/sign-up`, `/model`, and `/pitch` return 200 on the local probe; external reader
+  fetches of `/` and `/pricing` show the new copy. Host-originated HTTPS checks are blocked by
+  the ops nginx ban list for this server's own IP, so external verification used a reader
+  proxy. Recording files and the two recording variables were removed from production.
 
 ## Next action
 
-Merge this docs branch, run the safe deploy script, and confirm the release. Smoke the new
-public `/privacy` and `/terms` pages and account deletion in production. Run one
-live 7-agent planner pass plus the single destination check and record the completed and failed
-agents, the advisory findings, and the wall clock. Run a real Care Circle checkout with a card
-and verify the session plan, a 20-day plan, the live destination check, venue research, and
-unlimited saved trips. Get legal review of privacy and terms before a paid pilot. Run the
+Smoke account deletion with a real signed-in account, and confirm the `/privacy` and `/terms`
+pages in a normal browser at 390px and 1280px. Run one live 7-agent planner pass plus the
+single destination check and record the completed and failed agents, the advisory findings, and
+the wall clock. Run a real Care Circle checkout with a card and verify the session plan, a
+20-day plan, the live destination check, venue research, unlimited saved trips, and the
+account-deletion path. Get legal review of privacy and terms before a paid pilot. Run the
 database-backed billing reservation and account-deletion tests against staging PostgreSQL.
-Clean up any old recording files and remove `TINYFISH_RECORDING` and
-`PLANMYTRIP_RECORDINGS_DIR` from production environments. Confirm the monthly toggle is
-acceptable or enable Clerk's Annual-only plans update and set `amount` to `0`. Decide whether
-the $29 one-time Trip Pass needs Stripe Checkout. Measure conversion, compute cost per paid
-trip, cancellation reasons, and renewal intent.
+Confirm the monthly toggle is acceptable or enable Clerk's Annual-only plans update and set
+`amount` to `0`. Decide whether the $29 one-time Trip Pass needs Stripe Checkout. Measure
+conversion, compute cost per paid trip, cancellation reasons, and renewal intent. Review the
+host-originated nginx ban entry for this server's own IP so operators can run public HTTPS
+smoke checks without a proxy.

@@ -104,6 +104,8 @@ and this file agree at that commit. Only the orchestrator commits.
 | 64. Sign-up legal links | [x] | `fix(auth): link terms and privacy on sign-up` |
 | 65. Investor deck alignment | [x] | `docs(pitch): align the investor deck with the consumer reset` |
 | 66. Consumer reset documentation | [x] | `docs(agents): document the consumer product reset` |
+| 67. Reset documentation alignment | [x] | `docs(agents): align the reset with the final workflow` |
+| 68. Reset deployment record | [x] | `docs(agents): record the production reset deployment` |
 
 ## 3. Commands
 
@@ -192,8 +194,8 @@ host, build first, then `chown -R planmytrip:planmytrip .next` before restarting
 authenticated for live planning; `AGENT_MOCK=1` needs neither a key nor a service. Production
 keeps database, Clerk, and provider secrets in `/etc/planmytrip.env`, and leaves the cache
 enabled. The recording archive and its `TINYFISH_RECORDING` / `PLANMYTRIP_RECORDINGS_DIR`
-variables were removed; if the production environment or disk still carries either, delete
-them as operator cleanup. The production Clerk application is
+variables were removed from production on 2026-11-25; no recording files or variables remain.
+The production Clerk application is
 `app_3MR7sJ2fhslkGXYl4yRqjseO13C`; its production domain uses the same-origin Frontend API
 proxy at `https://planmytrip.health/__clerk`. Dashboard sign-in does not authenticate the
 Clerk CLI; run `npx -y clerk@latest auth login` on the host before targeting account-level CLI
@@ -1325,8 +1327,8 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. At `4d4a844` the suite has 683 tests: 644
-pass and 39 skip without `DATABASE_URL`. Database-backed files skip when `DATABASE_URL` is
+`npm test` runs Vitest once in a Node environment. The suite has 683 tests: 644 pass and 39
+skip without `DATABASE_URL`. Database-backed files skip when `DATABASE_URL` is
 absent. `tests/mocks/clerk-server.ts` replaces
 `@clerk/nextjs/server` in Vitest so route handlers can run outside Next's server boundary;
 proxy and Clerk provider behavior are covered by a production build and live request checks,
@@ -1440,9 +1442,9 @@ exempting lines.
 - Anonymous research captures are not linked to the Clerk account, so account deletion cannot
   remove them. The privacy page explains this and tells the reader to clear local storage or
   contact support. A retention and deletion path for captures is still required.
-- Existing recording files and `TINYFISH_RECORDING` / `PLANMYTRIP_RECORDINGS_DIR` values need
-  operator cleanup. The app no longer reads either variable, serves `/api/recordings`, or
-  archives a video; old files are not deleted automatically.
+- The recording files and `TINYFISH_RECORDING` / `PLANMYTRIP_RECORDINGS_DIR` values were
+  removed from production on 2026-11-25. The app no longer reads either variable, serves
+  `/api/recordings`, or archives a video.
 - Saved-trip pagination has no total count. `/trips` reads one sentinel row to offer Older and
   Newer, so the page says "Page n" without a total and an empty page can only link back.
 - A full live 7-agent planner pass plus the single destination check has not been run together
