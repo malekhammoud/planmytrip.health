@@ -2,9 +2,11 @@
  * The public landing page.
  *
  * Inputs: no data; the page reads as a server component and renders real product captures.
- * Outputs: the marketing narrative, product shots, proof points, and the account CTA.
- * Invariants: every screenshot is a real capture of this app with sample data; every claim
- * matches the shipped product; the safety disclaimer stays visible in the footer.
+ * Outputs: the consumer positioning, the five health profiles, the product pillars, the
+ * plan contents, the modeled safety envelope, how it works, and the account CTA.
+ * Invariants: every screenshot is a real capture of this app with sample data and is only
+ * cropped, never staged; every claim matches the shipped product; modeled figures keep their
+ * label; the planning-aid notice stays in the site footer.
  */
 
 import { LinkButton } from "@/components/ui";
@@ -12,47 +14,119 @@ import { LogoMark } from "@/components/Logo";
 import { ProductShot } from "@/components/landing/ProductShot";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 
+const PROFILES = [
+  {
+    name: "Breathing and asthma",
+    copy:
+      "The plan paces walking and recovery around air quality, altitude, and a clear step ceiling.",
+  },
+  {
+    name: "Fatigue and POTS",
+    copy: "Shorter blocks and longer recovery, so the day ends before your energy does.",
+  },
+  {
+    name: "Second-trimester pregnancy",
+    copy: "Rest, heat, and food safety are built into each day, not left to a checklist.",
+  },
+  {
+    name: "Food allergy",
+    copy:
+      "Menus are checked live where possible, so you can read the kitchen's own notes.",
+  },
+  {
+    name: "Heart health and blood pressure",
+    copy:
+      "Moderate days, midday recovery, and altitude limits are set before the route is built.",
+  },
+] as const;
+
 const PILLARS = [
   {
     number: "01",
-    title: "A ceiling, not a guess.",
+    title: "A pace that holds.",
     copy:
-      "The biological engine turns a condition into daily step and walking limits, required recovery, and a modeled score. The agents plan inside those limits; they cannot lift them.",
+      "Daily step and walking ceilings shape the day. Recovery is scheduled, not squeezed in at the end.",
   },
   {
     number: "02",
-    title: "Seven specialists, one plan.",
+    title: "A route that fits the day.",
     copy:
-      "Stay, table, trail, culture, transit, and care agents research in parallel. A lead concierge sequences their verified picks into days that fit the trip.",
+      "Stops are ordered by distance, transport matches the day, and every route hands off to Google Maps.",
   },
   {
     number: "03",
-    title: "Live pages, checked now.",
+    title: "Places checked live.",
     copy:
-      "TinyFish opens real menus and booking pages in real browsers. Every dish and rate keeps its source and checked time, so the plan reflects the page today.",
+      "Menus and room rates are read from the real page. Every fact keeps its source and checked time.",
   },
-];
+] as const;
+
+const PLAN_CONTENTS = [
+  {
+    term: "Day-by-day plan",
+    detail: "A paced itinerary with a reason behind each block.",
+  },
+  {
+    term: "Numbered map",
+    detail: "Every stop in order, with one route line per day.",
+  },
+  {
+    term: "Safety envelope",
+    detail: "Step and walking ceilings, recovery, and a daily checkpoint.",
+  },
+  {
+    term: "Live venue evidence",
+    detail: "Checked menus and room rates with source and checked time.",
+  },
+  {
+    term: "Care card",
+    detail: "A plain-text summary of the plan and its daily checkpoints.",
+  },
+  {
+    term: "Saved trips",
+    detail: "Reopen the plan from your account whenever you need it.",
+  },
+] as const;
+
+const SAFETY_ROWS = [
+  {
+    term: "Daily step ceiling",
+    detail: "A firm cap that comes from your health profile.",
+  },
+  {
+    term: "Walking ceiling",
+    detail: "Measured in kilometres, not optimistic step counts.",
+  },
+  {
+    term: "Recovery",
+    detail: "A scheduled block, not an optional extra.",
+  },
+  {
+    term: "Checkpoint",
+    detail: "What to notice on each day of the trip.",
+  },
+] as const;
 
 const STEPS = [
   {
     number: "01",
-    title: "Tell us what matters.",
+    title: "Tell us the trip and your health profile.",
     copy:
-      "Destination, dates, condition, medication, budget, and how you want to get around. Autocomplete, current location, and a map pin do the geography.",
+      "Destination, dates, budget, and how you get around. Then the health details that shape each day.",
   },
   {
     number: "02",
-    title: "Let the team research.",
+    title: "The team researches and paces it.",
     copy:
-      "Six specialists gather verified places while the engine sets each day's ceiling. The concierge turns the research into one sequenced route.",
+      "Specialists find places and check the live pages. The engine sets each day's ceiling, and the plan is sequenced inside it.",
   },
   {
     number: "03",
-    title: "Travel inside the limit.",
+    title: "Travel with the plan, map, and care card.",
     copy:
-      "Open the numbered map, the day-by-day route, the safety envelope, and the care card. Save the trip and reopen it when you need it.",
+      "Open the day-by-day route, the numbered map, and the safety envelope. Save it and carry the care card.",
   },
-];
+] as const;
 
 /** The public home page for signed-out visitors. */
 export function LandingPage() {
@@ -64,90 +138,85 @@ export function LandingPage() {
         <section className="page-container pb-16 pt-12 md:pb-24 md:pt-20">
           <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
             <div className="min-w-0">
-              <p className="t-label text-muted">Health-first travel planning</p>
-              <h1 className="t-display mt-4 max-w-[15ch] text-ink">
-                The only <span className="whitespace-nowrap">health-focused</span> trip planner.
+              <p className="t-label text-muted">Health-aware trip planning</p>
+              <h1 className="t-display mt-4 max-w-[14ch] text-ink">
+                Travel well, on your own terms.
               </h1>
               <p className="t-body measure mt-6 text-muted">
-                Plan around your condition, your pacing, and what you can actually do each
-                day. Seven specialists build the route. A deterministic engine keeps the
-                ceiling. TinyFish checks the live menus and room rates.
+                Tell us where you want to go and what your health needs from a day. You get a
+                paced itinerary, a real route, live-checked places, and a clear safety envelope.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <LinkButton
-                  variant="primary"
-                  href="/sign-up"
-                  external={false}
-                >
-                  Plan a trip
+                <LinkButton variant="primary" href="/sign-up" external={false}>
+                  Plan my trip
                 </LinkButton>
-                <LinkButton
-                  variant="secondary"
-                  href="/pricing"
-                  external={false}
-                >
-                  See plans
+                <LinkButton variant="secondary" href="#how-it-works" external={false}>
+                  How it works
                 </LinkButton>
               </div>
-              <p className="t-data-sm mt-6 text-muted">
-                Account required · Planning aid, not medical advice
-              </p>
+              <p className="t-data-sm mt-6 text-muted">Account required · Safety is free</p>
             </div>
 
             <div className="min-w-0">
               <ProductShot
-                src="/landing/venue-detail.webp"
-                alt="The PlanMyTrip.health venue research deck showing four checked pages, a hotel rate of 199 dollars a night, and three menus with 12 items each."
+                src="/landing/route-detail.webp"
+                alt="The PlanMyTrip.health route view: a numbered map of London with a dashed day route, modeled travel distance and time, and the ordered stops for the day."
                 width={1200}
-                height={1067}
+                height={1245}
+                crop={{ aspect: "1200 / 915", position: "bottom" }}
                 priority
                 sizes="(min-width: 1024px) 54vw, 100vw"
-                caption="Checked venue evidence · London, Ontario · 4 days"
+                caption="The route · numbered stops, modeled travel time, and a Google Maps handoff."
               />
             </div>
           </div>
         </section>
 
         <section className="border-y border-solid border-hairline bg-sunken">
-          <div className="page-container grid gap-8 py-8 md:grid-cols-3 md:py-10">
-            <div>
-              <p className="t-metric text-ink">45.1%</p>
-              <p className="t-small mt-2 measure text-muted">
-                of Canadians live with at least one major chronic disease.
-              </p>
+          <div className="page-container py-16 md:py-24">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-end">
+              <div>
+                <p className="t-label text-muted">Who it&apos;s for</p>
+                <h2 className="t-title mt-2 text-ink">Built for the way you travel.</h2>
+              </div>
+              <div className="lg:justify-self-end">
+                <p className="t-heading measure text-ink">
+                  Your health is part of the itinerary, not a disclaimer.
+                </p>
+                <p className="t-small measure mt-2 text-muted">
+                  Choose the health profile that fits you. The plan changes its pace, recovery,
+                  and checkpoints to match.
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="t-metric text-ink">1 in 12</p>
-              <p className="t-small mt-2 measure text-muted">
-                live with three or more. The trip has to fit all of them.
-              </p>
-            </div>
-            <div>
-              <p className="t-metric text-ink">0 / 5</p>
-              <p className="t-small mt-2 measure text-muted">
-                major travel planners asked for a health condition in our review.
-              </p>
-            </div>
-          </div>
-          <div className="page-container pb-6">
-            <p className="t-data-sm text-muted">
-              Statistics Canada, 2021 · AARP, 2026 · PlanMyTrip.health review of Google Travel,
-              Tripadvisor, Expedia, Booking.com, and Kayak, 2026.
-            </p>
+
+            <ol className="mt-10 list-none border-t border-solid border-hairline-strong p-0">
+              {PROFILES.map((profile, index) => (
+                <li
+                  key={profile.name}
+                  className="grid gap-2 border-b border-solid border-hairline py-4 md:grid-cols-[2.5rem_minmax(0,0.5fr)_minmax(0,1fr)] md:items-baseline md:gap-6"
+                >
+                  <p className="t-data text-accent">
+                    {String(index + 1).padStart(2, "0")}
+                  </p>
+                  <h3 className="t-heading text-ink">{profile.name}</h3>
+                  <p className="t-small measure text-muted">{profile.copy}</p>
+                </li>
+              ))}
+            </ol>
           </div>
         </section>
 
         <section className="page-container py-16 md:py-24">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
             <div>
-              <p className="t-label text-muted">What is different</p>
+              <p className="t-label text-muted">What makes it different</p>
               <h2 className="t-title mt-2 text-ink">
-                Built around the body, not the itinerary.
+                A plan with a pace, a route, and proof.
               </h2>
               <p className="t-body measure mt-4 text-muted">
-                A beautiful plan is not a safe plan. The engine owns the daily limit; the
-                concierge owns the sequence. The interface shows both, so the traveler can
-                see why a day is shaped the way it is.
+                A list of places is not a day. This plan sets the pace, orders the route, and
+                checks the pages you will use.
               </p>
             </div>
             <ol className="list-none p-0">
@@ -175,113 +244,99 @@ export function LandingPage() {
             <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-2">
               <div>
                 <p className="t-label text-muted">Inside the plan</p>
-                <h2 className="t-title mt-2 text-ink">One page. Every detail in place.</h2>
+                <h2 className="t-title mt-2 text-ink">One page, from first day to last.</h2>
               </div>
               <p className="t-data-sm text-muted">
                 Sample trip · London, Ontario · 4 days
               </p>
             </div>
 
-            <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+            <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] lg:gap-12">
               <ProductShot
-                src="/landing/route-detail.webp"
-                alt="A day in the PlanMyTrip.health route: four day tabs, a numbered London map with ten places, travel distance and time, and the ordered stops for day one."
+                src="/landing/venue-detail.webp"
+                alt="The PlanMyTrip.health venue checks view with a room rate and checked menu counts for four London places, each with its source and checked state."
                 width={1200}
-                height={1245}
-                sizes="(min-width: 1024px) 42vw, 100vw"
-                caption="A route that fits the day · numbered stops, chosen transport, Google Maps handoff."
+                height={1067}
+                crop={{ aspect: "1200 / 827", position: "bottom" }}
+                sizes="(min-width: 1024px) 54vw, 100vw"
+                caption="Live page checks · a room rate and menus, each with its source · London, Ontario"
               />
 
-              <div className="flex flex-col gap-8">
-                <ProductShot
-                  src="/landing/safety-envelope.webp"
-                  alt="The PlanMyTrip.health safety envelope: a health safety score of 72 out of 100, a daily step ceiling of 7,000, and a modeled flare risk reduction of 59 percent."
-                  width={1200}
-                  height={648}
-                  sizes="(min-width: 1024px) 50vw, 100vw"
-                  caption="The safety envelope · modeled ceilings, recovery, and a checkpoint for every day."
-                />
-
-                <div className="border-t border-solid border-hairline-strong pt-4">
-                  <h3 className="t-label text-muted">Also in every plan</h3>
-                  <dl className="mt-2">
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-solid border-hairline py-2">
-                      <dt className="t-data-sm text-ink">Saved trips</dt>
-                      <dd className="t-data-sm text-muted">
-                        Account-owned snapshots, ready to reopen.
-                      </dd>
+              <div>
+                <h3 className="t-label text-muted">What you get</h3>
+                <dl className="mt-3 border-t border-solid border-hairline-strong">
+                  {PLAN_CONTENTS.map((item) => (
+                    <div
+                      key={item.term}
+                      className="border-b border-solid border-hairline py-3"
+                    >
+                      <dt className="t-data-sm text-ink">{item.term}</dt>
+                      <dd className="t-small mt-1 text-muted">{item.detail}</dd>
                     </div>
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-solid border-hairline py-2">
-                      <dt className="t-data-sm text-ink">Care card</dt>
-                      <dd className="t-data-sm text-muted">
-                        Plain text for a clinician and an insurer.
-                      </dd>
-                    </div>
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2">
-                      <dt className="t-data-sm text-ink">Live sources</dt>
-                      <dd className="t-data-sm text-muted">
-                        A URL and checked time with every fact.
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
+                  ))}
+                </dl>
               </div>
             </div>
           </div>
         </section>
 
         <section className="page-container py-16 md:py-24">
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
             <div>
-              <p className="t-label text-muted">Safety first</p>
+              <p className="t-label text-muted">The safety envelope</p>
               <h2 className="t-title mt-2 text-ink">Every day has a ceiling.</h2>
               <p className="t-body measure mt-4 text-muted">
-                Five condition profiles map to a step ceiling, a walking ceiling, required
-                recovery, and a modeled score. Day one is paced at 45% of the ceiling, middle
-                days at 80%, and the final day at 40%. A live check can only tighten the
-                envelope, never widen it.
+                Your health profile sets a daily step ceiling, a walking ceiling, and required
+                recovery. The plan is built inside them.
+              </p>
+              <p className="t-data-sm mt-3 text-muted">
+                Modeled estimate · Health Safety Score and risk reduction
               </p>
             </div>
             <dl className="grid grid-cols-1 gap-0 border-t border-solid border-hairline-strong sm:grid-cols-2">
-              <div className="border-b border-solid border-hairline py-3 sm:pr-6">
-                <dt className="t-label text-muted">Daily step ceiling</dt>
-                <dd className="t-data mt-1 text-ink">
-                  A hard limit from the condition profile
-                </dd>
-              </div>
-              <div className="border-b border-solid border-hairline py-3 sm:pl-6">
-                <dt className="t-label text-muted">Walking ceiling</dt>
-                <dd className="t-data mt-1 text-ink">
-                  Measured in kilometres, not optimistic steps
-                </dd>
-              </div>
-              <div className="border-b border-solid border-hairline py-3 sm:pr-6">
-                <dt className="t-label text-muted">Recovery</dt>
-                <dd className="t-data mt-1 text-ink">
-                  A required block, not a suggestion
-                </dd>
-              </div>
-              <div className="border-b border-solid border-hairline py-3 sm:pl-6">
-                <dt className="t-label text-muted">Checkpoint</dt>
-                <dd className="t-data mt-1 text-ink">
-                  What to watch, every day of the trip
-                </dd>
-              </div>
+              {SAFETY_ROWS.map((row, index) => (
+                <div
+                  key={row.term}
+                  className={`border-b border-solid border-hairline py-3 ${
+                    index % 2 === 0 ? "sm:pr-6" : "sm:pl-6"
+                  }`}
+                >
+                  <dt className="t-label text-muted">{row.term}</dt>
+                  <dd className="t-data mt-1 text-ink">{row.detail}</dd>
+                </div>
+              ))}
             </dl>
           </div>
+
+          <ProductShot
+            className="mt-10"
+            src="/landing/safety-envelope.webp"
+            alt="The PlanMyTrip.health safety envelope: a modeled health safety score of 72 out of 100, a daily step ceiling of 7,000 steps, and a modeled risk reduction of 59 percent."
+            width={1200}
+            height={648}
+            crop={{ aspect: "1200 / 410", position: "bottom" }}
+            sizes="(min-width: 1200px) 1120px, 100vw"
+            caption="The safety envelope · a modeled score, a daily step ceiling, and a modeled risk reduction."
+          />
         </section>
 
-        <section className="border-y border-solid border-hairline bg-sunken">
+        <section
+          id="how-it-works"
+          className="scroll-mt-20 border-y border-solid border-hairline bg-sunken"
+        >
           <div className="page-container py-16 md:py-24">
             <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-2">
               <div>
                 <p className="t-label text-muted">How it works</p>
-                <h2 className="t-title mt-2 text-ink">One plan, three moves.</h2>
+                <h2 className="t-title mt-2 text-ink">
+                  From a destination to a plan you can hold.
+                </h2>
               </div>
               <p className="t-data-sm text-muted">
-                From a blank page to a plan you can hold.
+                A new live plan takes a few minutes. Repeat destinations open from cache.
               </p>
             </div>
+
             <div className="mt-8 grid gap-6 md:grid-cols-3">
               {STEPS.map((step) => (
                 <div
@@ -301,16 +356,19 @@ export function LandingPage() {
           <div className="grid gap-10 border-t border-solid border-ink pt-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
             <div>
               <p className="t-label text-muted">Ready when you are</p>
-              <h2 className="t-title mt-2 max-w-[18ch] text-ink">
-                Plan the trip you can actually take.
+              <h2 className="t-title mt-2 max-w-[20ch] text-ink">
+                Start with a destination. We&apos;ll fit the days around you.
               </h2>
               <p className="t-body measure mt-4 text-muted">
-                Start with where you want to go. The engine and the team handle the rest.
-                Save the plan, share the care card, and travel inside the ceiling.
+                Build a paced plan, check the live pages, and carry the safety envelope and care
+                card with you.
+              </p>
+              <p className="t-small mt-3 text-muted">
+                Safety is free. Live checks and longer trips are in Care Circle.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 <LinkButton variant="primary" href="/sign-up" external={false}>
-                  Plan a trip
+                  Plan my trip
                 </LinkButton>
                 <LinkButton variant="secondary" href="/pricing" external={false}>
                   See plans

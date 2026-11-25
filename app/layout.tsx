@@ -10,9 +10,16 @@ import "leaflet/dist/leaflet.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PlanMyTrip.health — the health-first trip planner",
+  title: "PlanMyTrip.health — health-aware trip planning",
   description:
-    "Plan a trip around a medical condition. A deterministic pacing engine, seven specialist agents, and TinyFish browser checks for live menus, room rates, and travel risk.",
+    "A paced day-by-day plan, a real route, live-checked places, and a clear safety envelope. Plan a trip that fits your health, energy, and budget. Planning aid only, not medical advice.",
+  openGraph: {
+    title: "PlanMyTrip.health — travel well, on your own terms",
+    description:
+      "A paced itinerary, a real route, live-checked venues, and a safety envelope built around your health profile.",
+    siteName: "PlanMyTrip.health",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

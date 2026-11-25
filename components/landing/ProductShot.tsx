@@ -5,7 +5,7 @@
  * Outputs: a responsive `next/image` inside a hairline frame.
  * Invariants: this is the only component allowed to render a raster image. The assets are
  * real captures of PlanMyTrip.health with sample data, never stock photography, illustration,
- * or a fabricated UI. Every image keeps its intrinsic aspect ratio.
+ * or a fabricated UI. Every image keeps its proportions; an optional crop only trims the frame.
  */
 
 import Image from "next/image";
@@ -22,6 +22,12 @@ export interface ProductShotProps {
   className?: string;
   imageClassName?: string;
   caption?: ReactNode;
+  /**
+   * An optional crop window over the capture, expressed as a CSS aspect ratio.
+   * It trims retired interface chrome from an otherwise real screenshot; the
+   * image is never stretched. `position` defaults to center.
+   */
+  crop?: { aspect: string; position?: string };
 }
 
 /** One framed product capture with an optional caption. */
@@ -35,10 +41,14 @@ export function ProductShot({
   className,
   imageClassName,
   caption,
+  crop,
 }: ProductShotProps) {
   return (
     <figure className={className}>
-      <div className="overflow-hidden rounded-frame border border-solid border-hairline-strong bg-paper">
+      <div
+        className="overflow-hidden rounded-frame border border-solid border-hairline-strong bg-paper"
+        style={crop === undefined ? undefined : { aspectRatio: crop.aspect }}
+      >
         <Image
           src={src}
           alt={alt}
@@ -46,7 +56,8 @@ export function ProductShot({
           height={height}
           priority={priority}
           sizes={sizes}
-          className={`h-auto w-full ${imageClassName ?? ""}`}
+          className={`${crop === undefined ? "h-auto" : "h-full object-cover"} w-full ${imageClassName ?? ""}`}
+          style={crop === undefined ? undefined : { objectPosition: crop.position ?? "center" }}
         />
       </div>
       {caption === undefined ? null : (
