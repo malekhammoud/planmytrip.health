@@ -207,11 +207,10 @@ export function PlanWorkspace({
             ? `${completed}/${specialistTotal} in · route forming`
             : "Sessions opening";
 
-  // Only the surface carrying the live work opens by default. The route stage leads
-  // while composing; the destination check takes over while it runs; the route returns
-  // when checks settle. The safety envelope opens with the finished plan, and checked
-  // places open while those pages run or when the plan summary asks for them.
-  const routeActive = stage === "ready" && !checksLive;
+  // The route is the finished product, so it stays open once the plan is ready. The
+  // destination check and checked places open while they run, and the safety envelope
+  // opens with the plan. Settled surfaces can be reopened from their headers or the dock.
+  const routeActive = stage === "ready";
   const teamActive =
     stage === "starting" || stage === "researching" || stage === "composing";
   const checksActive = checksLive;

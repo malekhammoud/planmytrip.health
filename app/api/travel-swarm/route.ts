@@ -54,7 +54,7 @@ function rateLimitError(reason: ConcurrencyDenialReason, retryAfterSec: number):
     reason === "cooldown"
       ? "A live check just finished. Wait a few seconds and try again."
       : reason === "global"
-        ? "Live verification is busy right now. Try again in a moment."
+        ? "Live destination checks are busy right now. Try again in a moment."
         : "A live check is already running for this account. Try again in a moment.";
   const response = jsonError(429, message, "rate_limited");
   response.headers.set("Retry-After", String(Math.max(1, Math.trunc(retryAfterSec))));
@@ -65,12 +65,12 @@ function rateLimitError(reason: ConcurrencyDenialReason, retryAfterSec: number):
 export async function POST(request: Request): Promise<Response> {
   const { userId, entitlements } = await readBilling();
   if (userId === null) {
-    return jsonError(401, "Sign in to start live verification.");
+    return jsonError(401, "Sign in to start a destination check.");
   }
   if (!entitlements.liveVerification) {
     return jsonError(
       403,
-      "Live verification is included in Care Circle. Upgrade to run the browser checks.",
+      "Live destination checks are included in Care Circle. Upgrade to check your destination.",
       "upgrade_required",
     );
   }
@@ -107,7 +107,7 @@ export async function POST(request: Request): Promise<Response> {
     if (liveChecksDisabled()) {
       return jsonError(
         503,
-        "Live verification is paused right now. Cached checks still replay.",
+        "Live destination checks are paused right now. Cached checks still replay.",
         "live_disabled",
       );
     }

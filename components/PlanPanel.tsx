@@ -245,14 +245,15 @@ export function PlanPanel({
               : "The pacing and safety envelope below is still available for this trip."}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button variant="secondary" onClick={onRetry}>
-              Try again
-            </Button>
             {planLimit ? (
-              <LinkButton href="/pricing" variant="ghost">
+              <LinkButton href="/pricing" variant="secondary">
                 See plans
               </LinkButton>
-            ) : null}
+            ) : (
+              <Button variant="secondary" onClick={onRetry}>
+                Try again
+              </Button>
+            )}
           </div>
         </Callout>
       </div>

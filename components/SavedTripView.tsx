@@ -24,15 +24,26 @@ function savedDate(value: string): string {
 
 function venueStatusLine(
   requested: boolean,
-  status: "idle" | "running" | "complete" | "error",
-  checked: number,
+  state: ReturnType<typeof useVenueResearch>["state"],
 ): string {
   if (!requested) return "Not checked on this page yet";
-  if (status === "running") return "Checking current pages";
-  if (status === "complete") {
-    return `${checked} ${checked === 1 ? "page" : "pages"} checked`;
+  const total = state.order.length;
+  const checked = state.order.filter((id) => {
+    const worker = state.workers[id];
+    return (
+      worker !== undefined &&
+      (worker.phase === "complete" || worker.phase === "error")
+    );
+  }).length;
+  if (state.status === "running") {
+    return total > 0
+      ? `Checking ${checked} of ${total} ${total === 1 ? "page" : "pages"}`
+      : "Checking current pages";
   }
-  if (status === "error") return "Needs a retry";
+  if (state.status === "complete") {
+    return `${checked} of ${total} ${total === 1 ? "page" : "pages"} checked`;
+  }
+  if (state.status === "error") return "Needs a retry";
   return "Ready to check";
 }
 
@@ -153,11 +164,7 @@ export function SavedTripView({
               Checked places
             </h2>
             <p className="t-data-sm text-muted">
-              {venueStatusLine(
-                venueRequested,
-                venue.state.status,
-                venue.evidence.length,
-              )}
+              {venueStatusLine(venueRequested, venue.state)}
             </p>
           </div>
           {entitlements.venueResearch ? (

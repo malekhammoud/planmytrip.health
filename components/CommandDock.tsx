@@ -1,8 +1,8 @@
 /**
- * Mobile workspace dock: five section anchors with live badges.
+ * Mobile workspace dock: six section anchors with live badges.
  *
  * Inputs: whether the planner and verification streams are running.
- * Outputs: a fixed bottom bar below 1024px that jumps to the five mounted workspace
+ * Outputs: a fixed bottom bar below 1024px that jumps to the six mounted workspace
  * sections. Each item is a real anchor, so the page keeps one scroll and no panel is
  * unmounted by navigation.
  * Invariants: 44px targets, no horizontal overflow at 375px, badges appear only while
@@ -61,10 +61,11 @@ export function CommandDock({
 
   const items: DockItem[] = [
     { id: "trip-route", label: "Route" },
-    { id: "research-team", label: "Research", live: plannerLive },
-    { id: "checked-places", label: "Checked places", live: venueLive },
+    { id: "research-team", label: "Team", live: plannerLive },
+    { id: "checked-places", label: "Places", live: venueLive },
+    { id: "destination-check", label: "Check", live: checksLive },
     { id: "pacing-safety", label: "Safety" },
-    { id: "activity", label: "Activity", live: plannerLive || checksLive || venueLive },
+    { id: "activity", label: "Feed", live: plannerLive || checksLive || venueLive },
   ];
 
   return (
@@ -72,7 +73,7 @@ export function CommandDock({
       aria-label="Workspace sections"
       className="command-dock fixed inset-x-0 bottom-0 z-20 border-t border-solid border-hairline-strong bg-paper lg:hidden"
     >
-      <ul className="page-container m-0 grid list-none grid-cols-5 gap-1 p-1">
+      <ul className="page-container m-0 grid list-none grid-cols-6 gap-1 p-1">
         {items.map((item) => (
           <li key={item.id} className="min-w-0">
             <a
