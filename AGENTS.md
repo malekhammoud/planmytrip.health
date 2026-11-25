@@ -1115,12 +1115,15 @@ and `AnalyticsAuth` live in the root layout; `CheckoutAnalytics` marks a complet
 `/pricing`. Public paths map to `/`, `/pricing`, `/privacy`, `/terms`, `/sign-in`, `/sign-up`;
 account, saved-trip, and workspace paths map to `/app`.
 
-The event vocabulary covers pageviews, scroll depth, CTA clicks, `ad_clicked`,
+The event vocabulary covers pageviews, scroll depth, CTA clicks, `campaign_landing`,
 `plan_build_started`, `trip_saved`, `feedback_opened`, `feedback_submitted`, `checkout_success`,
-and the auth completion events. Ad anchors carry `data-cta` and `data-surface`, so the funnel
-can connect an ad placement to sign-up, plan build, saved trip, and checkout without putting a
-destination, health field, account id, email, or free text in an event. The privacy notice
-documents the PostHog browser identifier, the disabled recording, and the DNT/GPC behavior.
+and the auth completion events. `lib/acquisition.ts` reads allowlisted `utm_*` values on the
+sign-in and sign-up pages, stores them in session storage for 30 minutes, and attaches
+`acquisition_source`, `acquisition_medium`, `acquisition_campaign`, and
+`acquisition_content` to signup and checkout events. That is how the IsMyTripSafe report rail
+can be measured in PlanMyTrip without putting a destination, health field, account id, email,
+or free text in an event. The privacy notice documents the PostHog browser identifier, the
+short-lived campaign record, the disabled recording, and the DNT/GPC behavior.
 
 ## 8. Medical safety rules
 

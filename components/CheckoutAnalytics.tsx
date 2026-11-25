@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { acquisitionProps } from "@/lib/acquisition";
 import { capture } from "@/lib/analytics";
 
 /** Captures the Clerk checkout return without putting the query in a pageview. */
@@ -14,7 +15,10 @@ export function CheckoutAnalytics() {
     } catch {
       // ignore storage failures
     }
-    capture("checkout_success", { page: "/pricing" });
+    capture("checkout_success", {
+      page: "/pricing",
+      ...acquisitionProps(),
+    });
   }, []);
   return null;
 }

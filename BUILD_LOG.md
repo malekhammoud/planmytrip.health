@@ -1187,6 +1187,21 @@ thresholds and Sun Life stability window remain VERIFY.
   never leaves the product.
 - **Gate.** Full typecheck, test, lint, and build pass before the revert deploy.
 
+## Cross-site acquisition attribution (2026-11-25)
+
+- **The funnel partner.** IsMyTripSafe.com now carries a destination-specific PlanMyTrip
+  side-rail ad on city, country, and nightlife reports. The primary link goes to the
+  PlanMyTrip signup with `redirect_url=/?destination=<city>` and allowlisted `utm_*` values;
+  the secondary link opens the PlanMyTrip landing page.
+- **Attribution.** `lib/acquisition.ts` stores only `utm_source`, `utm_medium`,
+  `utm_campaign`, and `utm_content` in session storage for 30 minutes. The `Attribution`
+  component records `campaign_landing`, and signup and checkout events carry the
+  `acquisition_*` properties. This connects a report-rail click to a PlanMyTrip signup or
+  checkout without sharing a destination, health profile, account id, email, or free text.
+- **Prefill.** PlanMyTrip's root reads `?destination=` after signup and prefills the first
+  onboarding step for the city the reader was already researching.
+- **Gate.** Typecheck, lint, tests, and the deploy build pass.
+
 ## Next action
 
 Smoke account deletion with a real signed-in account, and confirm the `/privacy` and `/terms`

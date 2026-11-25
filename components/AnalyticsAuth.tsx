@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
+import { acquisitionProps } from "@/lib/acquisition";
 import { capture } from "@/lib/analytics";
 
 /**
@@ -29,7 +30,10 @@ export function AnalyticsAuth() {
     } catch {
       fresh = false;
     }
-    capture(fresh ? "signup_completed" : "auth_signed_in", { page: "/app" });
+    capture(fresh ? "signup_completed" : "auth_signed_in", {
+      page: "/app",
+      ...acquisitionProps(),
+    });
   }, [isLoaded, isSignedIn, user]);
 
   return null;

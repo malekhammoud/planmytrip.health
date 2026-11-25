@@ -106,7 +106,9 @@ export default function PrivacyPage() {
             </p>
             <p className="t-small mt-3 text-muted">
               PostHog receives the event and the normal request metadata needed to deliver
-              it, and keeps a browser identifier in local storage. Session recording and
+              it, and keeps a browser identifier in local storage. Campaign source, medium,
+              campaign, and content from a partner link may be kept in session storage for
+              30 minutes to attribute a sign-up or checkout. Session recording and
               autocapture stay off. Do Not Track and Global Privacy Control turn the
               analytics off.
             </p>

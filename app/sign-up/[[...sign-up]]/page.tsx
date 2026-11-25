@@ -2,6 +2,7 @@ import { SignUp } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LogoLink } from "@/components/Logo";
+import { Attribution } from "@/components/Attribution";
 import { safeReturnPath } from "@/lib/redirects";
 
 export const metadata: Metadata = {
@@ -23,6 +24,7 @@ export default async function SignUpPage({
     safeReturnPath(Array.isArray(requested) ? requested[0] : requested) ?? "/";
   return (
     <main className="page-container flex min-h-dvh flex-col justify-center py-12 md:py-20">
+      <Attribution />
       <div className="mx-auto w-full max-w-md">
         <LogoLink />
         <p className="t-label mt-10 text-muted">Account</p>
