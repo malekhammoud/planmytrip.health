@@ -111,7 +111,7 @@ function buildHealthCheckpoint(
   if (phase === "final") {
     return `${base} Keep the return transfer in ${destination} unhurried. ${allergens}`;
   }
-  return `${base} Note the nearest hospital or urgent care in ${destination} before the next block. ${allergens}`;
+  return `${base} ${allergens}`;
 }
 
 function dayBlocks(
