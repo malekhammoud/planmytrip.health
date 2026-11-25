@@ -22,10 +22,31 @@ export const metadata: Metadata = {
 /**
  * Signed-out visitors get the public landing page; a signed-in visitor goes straight to
  * the planner. The page performs its own auth check, so Clerk middleware is not the
- * authorization boundary.
+ * authorization boundary. A `destination` query from a shared safety report prefills the
+ * first onboarding step after sign-up.
  */
-export default async function Home() {
+function readDestination(value: string | string[] | undefined): string {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (typeof raw !== "string") return "";
+  return raw
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+}
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ destination?: string | string[] }>;
+}) {
   const { userId, has } = await auth();
   if (userId === null) return <LandingPage />;
-  return <PlannerHome entitlements={entitlementsFromHas(has)} />;
+  const destination = readDestination((await searchParams).destination);
+  return (
+    <PlannerHome
+      entitlements={entitlementsFromHas(has)}
+      initialDestination={destination}
+    />
+  );
 }

@@ -8,7 +8,7 @@ import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { buildHealthTripPlan, type HealthTripPlan } from "@/lib/healthTripEngine";
 import type { TripConfig } from "@/lib/agent/agentTypes";
 import type { BillingEntitlements } from "@/lib/billing/plans";
-import { DEFAULT_TRIP } from "@/lib/onboarding";
+import { DEFAULT_TRIP, type TripDraft } from "@/lib/onboarding";
 import { parseInstallId } from "@/lib/data/validation";
 
 /**
@@ -39,14 +39,21 @@ function readInstallId(): string {
  */
 export function PlannerHome({
   entitlements,
+  initialDestination = "",
 }: {
   entitlements: BillingEntitlements;
+  /** Destination carried in from a shared report link, before the first build. */
+  initialDestination?: string;
 }) {
   const [view, setView] = useState<"onboarding" | "workspace">("onboarding");
   const [trip, setTrip] = useState<TripConfig | null>(null);
   const [deployNonce, setDeployNonce] = useState(0);
   const [installId] = useState(readInstallId);
   const [runId, setRunId] = useState("");
+  const initialDraft = useMemo<TripDraft>(
+    () => ({ ...DEFAULT_TRIP, destination: initialDestination }),
+    [initialDestination],
+  );
 
   const plan = useMemo<HealthTripPlan | null>(() => {
     if (trip === null) return null;
@@ -78,7 +85,7 @@ export function PlannerHome({
       <div className="flex-1">
         <div id="onboarding-screen" hidden={view !== "onboarding"}>
           <Onboarding
-            initial={trip ?? DEFAULT_TRIP}
+            initial={trip ?? initialDraft}
             entitlements={entitlements}
             onComplete={handleBuild}
             onCancel={trip === null ? undefined : () => setView("workspace")}
