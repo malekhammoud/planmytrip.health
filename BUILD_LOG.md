@@ -1165,13 +1165,15 @@ thresholds and Sun Life stability window remain VERIFY.
 - **Gate.** `npm run typecheck`, `npm test`, and `npm run lint` pass. The suite reports 702
   tests: 663 passed and 39 skipped without `DATABASE_URL`. `next build` also passes.
 - **Build and deploy.** `main` was pushed to `origin` and
-  `/usr/local/bin/planmytrip-deploy.sh --force` reported deploy OK at 2026-11-25 04:44. The
-  service is active, `.deploy-sha` is 50a5db5, and the local health probe returns `ok` with
-  database, TinyFish, Clerk, OpenCode, and cache checks true. `/`, `/pricing`, `/privacy`,
-  `/terms`, `/sign-up`, `/model`, and `/pitch` return 200 on the local probe; external reader
-  fetches of `/` and `/pricing` show the new copy. Host-originated HTTPS checks are blocked by
-  the ops nginx ban list for this server's own IP, so external verification used a reader
-  proxy. Recording files and the two recording variables were removed from production.
+  `/usr/local/bin/planmytrip-deploy.sh --force` reported deploy OK at 2026-11-25 04:44, then
+  again at 22:07 for the general relaxation release. The service is active, `.deploy-sha` is
+  7338ff2, and the local health probe returns `ok` with database, TinyFish, Clerk, OpenCode,
+  and cache checks true. `/`, `/pricing`, `/privacy`, `/terms`, `/sign-up`, `/model`, and
+  `/pitch` return 200 on the local probe; external reader fetches of `/` and `/pricing` show
+  the new copy and the landing's "Everyday relaxation" profile. Host-originated HTTPS checks
+  are blocked by the ops nginx ban list for this server's own IP, so external verification
+  used a reader proxy. Recording files and the two recording variables were removed from
+  production.
 
 ## Next action
 
