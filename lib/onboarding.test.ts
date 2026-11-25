@@ -22,11 +22,11 @@ function normalize(draft: TripDraft, maxDays?: number) {
 }
 
 describe("onboarding draft", () => {
-  it("starts without a destination or a health profile", () => {
+  it("starts without a destination and with the general relaxation profile", () => {
     expect(DEFAULT_TRIP.destination).toBe("");
     expect(DEFAULT_TRIP.origin).toBe("");
     expect(DEFAULT_TRIP.days).toBe(4);
-    expect(DEFAULT_TRIP.condition).toBe("");
+    expect(DEFAULT_TRIP.condition).toBe("general_wellness");
     expect(DEFAULT_TRIP.budget).toBe("balanced");
     expect(DEFAULT_TRIP.transport).toBe("mixed");
     expect(DEFAULT_TRIP.checkIn).toBe("");
@@ -42,16 +42,16 @@ describe("onboarding draft", () => {
     expect(canContinueTripStep({ ...DEFAULT_TRIP, destination: "Lisbon" })).toBe(true);
   });
 
-  it("requires an explicit health profile before it can build", () => {
+  it("defaults to the general profile but still rejects an empty or missing destination", () => {
     expect(canBuildTrip(DEFAULT_TRIP)).toBe(false);
     expect(
       canBuildTrip({ ...DEFAULT_TRIP, destination: "Lisbon, Portugal" }),
-    ).toBe(false);
+    ).toBe(true);
     expect(canBuildTrip({ ...COMPLETE, condition: "" })).toBe(false);
     expect(canBuildTrip(COMPLETE)).toBe(true);
     expect(
       normalizeTripConfig({ ...DEFAULT_TRIP, destination: "Lisbon, Portugal" }),
-    ).toBeNull();
+    ).toMatchObject({ condition: "general_wellness" });
     expect(normalizeTripConfig(DEFAULT_TRIP)).toBeNull();
   });
 

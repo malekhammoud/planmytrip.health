@@ -60,6 +60,7 @@ describe("describeTrip", () => {
 
   it("uses plain consumer labels for every health profile", () => {
     expect(CONDITION_LABELS).toEqual({
+      general_wellness: "relaxation and stress recovery",
       asthma_respiratory: "asthma or breathing conditions",
       chronic_fatigue_pots: "fatigue or POTS",
       pregnancy_second_trimester: "second-trimester pregnancy",

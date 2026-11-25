@@ -96,11 +96,11 @@ const CATEGORY_LABEL: Record<AdjustmentCategory, string> = {
  * allergen.
  */
 const SENSITIVE: Record<AdjustmentCategory, readonly Condition[]> = {
-  heat: ["asthma_respiratory", "chronic_fatigue_pots", "pregnancy_second_trimester", "severe_food_allergy", "cardiac_hypertension"],
+  heat: ["general_wellness", "asthma_respiratory", "chronic_fatigue_pots", "pregnancy_second_trimester", "severe_food_allergy", "cardiac_hypertension"],
   air_quality: ["asthma_respiratory"],
-  altitude: ["asthma_respiratory", "chronic_fatigue_pots", "pregnancy_second_trimester", "severe_food_allergy", "cardiac_hypertension"],
-  outbreak: ["asthma_respiratory", "chronic_fatigue_pots", "pregnancy_second_trimester", "severe_food_allergy", "cardiac_hypertension"],
-  allergen: ["asthma_respiratory", "pregnancy_second_trimester", "severe_food_allergy", "cardiac_hypertension"],
+  altitude: ["general_wellness", "asthma_respiratory", "chronic_fatigue_pots", "pregnancy_second_trimester", "severe_food_allergy", "cardiac_hypertension"],
+  outbreak: ["general_wellness", "asthma_respiratory", "chronic_fatigue_pots", "pregnancy_second_trimester", "severe_food_allergy", "cardiac_hypertension"],
+  allergen: ["general_wellness", "asthma_respiratory", "pregnancy_second_trimester", "severe_food_allergy", "cardiac_hypertension"],
 };
 
 /** Recovery extension added once per day when a heat or air-quality rule applies. */

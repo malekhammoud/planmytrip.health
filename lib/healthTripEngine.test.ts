@@ -111,8 +111,12 @@ describe.each(CONDITIONS)("condition profile: %s", (condition) => {
       .join(" ");
     expect(firstDay.blocks[0]?.kind).toBe("acclimation");
     expect(firstDayText).toContain("sleep");
-    expect(firstDayText).toContain("hospital");
     expect(firstDayText).toContain("settle in");
+    if (condition === "general_wellness") {
+      expect(firstDayText).not.toContain("hospital");
+    } else {
+      expect(firstDayText).toContain("hospital");
+    }
     expect(firstDayText).not.toContain("pharmacy");
     expect(firstDayText).not.toContain("medication");
 

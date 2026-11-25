@@ -8,8 +8,9 @@
  * Invariant: every Condition and TransportMode has exactly one human label.
  */
 
-/** The five supported condition groups, in stable display order. */
+/** The supported health profiles, in stable display order. */
 export const CONDITIONS = [
+  "general_wellness",
   "asthma_respiratory",
   "chronic_fatigue_pots",
   "pregnancy_second_trimester",
@@ -22,6 +23,7 @@ export type Condition = (typeof CONDITIONS)[number];
 
 /** Short, human-readable labels used by the select, the headline, and exports. */
 export const CONDITION_LABELS = {
+  general_wellness: "relaxation and stress recovery",
   asthma_respiratory: "asthma or breathing conditions",
   chronic_fatigue_pots: "fatigue or POTS",
   pregnancy_second_trimester: "second-trimester pregnancy",

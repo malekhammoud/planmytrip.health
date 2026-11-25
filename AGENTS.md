@@ -106,6 +106,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 66. Consumer reset documentation | [x] | `docs(agents): document the consumer product reset` |
 | 67. Reset documentation alignment | [x] | `docs(agents): align the reset with the final workflow` |
 | 68. Reset deployment record | [x] | `docs(agents): record the production reset deployment` |
+| 69. General relaxation default | [x] | `feat(profile): add a general relaxation default` |
 
 ## 3. Commands
 
@@ -621,6 +622,7 @@ cultural, and transit blocks count steps.
 
 | Condition | Steps/day | Walking | Recovery | Floor | Rationale |
 | --- | --- | --- | --- | --- | --- |
+| `general_wellness` | 10,000 | 6.0 km | 30 min, required | 10 | Default relaxation and stress-recovery pace; not a fitness assessment. |
 | `asthma_respiratory` | 7,000 | 4.0 km | 30 min, required | 22 | Breath-limited ceiling with a short afternoon recovery. |
 | `chronic_fatigue_pots` | 4,000 | 2.5 km | 90 min, required | 25 | Low load with a long recovery for orthostatic symptoms. |
 | `pregnancy_second_trimester` | 5,000 | 3.0 km | 45 min, required | 18 | Moderate load with rest, heat limits, and food safety. |
@@ -656,9 +658,9 @@ reverse-geocodes the exact point, and fills the field only after a place is name
 current location, and the map all write a canonical label into the controlled text, and the map
 picker returns focus to its field.
 
-Step 02 collects an explicit health profile (nothing is preselected), budget, transport,
-optional preferences, and the anonymous capture opt-in. The profile label says it sets pacing
-ceilings, not a diagnosis. Budget is a three-stop slider over Value, Balanced, and Premium. The
+Step 02 collects a health profile that defaults to relaxation and stress recovery, budget,
+transport, optional preferences, and the anonymous capture opt-in. The profile can be changed;
+the label says it sets pacing ceilings, not a diagnosis. Budget is a three-stop slider over Value, Balanced, and Premium. The
 review sentence and details line show the trip, party, transport, budget, and preferences. The
 plan allowance sentence names the account's included live plans and day ceiling without
 inventing a remaining count, and links to `/pricing`. The left column carries only the New trip
@@ -824,10 +826,11 @@ and vanilla JavaScript; do not rebuild it in React.
   budget to shape the trip. It is not a clinical service, a patient portal, or an insurance
   product. The health profile sets pacing ceilings; it never diagnoses, treats, or sells
   coverage. The landing, onboarding, and footer copy keep that boundary.
-- **Explicit health profile:** the health profile starts empty and is required before a build.
-  The interface calls it a profile, says it sets ceilings rather than a diagnosis, and never
-  infers one from another answer. The draft normalizer returns null until a supported profile
-  is chosen.
+- **General relaxation default:** the health profile starts on "relaxation and stress
+  recovery", a non-clinical general pace with a modeled 10,000-step / 6 km ceiling and a
+  30-minute recovery. The traveler can change it to any supported condition profile. The
+  interface says the profile sets ceilings rather than a diagnosis and never infers one from
+  another answer. The draft normalizer still rejects an empty or unsupported profile.
 - **One destination check:** a single TinyFish worker reads the Government of Canada advisory
   page for the destination. The product removed pharmacy, medication, and coverage workers, so
   there is no three-worker mission control, no provider JSON in the interface, and no coverage
@@ -1128,12 +1131,13 @@ prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.5:1 or better.
 
 ## 9. VERIFY register
 
-Regenerate with `grep -rn "VERIFY:" app lib components`; there are 22 code markers.
+Regenerate with `grep -rn "VERIFY:" app lib components`; there are 24 code markers.
 Five product-review rows do not carry a marker yet: destination goal, live limits, venue URL,
 cache identity, and account deletion.
 
 | File | What to verify |
 | --- | --- |
+| `lib/conditionProfiles.ts` (general) | floor 10; 10,000-step ceiling, 6.0 km walking, 30-minute recovery, altitude, heat, and personal allergens against general travel guidance. This is a non-clinical default; confirm it cannot be mistaken for a fitness or medical assessment. |
 | `lib/conditionProfiles.ts` (asthma) | floor 22; 7,000-step ceiling, 4.0 km walking, 30-minute recovery, altitude, heat, and allergens against respiratory guidance. |
 | `lib/conditionProfiles.ts` (POTS) | floor 25; 4,000-step ceiling, 2.5 km walking, 90-minute recovery, altitude, heat, and allergens against autonomic guidance. |
 | `lib/conditionProfiles.ts` (pregnancy) | floor 18; 5,000-step ceiling, 3.0 km walking, 45-minute recovery, altitude, heat, and food safety against maternity guidance. |
@@ -1327,7 +1331,7 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 683 tests: 644 pass and 39
+`npm test` runs Vitest once in a Node environment. The suite has 702 tests: 663 pass and 39
 skip without `DATABASE_URL`. Database-backed files skip when `DATABASE_URL` is
 absent. `tests/mocks/clerk-server.ts` replaces
 `@clerk/nextjs/server` in Vitest so route handlers can run outside Next's server boundary;
@@ -1335,7 +1339,7 @@ proxy and Clerk provider behavior are covered by a production build and live req
 not by the unit suite.
 
 - `tests/design-guard.test.ts` and `tests/contrast.test.ts` guard styles and 13 WCAG AA token
-  pairs; `tests/smoke.test.ts` covers the five conditions.
+  pairs; `tests/smoke.test.ts` covers the general profile plus the five condition profiles.
 - `lib/healthTripEngine*.test.ts` covers every condition x 2-20 days, caps, invariants,
   recovery, scores, determinism, validation, docs, and re-exports. Shared input is
   in `tests/healthTripFixtures.ts`.
@@ -1427,6 +1431,7 @@ exempting lines.
 
 ## 12. Known limitations and open questions
 
+- The general relaxation profile is a non-clinical default. Its 10,000-step / 6 km ceilings, 30-minute recovery, and 10/100 residual-risk floor are product assumptions, not a fitness or medical assessment. Confirm them with clinician and traveler feedback before presenting the default as a personal limit.
 - The live limits are in-memory and single-instance. A process restart clears active leases,
   cooldowns, the venue UTC-day count, and the geocoder minute window. A multi-instance
   deployment needs a shared store before it can trust these caps.

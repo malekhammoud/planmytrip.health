@@ -311,7 +311,7 @@ export function Onboarding({
                   <Field
                     id="onboarding-condition"
                     label="Health profile"
-                    hint="Select a profile to continue. It sets daily step and walking ceilings, not a diagnosis."
+                    hint="Defaults to relaxation and stress recovery. Change it to fit the health you are bringing; it sets daily step and walking ceilings, not a diagnosis."
                   >
                     {(control) => (
                       <Select

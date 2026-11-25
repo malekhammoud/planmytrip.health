@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { CONDITION_LABELS, CONDITIONS, isCondition } from "@/lib/types";
 
 describe("condition vocabulary", () => {
-  it("has five conditions, each with a label", () => {
-    expect(CONDITIONS).toHaveLength(5);
+  it("has the general profile plus five condition profiles, each with a label", () => {
+    expect(CONDITIONS).toHaveLength(6);
     for (const condition of CONDITIONS) {
       expect(CONDITION_LABELS[condition].length).toBeGreaterThan(0);
     }

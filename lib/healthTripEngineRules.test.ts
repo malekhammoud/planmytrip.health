@@ -98,7 +98,7 @@ describe("profile documentation", () => {
     ).toBeGreaterThanOrEqual(5);
     expect(
       (profilesSource.match(/residual-risk floor \(\d+\/100\)/g) ?? []).length,
-    ).toBe(5);
+    ).toBe(6);
     for (const condition of CONDITIONS) {
       expect(profilesSource).toContain(
         `residual-risk floor (${CONDITION_PROFILES[condition].residualRiskFloor}/100)`,

@@ -1153,11 +1153,17 @@ thresholds and Sun Life stability window remain VERIFY.
   storage does not delete an anonymous capture already stored, kept hospital guidance to the
   first day instead of every checkpoint, linked the terms and privacy notice from sign-up,
   and aligned the investor deck with the consumer product. The docs branch was then merged.
+- **General relaxation default.** Added `general_wellness` as the first health profile and the
+  onboarding default: "relaxation and stress recovery", with a modeled 10,000-step / 6 km
+  ceiling, a 30-minute recovery window, and a 10/100 residual-risk floor. The synthetic cohort
+  and artifact were regenerated so the demo includes the profile (`synthetic-5e24db31`,
+  Brier 0.1383 against the engine's 0.1458); the artifact remains synthetic-only and never
+  drives a live cap.
 - **Docs.** AGENTS.md, AUTH.md, BILLING.md, ML.md, VENUE.md, PITCH.md, and `.env.example` now
   describe the consumer product, the live limits, the destination check, account deletion,
   privacy, and the removed recording surface. This section is the reset's build record.
-- **Gate.** `npm run typecheck`, `npm test`, and `npm run lint` pass. The suite reports 683
-  tests: 644 passed and 39 skipped without `DATABASE_URL`. `next build` also passes.
+- **Gate.** `npm run typecheck`, `npm test`, and `npm run lint` pass. The suite reports 702
+  tests: 663 passed and 39 skipped without `DATABASE_URL`. `next build` also passes.
 - **Build and deploy.** `main` was pushed to `origin` and
   `/usr/local/bin/planmytrip-deploy.sh --force` reported deploy OK at 2026-11-25 04:44. The
   service is active, `.deploy-sha` is 50a5db5, and the local health probe returns `ok` with

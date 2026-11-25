@@ -5,8 +5,9 @@
  * Outputs: the empty draft, step gates, a normalized configuration, and the plan
  * allowance sentence.
  * Invariants: the draft is a label-only planning input; it is never medical advice. The
- * destination gates the second step, and an explicit health profile gates the build.
- * Lengths match the API bounds, and an untouched draft never yields a condition.
+ * destination gates the second step. The health profile defaults to general relaxation and
+ * can be changed; an invalid or empty value still gates the build. Lengths match the API
+ * bounds.
  */
 
 import { TRIP_DAYS_MAX, TRIP_DAYS_MIN } from "@/lib/healthTripTypes";
@@ -26,12 +27,12 @@ export type TripDraft = Omit<TripConfig, "condition"> & {
   condition: Condition | "";
 };
 
-/** The empty draft shown to a first-time visitor. No health profile is preselected. */
+/** The empty draft shown to a first-time visitor, with the general relaxation profile. */
 export const DEFAULT_TRIP: TripDraft = {
   destination: "",
   origin: "",
   days: 4,
-  condition: "",
+  condition: "general_wellness",
   interests: "",
   budget: "balanced",
   transport: "mixed",
@@ -58,8 +59,8 @@ export function canBuildTrip(config: TripDraft): boolean {
 
 /**
  * Trims labels and clamps the duration to the engine's supported range and the account's
- * plan ceiling. Returns null until the destination and health profile are both present,
- * so an untouched form can never submit a condition or a plan.
+ * plan ceiling. Returns null until the destination and a valid health profile are both
+ * present; the normal first-time draft already carries the general relaxation profile.
  */
 export function normalizeTripConfig(
   config: TripDraft,

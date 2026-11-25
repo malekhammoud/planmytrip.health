@@ -59,6 +59,7 @@ const SEVERITIES: readonly FlareSeverity[] = ["mild", "moderate", "severe"];
 const CARE: readonly CareLevel[] = ["none", "none", "clinic", "er", "hospital"];
 
 const CONDITION_EFFECT: Readonly<Record<Condition, number>> = {
+  general_wellness: -0.1,
   asthma_respiratory: 0,
   chronic_fatigue_pots: 0.4,
   pregnancy_second_trimester: -0.2,

@@ -1,11 +1,11 @@
 # Model card: flare calibration
 
-- **Version:** `synthetic-5a38cf18`
-- **Trained:** 2026-11-21T21:26:46.703Z
+- **Version:** `synthetic-5e24db31`
+- **Trained:** 2026-11-25T22:00:23.786Z
 - **Source:** synthetic
 - **Engine version:** 1
 - **Pipeline version:** 2
-- **Data hash:** `5a38cf183b825e452a0f4d6bb5b0727b1dba460f1810d909e13f17c3604159ef`
+- **Data hash:** `5e24db31922dc644a6981eba44de90b035ec76154b83d723cee45865b566b384`
 
 ## What this is
 
@@ -33,16 +33,17 @@ The engine's modeled risk is the prior log-odds; the model learns the residual.
 | Item | Value |
 | --- | --- |
 | Labeled trips | 900 |
-| Flares | 195 (21.7%) |
-| Mean engine offset | -0.926 |
+| Flares | 154 (17.1%) |
+| Mean engine offset | -1.050 |
 
 | Condition | Trips | Flares |
 | --- | --- | --- |
-| asthma_respiratory | 186 | 34 |
-| chronic_fatigue_pots | 188 | 57 |
-| pregnancy_second_trimester | 165 | 23 |
-| severe_food_allergy | 173 | 32 |
-| cardiac_hypertension | 188 | 49 |
+| general_wellness | 153 | 13 |
+| asthma_respiratory | 134 | 15 |
+| chronic_fatigue_pots | 142 | 35 |
+| pregnancy_second_trimester | 158 | 17 |
+| severe_food_allergy | 157 | 30 |
+| cardiac_hypertension | 156 | 44 |
 
 ## Features and coefficients
 
@@ -51,21 +52,21 @@ the change in log-odds for one standard deviation, holding the engine offset fix
 
 | Feature | Coefficient |
 | --- | --- |
-| `intercept` | -0.467 |
-| `peakExposure` | 0.312 |
-| `recoveryCoverage` | -0.059 |
-| `tripLength` | 0.249 |
+| `intercept` | -0.616 |
+| `peakExposure` | 0.232 |
+| `recoveryCoverage` | -0.170 |
+| `tripLength` | 0.057 |
 
 ## Out-of-fold performance
 
 | Metric | Value |
 | --- | --- |
-| Brier score | 0.1612 |
-| Engine-only Brier | 0.1674 |
-| Log loss | 0.4966 |
-| Expected calibration error | 0.0238 |
-| AUROC | 0.6620 |
-| Calibration slope | 0.9549 |
+| Brier score | 0.1383 |
+| Engine-only Brier | 0.1458 |
+| Log loss | 0.4489 |
+| Expected calibration error | 0.0190 |
+| AUROC | 0.6339 |
+| Calibration slope | 0.8676 |
 
 Folds are grouped by `userId`, so one synthetic traveler never appears in both
 training and validation. Each fold's feature scaling and logistic coefficients are fitted on that
@@ -78,17 +79,16 @@ the calibrator.
 
 | Raw probability | Calibrated probability |
 | --- | --- |
-| 0.049 | 0.000 |
-| 0.060 | 0.000 |
-| 0.064 | 0.000 |
-| 0.067 | 0.000 |
-| 0.070 | 0.000 |
-| 0.073 | 0.000 |
-| 0.078 | 0.000 |
-| 0.081 | 0.000 |
-| 0.157 | 0.183 |
-| 0.443 | 0.500 |
-| 0.540 | 0.571 |
+| 0.025 | 0.000 |
+| 0.036 | 0.000 |
+| 0.038 | 0.000 |
+| 0.040 | 0.000 |
+| 0.066 | 0.084 |
+| 0.137 | 0.118 |
+| 0.172 | 0.176 |
+| 0.231 | 0.219 |
+| 0.241 | 0.250 |
+| 0.408 | 0.429 |
 
 The map is flat at zero below the lowest observed event rate, then rises with the
 predicted probability. A calibrated zero means the synthetic cohort produced no flares

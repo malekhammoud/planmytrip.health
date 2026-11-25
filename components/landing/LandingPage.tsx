@@ -16,6 +16,11 @@ import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 
 const PROFILES = [
   {
+    name: "Everyday relaxation",
+    copy:
+      "A gentle default pace for a trip that is meant to restore you, not wear you out.",
+  },
+  {
     name: "Breathing and asthma",
     copy:
       "The plan paces walking and recovery around air quality, altitude, and a clear step ceiling.",

@@ -158,8 +158,8 @@ A real artifact ships only when:
 3. The calibration slope stays near 1.
 4. Each condition has enough labels for the tier it claims.
 
-The synthetic artifact currently reports a modest Brier improvement (0.1612 against the
-engine's 0.1674), ECE 0.0238, and AUROC 0.6620. That is expected: the engine offset already
+The synthetic artifact currently reports a modest Brier improvement (0.1383 against the
+engine's 0.1458), ECE 0.0190, and AUROC 0.6339. That is expected: the engine offset already
 carries most of the signal. The point is calibration and the pipeline, not a headline AUC.
 
 ## 7. Storage
@@ -221,8 +221,8 @@ captures. Treat the database as a clinical asset, because it is one.
 ## 9. Current status
 
 - The model is trained on **synthetic** trips. It is a pipeline demonstration.
-- The committed artifact is `synthetic-5a38cf18` on pipeline 2: Brier 0.1612 against the
-  engine's 0.1674, ECE 0.0238, AUROC 0.6620, calibration slope 0.9549. The committed
+- The committed artifact is `synthetic-5e24db31` on pipeline 2: Brier 0.1383 against the
+  engine's 0.1458, ECE 0.0190, AUROC 0.6339, calibration slope 0.8676. The committed
   cohort, artifact, and model card are reproducible and guarded by tests.
 - The full app gate passes: typecheck, the test database suite, lint, and production build.
   Database suites skip cleanly when `DATABASE_URL` is absent.

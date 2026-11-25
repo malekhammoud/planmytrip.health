@@ -45,6 +45,8 @@ const MIDDLE_DAY_TITLES = [
 ] as const;
 
 const CONDITION_CHECKPOINTS: Readonly<Record<Condition, string>> = {
+  general_wellness:
+    "Keep the day unhurried; take the recovery window before the next block.",
   asthma_respiratory:
     "Pause if breathing feels harder than usual; sit down and rest before continuing.",
   chronic_fatigue_pots:
@@ -83,11 +85,16 @@ function buildPacingRule(
   profile: ConditionProfile,
   stepCap: number,
   walkingCapKm: number,
+  condition: Condition,
 ): string {
   const limits = `Keep the day at or below ${stepCap} steps and ${walkingCapKm.toFixed(2)} km.`;
   const environment = `Stay below ${profile.altitude.maxMeters} m and out of heat above ${profile.heat.cautionAboveCelsius}°C.`;
   if (phase === "first") {
-    return `${limits} Reset sleep first, then note the nearest hospital or urgent care. ${environment}`;
+    const care =
+      condition === "general_wellness"
+        ? "then keep the first day light."
+        : "then note the nearest hospital or urgent care.";
+    return `${limits} Reset sleep first, ${care} ${environment}`;
   }
   if (phase === "final") {
     return `${limits} Keep the return transfer unhurried and keep the recovery window. ${environment}`;
@@ -106,7 +113,11 @@ function buildHealthCheckpoint(
   const base = CONDITION_CHECKPOINTS[condition];
   const allergens = profile.allergens.note;
   if (phase === "first") {
-    return `${base} Note the nearest hospital or urgent care in ${destination}. ${allergens}`;
+    const care =
+      condition === "general_wellness"
+        ? ""
+        : ` Note the nearest hospital or urgent care in ${destination}.`;
+    return `${base}${care} ${allergens}`;
   }
   if (phase === "final") {
     return `${base} Keep the return transfer in ${destination} unhurried. ${allergens}`;
@@ -118,11 +129,21 @@ function dayBlocks(
   phase: DayPhase,
   profile: ConditionProfile,
   destination: string,
+  condition: Condition,
 ): ItineraryBlock[] {
   if (phase === "first") {
+    const settling =
+      condition === "general_wellness"
+        ? block("acclimation", `Unpack and settle in at the hotel in ${destination}`, 20, 1)
+        : block(
+            "acclimation",
+            `Settle in and note the nearest hospital or urgent care in ${destination}`,
+            20,
+            1,
+          );
     return [
       block("acclimation", `Sleep-reset window in ${destination}: dim room and no screens`, 20, 1),
-      block("acclimation", `Settle in and note the nearest hospital or urgent care in ${destination}`, 20, 1),
+      settling,
       block("acclimation", `Unhurried arrival walk near the hotel in ${destination}`, 15, 1),
       block("meal", `Unhurried meal near the hotel in ${destination}`, 30, 1),
       recoveryBlock(profile, destination),
@@ -175,8 +196,8 @@ function buildDay(
     title,
     stepCap,
     walkingCapKm,
-    pacingRule: buildPacingRule(phase, profile, stepCap, walkingCapKm),
-    blocks: dayBlocks(phase, profile, destination),
+    pacingRule: buildPacingRule(phase, profile, stepCap, walkingCapKm, condition),
+    blocks: dayBlocks(phase, profile, destination, condition),
     healthCheckpoint: buildHealthCheckpoint(
       condition,
       profile,

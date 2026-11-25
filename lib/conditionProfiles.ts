@@ -15,6 +15,20 @@ import type { ConditionProfile } from "./healthTripTypes";
  * planning limits, not clinical prescriptions. Each profile carries its VERIFY line.
  */
 export const CONDITION_PROFILES: Readonly<Record<Condition, ConditionProfile>> = {
+  // VERIFY: Check the general relaxation step ceiling, walking cap, recovery length,
+  // altitude, heat, and residual-risk floor (10/100) against general travel guidance.
+  // This is a non-clinical default, not a fitness assessment.
+  general_wellness: {
+    dailyStepCeiling: 10000,
+    maxWalkingKm: 6,
+    mandatoryAfternoonRecovery: true,
+    recoveryMinutes: 30,
+    altitude: { maxMeters: 2500, note: "No condition-specific altitude limit; confirm personal tolerance." },
+    heat: { cautionAboveCelsius: 32, note: "Heat can still tire you; plan shade and water." },
+    allergens: { avoid: ["known personal allergens"], note: "Flag personal food triggers; no condition-wide restriction." },
+    residualRiskFloor: 10,
+    rationale: "A general, unhurried pace for a relaxing trip or stress recovery; confirm personal limits with a clinician if needed. Modeled residual-risk floor: 10.",
+  },
   // VERIFY: Check the asthma step ceiling, walking cap, recovery length, altitude,
   // heat, allergen values, and residual-risk floor (22/100) against current
   // respiratory clinical guidance, then record the source in AGENTS.md section 9.
