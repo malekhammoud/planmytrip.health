@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/travel-swarm/route";
+import { resetLiveLimitsForTests } from "@/lib/liveLimits";
 import { WORKER_SCHEMAS, WORKER_SOURCES } from "@/lib/swarmGoals";
 import { WORKER_TIMEOUT_MS } from "@/lib/swarmRunner";
 import type { WorkerId } from "@/lib/swarmTypes";
@@ -18,6 +19,7 @@ import {
 } from "./swarm-route-fixtures";
 
 afterEach(() => {
+  resetLiveLimitsForTests();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.useRealTimers();

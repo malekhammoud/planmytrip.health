@@ -85,4 +85,54 @@ describe("venue contracts", () => {
       }),
     ).toBeNull();
   });
+
+  it("rejects localhost, private, and link-local venue hosts", () => {
+    for (const sourceUrl of [
+      "http://localhost:3000/menu",
+      "http://127.0.0.1/menu",
+      "http://10.1.2.3/menu",
+      "http://192.168.0.10/menu",
+      "http://169.254.169.254/latest/meta-data",
+      "http://[::1]/menu",
+    ]) {
+      expect(
+        parseVenueResearchRequest({
+          destination: "London",
+          days: 4,
+          places: [{ id: "x", name: "Cafe", category: "eat", sourceUrl }],
+        }),
+        sourceUrl,
+      ).toBeNull();
+    }
+  });
+
+  it("degrades a private menu link to the public source page", () => {
+    const request = parseVenueResearchRequest({
+      destination: "London",
+      days: 4,
+      places: [
+        {
+          id: "x",
+          name: "Cafe",
+          category: "eat",
+          sourceUrl: "https://example.com/cafe",
+          menuUrl: "http://127.0.0.1/menu",
+        },
+      ],
+    });
+    expect(request?.places[0]?.menuUrl).toBeNull();
+    expect(candidateUrl(request!.places[0]!)).toBe("https://example.com/cafe");
+  });
+
+  it("rejects evidence whose source URL is not public", () => {
+    expect(
+      parseVenueEvidence({ ...menu, sourceUrl: "http://127.0.0.1/menu" }),
+    ).toBeNull();
+    const parsed = parseVenueEvidence({
+      ...hotel,
+      bookingUrl: "http://10.0.0.5/book",
+    });
+    expect(parsed?.kind).toBe("hotel");
+    if (parsed?.kind === "hotel") expect(parsed.bookingUrl).toBeNull();
+  });
 });

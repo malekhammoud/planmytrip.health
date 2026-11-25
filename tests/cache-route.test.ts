@@ -127,4 +127,27 @@ describe("POST /api/agent-plan cache hit", () => {
     const cachedPlan = ready?.data.plan as { summary?: string } | undefined;
     expect(cachedPlan?.summary).toBe("A cached four-day London plan.");
   });
+
+  it("does not replay a cached plan for another date or party", async () => {
+    for (const override of [
+      { checkIn: "2026-12-10", travelers: 2 },
+      { checkIn: "", travelers: 2 },
+      { checkIn: "2026-12-10", travelers: 1 },
+    ]) {
+      const response = await POST(
+        new Request("http://localhost:3000/api/agent-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...request, ...override }),
+        }),
+      );
+      // The exact key is different and the related fallback must refuse the date/party
+      // mismatch. Without a database the live reservation fails closed.
+      expect(response.status, JSON.stringify(override)).toBe(503);
+      expect(response.headers.get("x-plan-cache")).toBeNull();
+      await expect(response.json()).resolves.toMatchObject({
+        code: "billing_unavailable",
+      });
+    }
+  });
 });

@@ -10,15 +10,21 @@
 import { auth } from "@clerk/nextjs/server";
 import { reversePlace } from "@/lib/geocode/search";
 import type { GeocodePlace } from "@/lib/geocode/types";
+import { geocodeLimiter } from "@/lib/liveLimits";
 
 export const runtime = "nodejs";
 
-function json(status: number, body: Record<string, unknown>): Response {
+function json(
+  status: number,
+  body: Record<string, unknown>,
+  headers: Record<string, string> = {},
+): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": status === 200 ? "private, max-age=300" : "no-store",
+      ...headers,
     },
   });
 }
@@ -47,6 +53,17 @@ export async function GET(request: Request): Promise<Response> {
     return json(400, { error: "That coordinate is outside the map." });
   }
   const mode = url.searchParams.get("mode") === "city" ? "city" : "place";
+  const allowance = geocodeLimiter().consume(userId);
+  if (!allowance.allowed) {
+    return json(
+      429,
+      {
+        error: "Too many location lookups. Wait a moment and try again.",
+        code: "rate_limited",
+      },
+      { "Retry-After": String(allowance.retryAfterSec) },
+    );
+  }
   try {
     const place: GeocodePlace | null = await reversePlace(lat, lng, mode);
     if (place === null) {

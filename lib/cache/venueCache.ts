@@ -8,7 +8,7 @@
  * as live TinyFish output; legacy evidence-only rows still read.
  */
 
-import { asHttpUrl, asText, isRecord } from "@/lib/agent/agentParse";
+import { asText, isRecord } from "@/lib/agent/agentParse";
 import { cacheEnabled, readCacheRow, touchCacheRow, writeCacheRow } from "./cacheStore";
 import type {
   VenueEvidence,
@@ -16,6 +16,7 @@ import type {
 } from "@/lib/venue/types";
 import { parseVenueEvidence } from "@/lib/venue/types";
 import type { VenueActivityKind } from "@/lib/venue/venueState";
+import { asPublicHttpUrl } from "@/lib/venue/url";
 
 // VERIFY: menu freshness of 7 days and room-rate freshness of 12 hours are product
 // choices, not provider limits; revisit them with real venue change rates.
@@ -62,7 +63,7 @@ function parseSources(value: unknown): VenueSourceItem[] {
   const items: VenueSourceItem[] = [];
   for (const entry of value.slice(0, SOURCE_MAX)) {
     if (!isRecord(entry)) continue;
-    const url = asHttpUrl(entry.url) ?? undefined;
+    const url = asPublicHttpUrl(entry.url) ?? undefined;
     const title = asText(entry.title, 200) ?? undefined;
     const api = entry.api === "search" || entry.api === "fetch" ? entry.api : "fetch";
     if (url === undefined && title === undefined) continue;

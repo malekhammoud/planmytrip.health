@@ -7,9 +7,10 @@
  * real ISO dates; no medical claim, dose, or invented venue is accepted; lists are bounded.
  */
 
-import { asHttpUrl, asNumber, asText, isRecord } from "@/lib/agent/agentParse";
+import { asNumber, asText, isRecord } from "@/lib/agent/agentParse";
 import { isIsoDate } from "@/lib/dates";
 import type { PlaceCategory } from "@/lib/agent/agentTypes";
+import { asPublicHttpUrl } from "./url";
 
 /** What a venue job is allowed to look up. */
 export type VenueKind = "menu" | "hotel";
@@ -119,7 +120,7 @@ export function parseVenueEvidence(value: unknown): VenueEvidence | null {
   const kind = value.kind;
   if (kind !== "menu" && kind !== "hotel") return null;
   const placeName = asText(value.placeName, 160);
-  const sourceUrl = asHttpUrl(value.sourceUrl);
+  const sourceUrl = asPublicHttpUrl(value.sourceUrl);
   const retrievedAt = asIso(value.retrievedAt);
   if (placeName === null || sourceUrl === null || retrievedAt === null) return null;
   const placeId = asText(value.placeId, 80);
@@ -165,7 +166,7 @@ export function parseVenueEvidence(value: unknown): VenueEvidence | null {
     taxesAndFees: asBoundedNumber(value.taxesAndFees),
     currency: asText(value.currency, 8),
     cancellation: asText(value.cancellation, 300),
-    bookingUrl: asHttpUrl(value.bookingUrl),
+    bookingUrl: asPublicHttpUrl(value.bookingUrl),
     notes: asStringList(value.notes),
   };
 }
@@ -185,15 +186,15 @@ function parseCandidate(value: unknown): VenueCandidate | null {
   if (category !== "stay" && category !== "eat") return null;
   const name = asText(value.name, 160);
   const id = asText(value.id, 80);
-  const sourceUrl = asHttpUrl(value.sourceUrl);
+  const sourceUrl = asPublicHttpUrl(value.sourceUrl);
   if (name === null || id === null || sourceUrl === null) return null;
   return {
     id,
     name,
     category,
     sourceUrl,
-    menuUrl: asHttpUrl(value.menuUrl),
-    bookingUrl: asHttpUrl(value.bookingUrl),
+    menuUrl: asPublicHttpUrl(value.menuUrl),
+    bookingUrl: asPublicHttpUrl(value.bookingUrl),
   };
 }
 

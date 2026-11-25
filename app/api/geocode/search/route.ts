@@ -10,15 +10,21 @@
 import { auth } from "@clerk/nextjs/server";
 import { searchPlaces } from "@/lib/geocode/search";
 import type { GeocodePlace } from "@/lib/geocode/types";
+import { geocodeLimiter } from "@/lib/liveLimits";
 
 export const runtime = "nodejs";
 
-function json(status: number, body: Record<string, unknown>): Response {
+function json(
+  status: number,
+  body: Record<string, unknown>,
+  headers: Record<string, string> = {},
+): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": status === 200 ? "private, max-age=60" : "no-store",
+      ...headers,
     },
   });
 }
@@ -36,6 +42,17 @@ export async function GET(request: Request): Promise<Response> {
   const limit = Number.isFinite(limitParam)
     ? Math.max(1, Math.min(8, Math.trunc(limitParam)))
     : 6;
+  const allowance = geocodeLimiter().consume(userId);
+  if (!allowance.allowed) {
+    return json(
+      429,
+      {
+        error: "Too many destination searches. Wait a moment and try again.",
+        code: "rate_limited",
+      },
+      { "Retry-After": String(allowance.retryAfterSec) },
+    );
+  }
   try {
     const results: GeocodePlace[] = await searchPlaces(query, limit);
     return json(200, { results });

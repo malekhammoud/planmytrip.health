@@ -3,21 +3,28 @@
  * team's live research, specialist results, and final plan.
  *
  * Inputs: a JSON body validated by parsePlannerRequest, plus the optional AGENT_MOCK
- * dev flag. Outputs: planner SSE frames or a 400 JSON error.
- * Invariants: every connected stream ends with planner_done; the OpenCode client is
- * server-only; no API key, session secret, or raw provider error is echoed.
+ * dev flag. Outputs: planner SSE frames or a 400/401/403/429/503 JSON error.
+ * Invariants: every connected stream ends with planner_done; a live plan reserves its
+ * allowance atomically before any model work; cached and mock runs never reserve; the
+ * account holds at most one live planner slot until the stream finishes, cancels, or
+ * fails; the OpenCode client is server-only and no secret or raw provider error is echoed.
  */
 
-import { randomUUID } from "node:crypto";
 import { billingPeriodStart, planLabel } from "@/lib/billing/plans";
 import { readBilling } from "@/lib/billing/server";
-import { countBillingUsage, recordBillingUsage } from "@/lib/db/billingUsage";
+import { reserveBillingUsage } from "@/lib/db/billingUsage";
 import { runPlanner } from "@/lib/agent/agentRunner";
 import { parsePlannerRequest } from "@/lib/agent/agentRequest";
 import { buildCachedPlannerEvents } from "@/lib/cache/cachedEvents";
 import { readCachedPlan, writeCachedPlan } from "@/lib/cache/planCache";
 import { capturePlannerRun } from "@/lib/data/capture";
 import type { AgentResultSummary } from "@/lib/data/types";
+import {
+  liveChecksDisabled,
+  plannerConcurrency,
+} from "@/lib/liveLimits";
+import { settleWithin } from "@/lib/ops/pendingWrites";
+import type { ConcurrencyDenialReason } from "@/lib/concurrency";
 import {
   encodePlannerEvent,
   PLANNER_AGENT_IDS,
@@ -40,6 +47,18 @@ function jsonError(status: number, message: string, code?: string): Response {
     status,
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
+}
+
+function rateLimitError(reason: ConcurrencyDenialReason, retryAfterSec: number): Response {
+  const message =
+    reason === "cooldown"
+      ? "A live plan just finished. Wait a few seconds and try again."
+      : reason === "global"
+        ? "Live planning is busy right now. Try again in a moment."
+        : "A live plan is already running for this account. Try again in a moment.";
+  const response = jsonError(429, message, "rate_limited");
+  response.headers.set("Retry-After", String(Math.max(1, Math.trunc(retryAfterSec))));
+  return response;
 }
 
 /** Handles one concierge request. Invalid bodies get JSON; valid bodies get SSE. */
@@ -73,19 +92,47 @@ export async function POST(request: Request): Promise<Response> {
   // A cache hit skips the OpenCode runtime entirely, so a known trip is one fast
   // replay of validated results rather than a six-to-twelve-minute research run.
   const cached = mock ? null : await readCachedPlan(plannerRequest).catch(() => null);
-  const usageRunId = plannerRequest.runId ?? randomUUID();
-  const usagePeriod = billingPeriodStart(entitlements.tripPeriod);
   const livePlan = !mock && cached === null;
+  let releasePlanner: ((options?: { cooldown?: boolean }) => void) | null = null;
+
   if (livePlan) {
-    const used = await countBillingUsage(userId, "plan", usagePeriod).catch(() => 0);
-    if (used >= entitlements.tripsPerPeriod) {
+    if (liveChecksDisabled()) {
       return jsonError(
-        403,
-        `The ${planLabel(entitlements.plan)} plan includes ${entitlements.tripsPerPeriod} live ${entitlements.tripsPerPeriod === 1 ? "trip" : "trips"} per ${entitlements.tripPeriod}. Cached plans remain available. Upgrade to plan another live trip.`,
-        "trip_limit",
+        503,
+        "Live planning is paused right now. Cached plans and the safety envelope still work.",
+        "live_disabled",
+      );
+    }
+    const grant = plannerConcurrency().acquire(userId);
+    if (!grant.ok) return rateLimitError(grant.reason, grant.retryAfterSec);
+    releasePlanner = grant.lease.release;
+
+    // The reservation is the usage event: one transaction locks, counts, and inserts.
+    // A database failure fails closed instead of granting an unmetered live run.
+    const reservation = await reserveBillingUsage(
+      userId,
+      "plan",
+      billingPeriodStart(entitlements.tripPeriod),
+      entitlements.tripsPerPeriod,
+    );
+    if (reservation !== "reserved") {
+      releasePlanner({ cooldown: false });
+      releasePlanner = null;
+      if (reservation === "limit") {
+        return jsonError(
+          403,
+          `The ${planLabel(entitlements.plan)} plan includes ${entitlements.tripsPerPeriod} live ${entitlements.tripsPerPeriod === 1 ? "trip" : "trips"} per ${entitlements.tripPeriod}. Cached plans remain available. Upgrade to plan another live trip.`,
+          "trip_limit",
+        );
+      }
+      return jsonError(
+        503,
+        "Live planning is temporarily unavailable. Try again in a moment.",
+        "billing_unavailable",
       );
     }
   }
+
   const encoder = new TextEncoder();
   const abort = new AbortController();
   let closed = false;
@@ -101,6 +148,13 @@ export async function POST(request: Request): Promise<Response> {
     }
   };
 
+  const release = (): void => {
+    if (releasePlanner === null) return;
+    const releaseFn = releasePlanner;
+    releasePlanner = null;
+    releaseFn();
+  };
+
   const emit = (event: PlannerEvent): void => {
     if (event.event === "agent_result" && event.data.agentId !== "concierge") {
       research.push({
@@ -109,7 +163,9 @@ export async function POST(request: Request): Promise<Response> {
         summary: event.data.summary.slice(0, 400),
       });
     }
-    if (event.event === "plan_ready") {
+    if (event.event === "plan_ready" && cached === null) {
+      // Only a live run creates a dossier. A cached replay has no new consent signal
+      // and must never add a duplicate training row.
       pendingCaptures.push(
         capturePlannerRun({
           request: plannerRequest,
@@ -120,31 +176,22 @@ export async function POST(request: Request): Promise<Response> {
           // Capture is best-effort; the live plan must still render.
         }),
       );
-      if (livePlan) {
-        pendingCaptures.push(
-          writeCachedPlan(
-            plannerRequest,
-            {
-              plan: event.data.plan,
-              research,
-              completed: event.data.completed,
-              failed: event.data.failed,
-            },
-            event.data.ts,
-          ).catch(() => {
-            // Cache writes never delay or fail a live plan.
-          }),
-          recordBillingUsage(
-            userId,
-            usageRunId,
-            "plan",
-            usagePeriod,
-            event.data.ts,
-          ).catch(() => {
-            // A usage write never delays or fails a delivered plan.
-          }),
-        );
-      }
+    }
+    if (event.event === "plan_ready" && livePlan) {
+      pendingCaptures.push(
+        writeCachedPlan(
+          plannerRequest,
+          {
+            plan: event.data.plan,
+            research,
+            completed: event.data.completed,
+            failed: event.data.failed,
+          },
+          event.data.ts,
+        ).catch(() => {
+          // Cache writes never delay or fail a live plan.
+        }),
+      );
     }
     if (closed || controllerRef === null || abort.signal.aborted) return;
     try {
@@ -162,6 +209,7 @@ export async function POST(request: Request): Promise<Response> {
   const finish = (): void => {
     stopKeepAlive();
     request.signal.removeEventListener("abort", onRequestAbort);
+    release();
     if (closed) return;
     closed = true;
     try {
@@ -169,6 +217,11 @@ export async function POST(request: Request): Promise<Response> {
     } catch {
       // The consumer already closed the stream.
     }
+  };
+
+  const settlePending = async (): Promise<void> => {
+    // A hung database must not hold planner_done open. Writes continue best-effort.
+    await settleWithin(pendingCaptures);
   };
 
   const stream = new ReadableStream<Uint8Array>({
@@ -186,7 +239,7 @@ export async function POST(request: Request): Promise<Response> {
 
       if (cached !== null) {
         for (const event of buildCachedPlannerEvents(cached)) emit(event);
-        void Promise.allSettled(pendingCaptures).finally(finish);
+        void settlePending().finally(finish);
         return;
       }
 
@@ -210,7 +263,7 @@ export async function POST(request: Request): Promise<Response> {
           });
         })
         .finally(async () => {
-          await Promise.allSettled(pendingCaptures);
+          await settlePending();
           finish();
         });
     },

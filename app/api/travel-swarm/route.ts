@@ -6,9 +6,9 @@
  * isSwarmRequestBody, plus TINYFISH_API_KEY and the dev-only SWARM_MOCK flag.
  * Outputs: text/event-stream frames (worker_status, worker_started, streaming_url,
  * worker_progress, worker_sources, worker_heartbeat, worker_note, worker_complete,
- * worker_error, swarm_done) or a 400 JSON error for a bad body.
- * Invariants: every stream ends with swarm_done; enqueues are guarded after close; the
- * API key is never logged, echoed, or placed in an event.
+ * worker_error, swarm_done) or a 400/401/403/429/503 JSON error.
+ * Invariants: every stream ends with swarm_done; one live check per account; enqueues are
+ * guarded after close; the API key is never logged, echoed, or placed in an event.
  */
 
 import { readBilling } from "@/lib/billing/server";
@@ -17,6 +17,9 @@ import { archiveSwarmCache } from "@/lib/cache/swarmArchive";
 import { readCachedSwarm, type SwarmCacheWriteWorker } from "@/lib/cache/swarmCache";
 import { captureSwarmFindings } from "@/lib/data/capture";
 import type { WorkerFindingSummary } from "@/lib/data/types";
+import type { ConcurrencyDenialReason } from "@/lib/concurrency";
+import { liveChecksDisabled, swarmConcurrency } from "@/lib/liveLimits";
+import { settleWithin } from "@/lib/ops/pendingWrites";
 import { mergeSources } from "@/lib/swarmReducer";
 import { KEEP_ALIVE_MS, runSwarm, type SwarmRunContext } from "@/lib/swarmRunner";
 import {
@@ -44,6 +47,18 @@ function jsonError(status: number, message: string, code?: string): Response {
     status,
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
+}
+
+function rateLimitError(reason: ConcurrencyDenialReason, retryAfterSec: number): Response {
+  const message =
+    reason === "cooldown"
+      ? "A live check just finished. Wait a few seconds and try again."
+      : reason === "global"
+        ? "Live verification is busy right now. Try again in a moment."
+        : "A live check is already running for this account. Try again in a moment.";
+  const response = jsonError(429, message, "rate_limited");
+  response.headers.set("Retry-After", String(Math.max(1, Math.trunc(retryAfterSec))));
+  return response;
 }
 
 /** Handles one swarm request. Invalid bodies get JSON; valid bodies get an SSE stream. */
@@ -85,6 +100,21 @@ export async function POST(request: Request): Promise<Response> {
   // stores the complete set for the next request.
   const cached = mock ? null : await readCachedSwarm(input, workers).catch(() => null);
   const fromCache = cached !== null;
+  const liveRun = !mock && cached === null;
+  let releaseSwarm: ((options?: { cooldown?: boolean }) => void) | null = null;
+
+  if (liveRun) {
+    if (liveChecksDisabled()) {
+      return jsonError(
+        503,
+        "Live verification is paused right now. Cached checks still replay.",
+        "live_disabled",
+      );
+    }
+    const grant = swarmConcurrency().acquire(userId);
+    if (!grant.ok) return rateLimitError(grant.reason, grant.retryAfterSec);
+    releaseSwarm = grant.lease.release;
+  }
 
   const encoder = new TextEncoder();
   const abort = new AbortController();
@@ -104,6 +134,13 @@ export async function POST(request: Request): Promise<Response> {
       clearInterval(keepAlive);
       keepAlive = null;
     }
+  };
+
+  const release = (): void => {
+    if (releaseSwarm === null) return;
+    const releaseFn = releaseSwarm;
+    releaseSwarm = null;
+    releaseFn();
   };
 
   const emit = (event: SwarmEvent): void => {
@@ -216,6 +253,7 @@ export async function POST(request: Request): Promise<Response> {
   const finish = (): void => {
     stopKeepAlive();
     request.signal.removeEventListener("abort", onRequestAbort);
+    release();
     if (closed) return;
     closed = true;
     try {
@@ -241,7 +279,7 @@ export async function POST(request: Request): Promise<Response> {
       }, KEEP_ALIVE_MS);
       if (cached !== null) {
         for (const event of buildCachedSwarmEvents(cached, workers)) emit(event);
-        void Promise.allSettled(pendingCaptures).finally(finish);
+        void settleWithin(pendingCaptures).finally(finish);
         return;
       }
 
@@ -250,7 +288,8 @@ export async function POST(request: Request): Promise<Response> {
           // The runner guarantees swarm_done; this prevents an unhandled rejection.
         })
         .finally(async () => {
-          await Promise.allSettled(pendingCaptures);
+          // A hung capture write must not hold swarm_done open.
+          await settleWithin(pendingCaptures);
           finish();
         });
     },

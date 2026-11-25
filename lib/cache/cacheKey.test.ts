@@ -44,12 +44,14 @@ describe("cache keys", () => {
     expect(right).toBe(left);
   });
 
-  it("separates preferences, days, conditions, and transport", () => {
+  it("separates preferences, days, conditions, transport, date, and party", () => {
     const base = buildPlanCacheKey(request());
     expect(buildPlanCacheKey(request({ interests: "quiet food" }))).not.toBe(base);
     expect(buildPlanCacheKey(request({ days: 5 }))).not.toBe(base);
     expect(buildPlanCacheKey(request({ condition: "cardiac_hypertension" }))).not.toBe(base);
     expect(buildPlanCacheKey(request({ transport: "walk" }))).not.toBe(base);
+    expect(buildPlanCacheKey(request({ checkIn: "2026-12-10" }))).not.toBe(base);
+    expect(buildPlanCacheKey(request({ travelers: 2 }))).not.toBe(base);
   });
 
   it("matches an autocomplete label that includes the country", () => {

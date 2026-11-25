@@ -111,6 +111,13 @@ function connectionString(): string {
   return configured;
 }
 
+function readTimeoutMs(name: string, fallback: number): number {
+  const raw = process.env[name]?.trim();
+  if (raw === undefined || raw.length === 0) return fallback;
+  const value = Number(raw);
+  return Number.isFinite(value) && value >= 1_000 ? Math.trunc(value) : fallback;
+}
+
 /** Opens the pool once. The schema is applied before the first query. */
 export function getPool(): Pool {
   if (pool !== null) return pool;
@@ -123,6 +130,11 @@ export function getPool(): Pool {
     max: 10,
     connectionTimeoutMillis: 5_000,
     idleTimeoutMillis: 10_000,
+    // A hung query must not pin a pool client or an SSE stream forever. Both limits are
+    // enforced by the driver and PostgreSQL; the terminal stream frame is additionally
+    // bounded by the route's short write grace.
+    statement_timeout: readTimeoutMs("DATABASE_STATEMENT_TIMEOUT_MS", 10_000),
+    query_timeout: readTimeoutMs("DATABASE_QUERY_TIMEOUT_MS", 10_000),
     application_name: "planmytrip.health",
     ...(ssl === undefined ? {} : { ssl }),
   });

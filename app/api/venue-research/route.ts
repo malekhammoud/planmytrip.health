@@ -2,14 +2,21 @@
  * POST /api/venue-research: authenticated TinyFish menu and hotel extraction.
  *
  * Inputs: a validated venue-research request with selected plan places.
- * Outputs: an SSE stream of venue_* frames, always ending with venue_done, or a 400/401
- * JSON error for a bad body.
- * Invariants: only supplied http(s) URLs reach TinyFish; no recording is requested; a
- * missing key is reported per worker and still ends with venue_done; cached evidence is
- * replayed instantly; no raw provider body is echoed.
+ * Outputs: an SSE stream of venue_* frames, always ending with venue_done, or a
+ * 400/401/403/429/503 JSON error for a bad body, a limit, or the kill switch.
+ * Invariants: only supplied public http(s) URLs reach TinyFish; one live pass per
+ * account with a daily cap; no recording is requested; a missing key is reported per
+ * worker and still ends with venue_done; cached evidence is replayed instantly; no raw
+ * provider body is echoed.
  */
 
 import { readBilling } from "@/lib/billing/server";
+import type { ConcurrencyDenialReason } from "@/lib/concurrency";
+import {
+  liveChecksDisabled,
+  venueConcurrency,
+  venueDailyLimit,
+} from "@/lib/liveLimits";
 import { runVenueResearch } from "@/lib/venue/runner";
 import { encodeVenueEvent, parseVenueResearchRequest, type VenueEvent } from "@/lib/venue/types";
 
@@ -23,6 +30,23 @@ function jsonError(status: number, message: string, code?: string): Response {
     status,
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
+}
+
+function rateLimitError(
+  reason: ConcurrencyDenialReason | "daily",
+  retryAfterSec: number,
+): Response {
+  const message =
+    reason === "daily"
+      ? "The daily live venue check limit is reached. Try again tomorrow."
+      : reason === "cooldown"
+        ? "A live venue check just finished. Wait a few seconds and try again."
+        : reason === "global"
+          ? "Live venue checks are busy right now. Try again in a moment."
+          : "A live venue check is already running for this account. Try again in a moment.";
+  const response = jsonError(429, message, "rate_limited");
+  response.headers.set("Retry-After", String(Math.max(1, Math.trunc(retryAfterSec))));
+  return response;
 }
 
 /** Handles one venue-research stream. */
@@ -51,6 +75,24 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
+  if (liveChecksDisabled()) {
+    return jsonError(
+      503,
+      "Live venue checks are paused right now. The plan and saved facts still work.",
+      "live_disabled",
+    );
+  }
+  const grant = venueConcurrency().acquire(userId);
+  if (!grant.ok) return rateLimitError(grant.reason, grant.retryAfterSec);
+  let releaseVenue: ((options?: { cooldown?: boolean }) => void) | null =
+    grant.lease.release;
+  const daily = venueDailyLimit().consume(userId);
+  if (!daily.allowed) {
+    releaseVenue({ cooldown: false });
+    releaseVenue = null;
+    return rateLimitError("daily", daily.retryAfterSec);
+  }
+
   const apiKey = process.env.TINYFISH_API_KEY?.trim() ?? "";
   const encoder = new TextEncoder();
   const abort = new AbortController();
@@ -65,6 +107,13 @@ export async function POST(request: Request): Promise<Response> {
     }
   };
 
+  const release = (): void => {
+    if (releaseVenue === null) return;
+    const releaseFn = releaseVenue;
+    releaseVenue = null;
+    releaseFn();
+  };
+
   const emit = (event: VenueEvent): void => {
     if (closed || controllerRef === null || abort.signal.aborted) return;
     try {
@@ -77,6 +126,8 @@ export async function POST(request: Request): Promise<Response> {
 
   const finish = (): void => {
     stopKeepAlive();
+    request.signal.removeEventListener("abort", onRequestAbort);
+    release();
     if (closed) return;
     closed = true;
     try {

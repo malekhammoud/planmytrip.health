@@ -89,6 +89,28 @@ describeIfDatabase("trip cache in PostgreSQL", () => {
     expect(related?.plan.summary).toBe("A cached test plan.");
   });
 
+  it("rejects a related row for a different date or party", async () => {
+    await writeCachedPlan(
+      request,
+      {
+        plan: plan(),
+        research: [],
+        completed: ["stay"],
+        failed: [],
+      },
+      "2026-11-22T01:00:00.000Z",
+    );
+    resetCacheMemory();
+    expect(
+      await readCachedPlan({ ...request, checkIn: "2026-12-10" }),
+    ).toBeNull();
+    expect(await readCachedPlan({ ...request, travelers: 2 })).toBeNull();
+    resetCacheMemory();
+    expect(
+      (await readCachedPlan({ ...request, interests: "vegan food" }))?.match,
+    ).toBe("related");
+  });
+
   it("stores and reads a complete verification set", async () => {
     const values = Object.fromEntries(
       WORKER_IDS.map((worker) => [

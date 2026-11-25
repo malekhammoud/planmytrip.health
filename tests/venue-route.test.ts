@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/venue-research/route";
+import { resetLiveLimitsForTests } from "@/lib/liveLimits";
 
 interface Frame {
   event: string;
@@ -20,6 +21,7 @@ function parseFrames(text: string): Frame[] {
 }
 
 afterEach(() => {
+  resetLiveLimitsForTests();
   vi.unstubAllEnvs();
 });
 

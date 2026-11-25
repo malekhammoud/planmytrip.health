@@ -121,6 +121,24 @@ describe("planner cache", () => {
     expect(await readCachedPlan(request)).toBeNull();
   });
 
+  it("keeps a different check-in date or party out of the related fallback", async () => {
+    const dated = { ...request, checkIn: "2026-12-10", travelers: 2 };
+    await writeCachedPlan(dated, write(), "2026-11-22T01:00:00.000Z");
+
+    const exact = await readCachedPlan(dated);
+    expect(exact?.match).toBe("exact");
+    expect(exact?.signature).toMatchObject({
+      checkIn: "2026-12-10",
+      travelers: 2,
+    });
+
+    expect(
+      await readCachedPlan({ ...dated, checkIn: "2026-12-11" }),
+    ).toBeNull();
+    expect(await readCachedPlan({ ...dated, travelers: 3 })).toBeNull();
+    expect(await readCachedPlan({ ...dated, checkIn: "" })).toBeNull();
+  });
+
   it("expires a plan after its window", async () => {
     await writeCachedPlan(request, write(), "2020-01-01T00:00:00.000Z");
     expect(await readCachedPlan(request)).toBeNull();

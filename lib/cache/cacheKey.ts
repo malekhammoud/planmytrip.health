@@ -13,7 +13,7 @@ import type { PlannerRequest } from "@/lib/agent/agentTypes";
 import type { Condition } from "@/lib/types";
 
 /** Bump when the cached payload shape or planner prompt contract changes. */
-export const CACHE_VERSION = 2;
+export const CACHE_VERSION = 3;
 
 /** Normalises place and preference text for matching, not for display. */
 export function normalizeCacheText(value: string): string {
@@ -73,6 +73,10 @@ export interface PlanCacheSignature {
   interests: string;
   budget: string;
   transport: string;
+  /** ISO check-in date, or empty when the traveler has not chosen one. */
+  checkIn: string;
+  /** Party size; a cached plan never serves a different party. */
+  travelers: number;
 }
 
 /** The broader identity used for a related-request cache fallback. */
@@ -91,6 +95,8 @@ export function planCacheSignature(request: PlannerRequest): PlanCacheSignature 
     interests: normalizeCacheText(request.interests),
     budget: request.budget,
     transport: request.transport,
+    checkIn: request.checkIn.trim(),
+    travelers: request.travelers,
   };
 }
 
@@ -116,6 +122,8 @@ export function buildPlanCacheKey(request: PlannerRequest): string {
     signature.interests,
     signature.budget,
     signature.transport,
+    signature.checkIn,
+    String(signature.travelers),
   ].join("|");
 }
 

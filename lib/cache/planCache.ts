@@ -6,8 +6,9 @@
  * Outputs: a normalised cached plan with its provenance, or null on a miss.
  * Invariants: only a non-mock plan with at least one day is stored; a read validates the
  * plan through the same wire normaliser the browser uses; the exact key wins and a
- * destination + days + condition row is a clearly labelled related fallback; no origin,
- * run id, or install id is stored in the cache key.
+ * destination + days + condition row is a clearly labelled related fallback only when the
+ * check-in date and party size also match; no origin, run id, or install id is stored in
+ * the cache key. Rows written before the date/party signature existed are a miss.
  */
 
 import type {
@@ -129,7 +130,10 @@ function signatureFrom(row: CacheRow): PlanCacheSignature | null {
     typeof value.condition !== "string" ||
     typeof value.interests !== "string" ||
     typeof value.budget !== "string" ||
-    typeof value.transport !== "string"
+    typeof value.transport !== "string" ||
+    typeof value.checkIn !== "string" ||
+    typeof value.travelers !== "number" ||
+    !Number.isInteger(value.travelers)
   ) {
     return null;
   }
@@ -155,12 +159,26 @@ export async function readCachedPlan(
   }
   const related = await readPlanRowByIdentity(planCacheIdentity(request));
   if (related === null) return null;
+  // A related row may differ in preferences, but never in date or party. Old rows
+  // without the new signature fields are an honest miss rather than a wrong stay.
+  const signature = signatureFrom(related);
+  const expected = planCacheSignature(request);
+  if (
+    signature === null ||
+    signature.destination !== expected.destination ||
+    signature.days !== expected.days ||
+    signature.condition !== expected.condition ||
+    signature.checkIn !== expected.checkIn ||
+    signature.travelers !== expected.travelers
+  ) {
+    return null;
+  }
   const parsed = payloadFor(related, "related");
   if (parsed === null) return null;
   touchCacheRow(related.key);
   return {
     ...parsed,
-    signature: signatureFrom(related) ?? planCacheSignature(request),
+    signature,
   };
 }
 

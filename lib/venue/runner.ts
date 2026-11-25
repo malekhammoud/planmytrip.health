@@ -13,7 +13,7 @@ import type { TinyfishEvent } from "@/lib/tinyfish";
 import { streamTinyfishRun } from "@/lib/tinyfish";
 import { fetchTinyfishRun } from "@/lib/tinyfishRuns";
 import { extractSources, mapTinyfishErrorCode } from "@/lib/tinyfishEvents";
-import { asNumber, asText, asHttpUrl, isRecord } from "@/lib/agent/agentParse";
+import { asNumber, asText, isRecord } from "@/lib/agent/agentParse";
 import { addDaysIso } from "@/lib/dates";
 import {
   readCachedVenue,
@@ -35,6 +35,7 @@ import type {
 } from "./types";
 import type { VenueActivityKind } from "./venueState";
 import { candidateUrl } from "./types";
+import { asPublicHttpUrl } from "./url";
 
 // VERIFY: the 75s job timeout, 45s run-record recovery, 255s run budget, three concurrent
 // browsers, and maxDurationSeconds: 90 against current TinyFish limits and billing.
@@ -202,7 +203,7 @@ function menuEvidence(
     kind: "menu",
     placeId: job.candidate.id,
     placeName: asText(result.restaurantName, 160) ?? job.worker.name,
-    sourceUrl: asHttpUrl(result.sourceUrl) ?? sourceUrl,
+    sourceUrl: asPublicHttpUrl(result.sourceUrl) ?? sourceUrl,
     retrievedAt: now,
     currency: asText(result.currency, 8),
     items: items
@@ -241,7 +242,7 @@ function hotelEvidence(
     kind: "hotel",
     placeId: job.candidate.id,
     placeName: asText(result.hotelName, 160) ?? job.worker.name,
-    sourceUrl: asHttpUrl(result.sourceUrl) ?? sourceUrl,
+    sourceUrl: asPublicHttpUrl(result.sourceUrl) ?? sourceUrl,
     retrievedAt: now,
     checkIn: job.checkIn,
     checkOut: job.checkOut,
@@ -252,7 +253,7 @@ function hotelEvidence(
     taxesAndFees: asNumber(result.taxesAndFees),
     currency: asText(result.currency, 8),
     cancellation: asText(result.cancellation, 300),
-    bookingUrl: asHttpUrl(result.bookingUrl),
+    bookingUrl: asPublicHttpUrl(result.bookingUrl),
     notes: Array.isArray(result.notes)
       ? result.notes
           .map((entry) => asText(entry, 300))
