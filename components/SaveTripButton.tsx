@@ -4,6 +4,7 @@
 import { Check } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui";
+import { capture } from "@/lib/analytics";
 import type { AgentTripPlan, TripConfig } from "@/lib/agent/agentTypes";
 
 type SaveState = "idle" | "saving" | "saved" | "limit" | "error";
@@ -45,13 +46,16 @@ export function SaveTripButton({ trip, runId, plan }: SaveTripButtonProps) {
         ) {
           const message = (body as Record<string, unknown>).error;
           if (typeof message === "string") setLimitMessage(message);
+          capture("save_limit_reached", { page: window.location.pathname });
           setState("limit");
           return;
         }
       }
       if (!response.ok) throw new Error("save failed");
+      capture("trip_saved", { page: window.location.pathname });
       setState("saved");
     } catch {
+      capture("trip_save_failed", { page: window.location.pathname });
       setState("error");
     }
   }

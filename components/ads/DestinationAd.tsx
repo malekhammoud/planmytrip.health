@@ -19,6 +19,7 @@ import {
   plannerHref,
   signUpHref,
   timezoneDestination,
+  type AdContext,
   type AdIntent,
   type AdVariant,
 } from "@/lib/ads/campaign";
@@ -28,6 +29,7 @@ import {
   readAdDestination,
 } from "@/lib/ads/destinationMemory";
 import { trackAdClick } from "@/lib/ads/trackClick";
+import { capture } from "@/lib/analytics";
 import { AdInline } from "./AdInline";
 import { AdPoster } from "./AdPoster";
 import { AdStrip } from "./AdStrip";
@@ -38,6 +40,8 @@ export interface DestinationAdProps {
   destination?: string;
   /** `plan` asks for a trip start; `upgrade` sells Care Circle. Defaults to plan. */
   intent?: AdIntent;
+  /** `report` swaps in copy for a finished saved trip or workspace report. */
+  context?: AdContext;
   /** Layout to render. Defaults to the inline card. */
   variant?: AdVariant;
   /** Stable placement id, such as `landing` or `site-footer`. */
@@ -89,13 +93,17 @@ function useAdDestination(provided?: string): string {
 export function DestinationAd({
   destination,
   intent = "plan",
+  context = "default",
   variant = "inline",
   placement,
   signedIn = false,
   className,
 }: DestinationAdProps) {
   const resolved = useAdDestination(destination);
-  const campaign = useMemo(() => campaignFor(resolved, intent), [resolved, intent]);
+  const campaign = useMemo(
+    () => campaignFor(resolved, intent, context),
+    [resolved, intent, context],
+  );
   const href = signedIn
     ? plannerHref(campaign.destination)
     : signUpHref(campaign.destination);
@@ -105,6 +113,7 @@ export function DestinationAd({
       : campaign.city;
 
   const track = (target: AdTarget): void => {
+    capture("ad_clicked", { placement, intent, variant, target, page: window.location.pathname });
     trackAdClick({
       destination: trackingDestination,
       placement,
@@ -118,6 +127,7 @@ export function DestinationAd({
     campaign,
     intent,
     planHref: href,
+    placement,
     onPlanClick: () => track("plan"),
     onPricingClick: () => track("pricing"),
   };

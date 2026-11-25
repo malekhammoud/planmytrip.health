@@ -2,6 +2,8 @@ import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { CLERK_APPEARANCE } from "@/lib/clerkAppearance";
+import { AnalyticsPageview } from "@/components/AnalyticsPageview";
+import { AnalyticsAuth } from "@/components/AnalyticsAuth";
 import "@fontsource/instrument-serif/400.css";
 import "@fontsource-variable/hanken-grotesk/index.css";
 import "@fontsource/ibm-plex-mono/400.css";
@@ -33,6 +35,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           afterSignOutUrl="/sign-in"
           appearance={CLERK_APPEARANCE}
         >
+          <AnalyticsPageview />
+          <AnalyticsAuth />
           {children}
         </ClerkProvider>
       </body>

@@ -1180,7 +1180,7 @@ thresholds and Sun Life stability window remain VERIFY.
 - **Campaign surface.** Added a first-party ad system with three layouts: a dark landing
   poster, a site-footer strip, and a paper inline card. The footer strip appears on every page
   with `SiteFooter`; the poster and inline cards sit on landing, pricing, and the saved-trip
-  list. Sign-in and sign-up stay ad-free.
+  list.
 - **Destination personalization.** `lib/ads/campaign.ts` resolves a display city, applies a
   curated city note only when the country matches, and otherwise keeps generic health-trip
   copy. The destination comes from the trip, the last built destination in local storage, the
@@ -1196,6 +1196,28 @@ thresholds and Sun Life stability window remain VERIFY.
 - **Gate.** `npm run typecheck`, `npm run lint`, and `npm run build` pass. `npm test` passes
   after the design-guard wording fix. The ad click route has isolated route tests for a valid
   click, a cross-origin rejection, and a malformed payload.
+
+## Report ad coverage (2026-11-25)
+
+- **Every report surface.** Saved-trip reports and the workspace report now carry a
+  destination-specific inline ad with report copy: "Make this Paris report current" for free
+  accounts and "Plan another Paris trip" for Care Circle accounts. The account page, privacy,
+  terms, model report, sign-in, and sign-up gained placements as well; every public page now
+  carries at least one labelled ad.
+- **Report context.** `campaignFor(destination, intent, "report")` adds the report-specific
+  headline and body without changing the destination, link, or aggregate click record. The
+  ad still never reads a health profile.
+- **Conversion funnel.** Ad anchors now expose `data-cta` (`ad_plan`, `ad_care_circle`, or
+  `ad_plans`) and `data-surface` so the first-party CTA analytics listener can attribute
+  sign-up and checkout conversion to a placement. The aggregate JSONL route remains the
+  ad-specific source of truth.
+- **Privacy-safe analytics.** Added the PostHog client (`lib/analytics.ts`), public pageview,
+  auth, checkout, CTA, plan-build, save, and feedback events. Autocapture, session recording,
+  exception capture, and heatmaps stay off; DNT and Global Privacy Control disable the client.
+  The privacy notice documents the browser identifier, allowlisted events, and the data that
+  never leaves the product. Ad clicks emit both `ad_clicked` and the aggregate JSONL row.
+- **Gate.** Full typecheck, test, lint, and build pass; the production deploy is restarted
+  through the normal deploy script after the commit.
 
 ## Next action
 

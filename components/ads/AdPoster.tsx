@@ -16,6 +16,7 @@ export function AdPoster({
   campaign,
   intent,
   planHref,
+  placement,
   onPlanClick,
   onPricingClick,
 }: AdLayoutProps) {
@@ -41,6 +42,8 @@ export function AdPoster({
               variant="accent"
               href={upgrade ? "/pricing" : planHref}
               onClick={upgrade ? onPricingClick : onPlanClick}
+              data-cta={upgrade ? "ad_care_circle" : "ad_plan"}
+              data-surface={placement}
               className="w-full sm:w-auto"
             >
               {campaign.ctaLabel}
@@ -49,6 +52,8 @@ export function AdPoster({
               <a
                 href="/pricing"
                 onClick={onPricingClick}
+                data-cta="ad_plans"
+                data-surface={placement}
                 className="t-button inline-flex min-h-11 items-center justify-center text-paper underline underline-offset-4"
               >
                 See plans

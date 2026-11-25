@@ -174,10 +174,10 @@ export function LandingPage() {
                 paced itinerary, a real route, live-checked places, and a clear safety envelope.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <LinkButton variant="primary" href="/sign-up" external={false}>
+                <LinkButton variant="primary" href="/sign-up" external={false} data-cta="signup" data-surface="landing_hero">
                   Plan my trip
                 </LinkButton>
-                <LinkButton variant="secondary" href="#how-it-works" external={false}>
+                <LinkButton variant="secondary" href="#how-it-works" external={false} data-cta="how_it_works" data-surface="landing_hero">
                   How it works
                 </LinkButton>
               </div>
@@ -406,10 +406,10 @@ export function LandingPage() {
                 Safety is free. Live checks and longer trips are in Care Circle.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-3">
-                <LinkButton variant="primary" href="/sign-up" external={false}>
+                <LinkButton variant="primary" href="/sign-up" external={false} data-cta="signup" data-surface="landing_footer">
                   Plan my trip
                 </LinkButton>
-                <LinkButton variant="secondary" href="/pricing" external={false}>
+                <LinkButton variant="secondary" href="/pricing" external={false} data-cta="pricing" data-surface="landing_footer">
                   See plans
                 </LinkButton>
               </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { capture } from "@/lib/analytics";
 import { Onboarding } from "@/components/Onboarding";
 import { PlanWorkspace } from "@/components/PlanWorkspace";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
@@ -65,6 +66,7 @@ export function PlannerHome({
   }, [trip]);
 
   function handleBuild(config: TripConfig): void {
+    capture("plan_build_started", { page: window.location.pathname });
     rememberAdDestination(config.destination);
     setTrip(config);
     setRunId(crypto.randomUUID());
@@ -73,6 +75,7 @@ export function PlannerHome({
   }
 
   function handleReplan(): void {
+    capture("plan_rebuild_started", { page: window.location.pathname });
     setRunId(crypto.randomUUID());
     setDeployNonce((nonce) => nonce + 1);
   }

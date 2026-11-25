@@ -82,6 +82,16 @@ describe("ad destination copy", () => {
     expect(campaign.rows.some((row) => row.term === "Price")).toBe(true);
   });
 
+  it("swaps in report copy for a finished trip", () => {
+    const upgrade = campaignFor("Paris, France", "upgrade", "report");
+    expect(upgrade.headline).toBe("Make this Paris report current.");
+    expect(upgrade.copy).toContain("for this trip");
+    const plan = campaignFor("Paris, France", "plan", "report");
+    expect(plan.headline).toBe("Plan another Paris trip.");
+    expect(plan.ctaLabel).toBe("Plan another trip");
+    expect(plan.finePrint).toBe("Planning aid only. Not medical advice.");
+  });
+
   it("falls back to a featured destination for an empty value", () => {
     const campaign = campaignFor("", "plan");
     expect(campaign.destination).toBe("Paris, France");

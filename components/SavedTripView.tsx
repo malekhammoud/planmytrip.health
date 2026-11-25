@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AgentPlanView } from "@/components/AgentPlanView";
 import { DeleteSavedTripButton } from "@/components/DeleteSavedTripButton";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
+import { DestinationAd } from "@/components/ads/DestinationAd";
 import { CareCardButton, ItineraryBoard } from "@/components/ItineraryBoard";
 import { UpgradeCallout } from "@/components/UpgradeCallout";
 import { Button, Callout, LinkButton } from "@/components/ui";
@@ -11,7 +12,7 @@ import { VenueMissionControl } from "@/components/venue/VenueMissionControl";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useVenueResearch } from "@/hooks/useVenueResearch";
 import { rememberAdDestination } from "@/lib/ads/destinationMemory";
-import type { BillingEntitlements } from "@/lib/billing/plans";
+import { isPaidPlan, type BillingEntitlements } from "@/lib/billing/plans";
 import { describeTrip } from "@/lib/describeTrip";
 import { buildHealthTripPlan } from "@/lib/healthTripEngine";
 import type { SavedTrip } from "@/lib/savedTrips";
@@ -142,6 +143,17 @@ export function SavedTripView({
               rates under Checked places for current facts.
             </p>
           </Callout>
+        </div>
+
+        <div className="mt-6">
+          <DestinationAd
+            variant="inline"
+            context="report"
+            intent={isPaidPlan(entitlements.plan) ? "plan" : "upgrade"}
+            placement="saved-trip-report"
+            destination={saved.trip.destination}
+            signedIn
+          />
         </div>
 
         <section aria-labelledby="saved-plan-heading" className="mt-12">

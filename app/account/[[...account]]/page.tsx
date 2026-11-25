@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
+import { DestinationAd } from "@/components/ads/DestinationAd";
+import { entitlementsFromHas, isPaidPlan } from "@/lib/billing/plans";
 import { CLERK_APPEARANCE } from "@/lib/clerkAppearance";
 import { signInHref } from "@/lib/redirects";
 
@@ -26,8 +28,9 @@ export default async function AccountPage({
     .filter((segment) => segment.length > 0 && segment !== "." && segment !== "..")
     .map((segment) => `/${encodeURIComponent(segment)}`)
     .join("")}`;
-  const { userId } = await auth();
+  const { userId, has } = await auth();
   if (userId === null) redirect(signInHref(returnPath));
+  const paid = isPaidPlan(entitlementsFromHas(has).plan);
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -38,6 +41,15 @@ export default async function AccountPage({
         <p className="t-body measure mt-5 text-muted">
           Manage your profile, plan, and billing here. Your saved trips have their own page.
         </p>
+        <div className="mt-8">
+          <DestinationAd
+            variant="inline"
+            intent={paid ? "plan" : "upgrade"}
+            context={paid ? "report" : "default"}
+            placement="account"
+            signedIn
+          />
+        </div>
         <div className="mt-8">
           <Suspense
             fallback={<p className="t-small text-muted">Loading your account.</p>}

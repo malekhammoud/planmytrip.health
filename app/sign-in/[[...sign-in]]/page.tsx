@@ -2,6 +2,7 @@ import { SignIn } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LogoLink } from "@/components/Logo";
+import { DestinationAd } from "@/components/ads/DestinationAd";
 import { safeReturnPath } from "@/lib/redirects";
 
 export const metadata: Metadata = {
@@ -23,6 +24,7 @@ export default async function SignInPage({
   const returnPath =
     safeReturnPath(Array.isArray(requested) ? requested[0] : requested) ?? "/";
   return (
+    <>
     <main className="page-container flex min-h-dvh flex-col justify-center py-12 md:py-20">
       <div className="mx-auto w-full max-w-md">
         <LogoLink />
@@ -47,5 +49,7 @@ export default async function SignInPage({
         </p>
       </div>
     </main>
+    <DestinationAd variant="strip" intent="upgrade" placement="sign-in" />
+    </>
   );
 }

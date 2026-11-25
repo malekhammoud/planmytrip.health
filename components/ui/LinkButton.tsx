@@ -14,6 +14,10 @@ export interface LinkButtonProps extends AnchorHTMLAttributes<HTMLAnchorElement>
   size?: LinkButtonSize;
   /** Stretches the link to the width of its container. */
   fullWidth?: boolean;
+  /** Optional first-party analytics label, consumed by the global CTA listener. */
+  "data-cta"?: string;
+  /** Optional first-party analytics surface, consumed by the global CTA listener. */
+  "data-surface"?: string;
   /**
    * Opens an external handoff in a new tab with `noopener noreferrer`. Defaults to true,
    * but an internal `href` (starting with `/` or `#`) always stays in the same tab.

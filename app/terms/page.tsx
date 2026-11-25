@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
+import { DestinationAd } from "@/components/ads/DestinationAd";
 
 export const metadata: Metadata = {
   title: "Terms - PlanMyTrip.health",
@@ -22,6 +23,10 @@ export default function TermsPage() {
           Last updated 25 November 2026. These terms cover your use of PlanMyTrip.health.
           By using the service, you agree to them.
         </p>
+
+        <div className="mt-10">
+          <DestinationAd variant="inline" intent="plan" placement="terms" />
+        </div>
 
         <div className="measure mt-10 flex flex-col gap-10">
           <section aria-labelledby="terms-service">

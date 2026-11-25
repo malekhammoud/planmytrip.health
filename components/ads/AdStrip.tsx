@@ -15,6 +15,7 @@ export function AdStrip({
   campaign,
   intent,
   planHref,
+  placement,
   onPlanClick,
   onPricingClick,
 }: AdLayoutProps) {
@@ -38,6 +39,8 @@ export function AdStrip({
             variant="accent"
             href={upgrade ? "/pricing" : planHref}
             onClick={upgrade ? onPricingClick : onPlanClick}
+            data-cta={upgrade ? "ad_care_circle" : "ad_plan"}
+            data-surface={placement}
             className="w-full md:w-auto"
           >
             {campaign.ctaLabel}

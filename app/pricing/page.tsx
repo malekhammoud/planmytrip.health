@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { DestinationAd } from "@/components/ads/DestinationAd";
+import { CheckoutAnalytics } from "@/components/CheckoutAnalytics";
 import { Callout, LinkButton } from "@/components/ui";
 import { entitlementsFromHas, isPaidPlan, planLabel } from "@/lib/billing/plans";
 import { CLERK_APPEARANCE } from "@/lib/clerkAppearance";
@@ -65,6 +66,7 @@ export default async function PricingPage({
     <div className="flex min-h-dvh flex-col">
       <SiteHeader publicView={userId === null} />
       <main className="page-container flex-1 pt-12 md:pt-20">
+        <CheckoutAnalytics />
         <p className="t-label text-muted">Plans</p>
         <h1 className="t-display measure mt-3">Plans for the way you travel.</h1>
         <p className="t-body measure mt-5 text-muted">

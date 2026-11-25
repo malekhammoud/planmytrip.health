@@ -14,6 +14,8 @@ export interface AdLayoutProps {
   campaign: DestinationCampaign;
   intent: AdIntent;
   planHref: string;
+  /** Stable placement id carried into first-party CTA analytics. */
+  placement: string;
   onPlanClick: () => void;
   onPricingClick: () => void;
 }

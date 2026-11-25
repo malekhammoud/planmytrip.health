@@ -8,6 +8,7 @@ import {
 } from "react";
 import { CheckCircle2, MessageSquare, Star, X } from "lucide-react";
 import { Button, TextArea } from "@/components/ui";
+import { capture } from "@/lib/analytics";
 
 type Category = "bug" | "feature" | "other";
 
@@ -100,6 +101,14 @@ export function FeedbackButton({ className = "" }: { className?: string }) {
           release: process.env.NEXT_PUBLIC_RELEASE,
         }),
       });
+      if (response.ok) {
+        capture("feedback_submitted", {
+          category,
+          rating,
+          has_comment: message.trim().length > 0,
+          page: window.location.pathname,
+        });
+      }
       setState(response.ok ? "done" : "error");
     } catch {
       setState("error");
@@ -113,6 +122,7 @@ export function FeedbackButton({ className = "" }: { className?: string }) {
         size="sm"
         leadingIcon={MessageSquare}
         onClick={(event) => {
+          capture("feedback_opened", { page: window.location.pathname });
           triggerRef.current = event.currentTarget;
           setOpen(true);
         }}

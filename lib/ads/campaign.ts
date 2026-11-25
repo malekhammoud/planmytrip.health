@@ -13,6 +13,9 @@
 /** The two campaign jobs. `plan` asks for a trip start; `upgrade` sells Care Circle. */
 export type AdIntent = "plan" | "upgrade";
 
+/** The page context. `report` uses copy written for a finished trip report. */
+export type AdContext = "default" | "report";
+
 /** The three house-ad layouts. */
 export type AdVariant = "poster" | "strip" | "inline";
 
@@ -504,10 +507,11 @@ export function timezoneDestination(zone: string | null | undefined): string | n
   return TIMEZONE_DESTINATIONS[zone] ?? null;
 }
 
-/** Builds the copy for one destination and one campaign job. */
+/** Builds the copy for one destination, one campaign job, and one page context. */
 export function campaignFor(
   value: string,
   intent: AdIntent = "plan",
+  context: AdContext = "default",
 ): DestinationCampaign {
   const destination = safeDestination(value) ?? FEATURED_DESTINATIONS[0];
   const { city, country, segments } = destinationParts(destination);
@@ -529,8 +533,14 @@ export function campaignFor(
       city: safeCity,
       country,
       issue: issueNumber(destination),
-      headline: `The ${safeCity} plan, with live checks.`,
-      copy: `Care Circle adds live menus, room rates, and the destination advisory for ${safeCity}, so the plan carries current facts.`,
+      headline:
+        context === "report"
+          ? `Make this ${safeCity} report current.`
+          : `The ${safeCity} plan, with live checks.`,
+      copy:
+        context === "report"
+          ? "Care Circle adds live menus, room rates, and the destination advisory for this trip."
+          : `Care Circle adds live menus, room rates, and the destination advisory for ${safeCity}, so the plan carries current facts.`,
       meta: "$9/month or $60/year · Cancel from your account",
       finePrint: "Planning aid only. Not medical advice.",
       ctaLabel: "See Care Circle",
@@ -540,6 +550,28 @@ export function campaignFor(
         { term: "Saved trips", detail: "Unlimited" },
         { term: "Price", detail: "$9/month or $60/year" },
         { term: "Cancel", detail: "From your account" },
+      ],
+    };
+  }
+
+  if (context === "report") {
+    return {
+      destination,
+      city: safeCity,
+      country,
+      issue: issueNumber(destination),
+      headline: `Plan another ${safeCity} trip.`,
+      copy:
+        "Your route, safety envelope, and care card are saved. Start the next version when you are ready.",
+      meta: "Free to start · Care Circle $9/month or $60/year",
+      finePrint: "Planning aid only. Not medical advice.",
+      ctaLabel: "Plan another trip",
+      rows: [
+        { term: "Destination", detail: place },
+        { term: "Pace", detail: "Your health profile" },
+        { term: "Route", detail: "Day by day, mapped" },
+        { term: "Checks", detail: "Live on Care Circle" },
+        { term: "Price", detail: "Free to start" },
       ],
     };
   }

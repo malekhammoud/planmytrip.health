@@ -108,6 +108,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 68. Reset deployment record | [x] | `docs(agents): record the production reset deployment` |
 | 69. General relaxation default | [x] | `feat(profile): add a general relaxation default` |
 | 70. Destination house ads | [x] | `feat(ads): add destination-personalized house ads` |
+| 71. Report ads and conversion analytics | [x] | `feat(ads): extend house ads to every report` |
 
 ## 3. Commands
 
@@ -182,6 +183,8 @@ host, build first, then `chown -R planmytrip:planmytrip .next` before restarting
 | `PLANMYTRIP_CAPTURE_MOCK` | Server only, capture paths | Only when `1`; allows mock planner and destination runs to be stored for tests. Never enable in production. |
 | `PLANMYTRIP_FEEDBACK_DIR` | Server only, feedback route | Local JSONL fallback directory. Defaults to `/var/lib/planmytrip/feedback`; must be writable by the app user. |
 | `PLANMYTRIP_ADS_DIR` | Server only, ad-click route and report | Local JSONL fallback directory for aggregate house-ad clicks. Defaults to `/var/lib/planmytrip/ads`; must be writable by the app user. No account id, IP address, or health field is stored. |
+| `NEXT_PUBLIC_POSTHOG_KEY` | Browser, `lib/analytics.ts` | Public PostHog project key. A built-in project key is used when empty; never use a personal API key. |
+| `NEXT_PUBLIC_POSTHOG_HOST` | Browser, `lib/analytics.ts` | Defaults to `/ingest`, proxied by `next.config.ts` to PostHog. |
 | `OPS_HEALTH_TOKEN` | Server only, `/api/health` | When set, the local probe requires `x-ops-token`; an empty value leaves it local-only and unauthenticated. Never expose it to the browser. |
 | `OPS_INGEST_URL` | Server only, ops and feedback routes | Local control-plane endpoint. Defaults to `http://127.0.0.1:3100`. |
 | `OPS_INGEST_TOKEN` | Server only, ops and feedback routes | Shared control-plane token. Reporting and central feedback stay disabled when empty. |
@@ -1104,17 +1107,21 @@ prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.5:1 or better.
 ### House destination advertisements
 
 `components/ads/DestinationAd.tsx` renders first-party house advertisements in three
-layouts: the landing poster, the site-footer strip, and the inline card. The footer strip is
-in `SiteFooter`, so every page that carries the closing notice also carries one labelled ad.
-Prominent placements are the landing poster, the pricing inline card, and the saved-trip list
-inline card. Sign-in and sign-up stay ad-free so the account step is not interrupted.
+layouts: a landing poster, a site-footer strip, and an inline card. The footer strip is in
+`SiteFooter`, so every page that carries the closing notice also carries one labelled ad.
+Prominent placements are the landing poster, the pricing inline card, the saved-trip list
+inline card, every saved-trip report, the workspace report, the account page, privacy, terms,
+the model report, and the sign-in and sign-up strips. Every public page now carries at least
+one labelled ad; the error boundaries, the dev-only mock browser, and the static pitch deck
+remain ad-free.
 
 Copy lives in `lib/ads/campaign.ts`. `plan` campaigns ask for a trip start; `upgrade`
-campaigns sell Care Circle and link to `/pricing`. A city note is used only when the
-destination's country matches the note's country, so "Paris, Texas" never borrows the Seine
-copy. Every destination gets the city name and the generic health-trip copy; no ad reads a
-health profile. `.ad-poster-city` in `globals.css` is campaign-only display type, not a
-general type class.
+campaigns sell Care Circle and link to `/pricing`; `context="report"` swaps in copy written
+for a finished report ("Make this Paris report current" or "Plan another Paris trip"). A city
+note is used only when the destination's country matches the note's country, so "Paris, Texas"
+never borrows the Seine copy. Every destination gets the city name and the generic health-trip
+copy; no ad reads a health profile. `.ad-poster-city` in `globals.css` is campaign-only display
+type, not a general type class.
 
 The destination order is the current trip, then the last built destination in
 `localStorage` (`planmytrip.adDestination`), then the browser time zone, then a rotating
@@ -1126,7 +1133,26 @@ Clicks are beacons to `POST /api/ads/click`. The route writes one JSONL row per 
 `PLANMYTRIP_ADS_DIR` with destination, placement, campaign intent, layout, and CTA target.
 It stores no account id, IP address, health field, or free text; the IP is used only for an
 in-memory rate limit. Run `npm run ads:report` to print the aggregate counts. The privacy
-notice describes the local destination and the aggregate click count.
+notice describes the local destination and the aggregate click count. Ad anchors also carry
+`data-cta` (`ad_plan`, `ad_care_circle`, or `ad_plans`) and `data-surface` so the first-party
+CTA analytics funnel can attribute sign-up and checkout conversion to a placement.
+
+### Conversion analytics
+
+`lib/analytics.ts` is the only analytics client. It loads PostHog after the page is idle or
+after the first pointer, key, or scroll event, and never before. `initAnalytics` respects Do
+Not Track and Global Privacy Control, disables autocapture, session recording, exception and
+heatmap capture, and sends only allowlisted event names and properties. `AnalyticsPageview`
+and `AnalyticsAuth` live in the root layout; `CheckoutAnalytics` marks a completed checkout on
+`/pricing`. Public paths map to `/`, `/pricing`, `/privacy`, `/terms`, `/sign-in`, `/sign-up`;
+account, saved-trip, and workspace paths map to `/app`.
+
+The event vocabulary covers pageviews, scroll depth, CTA clicks, `ad_clicked`,
+`plan_build_started`, `trip_saved`, `feedback_opened`, `feedback_submitted`, `checkout_success`,
+and the auth completion events. Ad anchors carry `data-cta` and `data-surface`, so the funnel
+can connect an ad placement to sign-up, plan build, saved trip, and checkout without putting a
+destination, health field, account id, email, or free text in an event. The privacy notice
+documents the PostHog browser identifier, the disabled recording, and the DNT/GPC behavior.
 
 ## 8. Medical safety rules
 

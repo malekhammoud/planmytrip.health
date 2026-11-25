@@ -6,5 +6,7 @@
  */
 
 import { installClientReporter } from "./lib/ops/client";
+import { initAnalytics } from "./lib/analytics";
 
 installClientReporter();
+initAnalytics();

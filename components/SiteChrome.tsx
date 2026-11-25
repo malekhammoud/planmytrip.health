@@ -29,12 +29,16 @@ export function SiteHeader({ publicView = false }: SiteHeaderProps) {
             </a>
             <a
               href="/pricing"
+              data-cta="pricing"
+              data-surface="header"
               className="t-small hidden min-h-11 items-center px-1 whitespace-nowrap text-muted transition-colors duration-150 hover:text-ink hover:underline sm:inline-flex"
             >
               Pricing
             </a>
             <a
               href="/sign-in"
+              data-cta="signin"
+              data-surface="header"
               className="t-small hidden min-h-11 items-center px-1 whitespace-nowrap text-muted transition-colors duration-150 hover:text-ink hover:underline sm:inline-flex"
             >
               Sign in
@@ -44,6 +48,8 @@ export function SiteHeader({ publicView = false }: SiteHeaderProps) {
               size="md"
               href="/sign-up"
               external={false}
+              data-cta="signup"
+              data-surface="header"
             >
               Plan a trip
             </LinkButton>
@@ -52,6 +58,8 @@ export function SiteHeader({ publicView = false }: SiteHeaderProps) {
           <nav aria-label="Account" className="relative z-10 flex items-center gap-4">
             <a
               href="/pricing"
+              data-cta="pricing"
+              data-surface="header"
               className="t-small hidden min-h-11 items-center px-1 whitespace-nowrap text-muted transition-colors duration-150 hover:text-ink hover:underline sm:inline-flex"
             >
               Plans

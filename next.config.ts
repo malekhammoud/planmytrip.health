@@ -3,7 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async rewrites() {
     // The pitch deck is a static artifact in public/pitch, not an app route.
-    return [{ source: "/pitch", destination: "/pitch/index.html" }];
+    return [
+      { source: "/ingest/static/:path*", destination: "https://us-assets.i.posthog.com/static/:path*" },
+      { source: "/ingest/:path*", destination: "https://us.i.posthog.com/:path*" },
+      { source: "/pitch", destination: "/pitch/index.html" },
+    ];
   },
   turbopack: {
     rules: {

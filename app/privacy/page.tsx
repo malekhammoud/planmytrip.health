@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
+import { DestinationAd } from "@/components/ads/DestinationAd";
 
 export const metadata: Metadata = {
   title: "Privacy - PlanMyTrip.health",
@@ -23,6 +24,10 @@ export default function PrivacyPage() {
           handles, why, and the choices you have. It is a planning aid, not medical
           advice.
         </p>
+
+        <div className="mt-10">
+          <DestinationAd variant="inline" intent="plan" placement="privacy" />
+        </div>
 
         <div className="measure mt-10 flex flex-col gap-10">
           <section aria-labelledby="privacy-account">
@@ -107,6 +112,25 @@ export default function PrivacyPage() {
               Ad clicks are counted in aggregate by destination, placement, campaign,
               layout, and click target. The count does not include your account id, IP
               address, or health data.
+            </p>
+          </section>
+
+          <section aria-labelledby="privacy-analytics">
+            <h2 id="privacy-analytics" className="t-title text-ink">
+              Product analytics
+            </h2>
+            <p className="t-small mt-3 text-muted">
+              We use PostHog to count public pageviews and product actions such as a CTA
+              click, an ad click, a plan build, a saved trip, a sign-in, a sign-up, and a
+              completed checkout. Events use allowlisted names and properties. We do not
+              send your health profile, destination text, saved-trip content, account id,
+              email, name, or free text.
+            </p>
+            <p className="t-small mt-3 text-muted">
+              PostHog receives the event and the normal request metadata needed to deliver
+              it, and keeps a browser identifier in local storage. Session recording and
+              autocapture stay off. Do Not Track and Global Privacy Control turn the
+              analytics off.
             </p>
           </section>
 

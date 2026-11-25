@@ -15,6 +15,7 @@ export function AdInline({
   campaign,
   intent,
   planHref,
+  placement,
   onPlanClick,
   onPricingClick,
 }: AdLayoutProps) {
@@ -39,6 +40,8 @@ export function AdInline({
             variant="primary"
             href={upgrade ? "/pricing" : planHref}
             onClick={upgrade ? onPricingClick : onPlanClick}
+            data-cta={upgrade ? "ad_care_circle" : "ad_plan"}
+            data-surface={placement}
             className="w-full"
           >
             {campaign.ctaLabel}
@@ -48,6 +51,8 @@ export function AdInline({
               variant="ghost"
               href="/pricing"
               onClick={onPricingClick}
+              data-cta="ad_plans"
+              data-surface={placement}
               className="w-full"
             >
               See plans
