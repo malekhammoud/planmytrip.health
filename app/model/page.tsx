@@ -1,8 +1,6 @@
 /* eslint-disable @next/next/no-html-link-for-pages -- account, billing, and saved-trip links deliberately use a full navigation so a stale client router cannot trap the click. */
 import type { Metadata } from "next";
 import { LogoLink } from "@/components/Logo";
-import { SiteFooter } from "@/components/SiteChrome";
-import { DestinationAd } from "@/components/ads/DestinationAd";
 import { Callout } from "@/components/ui";
 import { MODEL_ARTIFACT, MODEL_AVAILABLE } from "@/lib/model/artifact";
 import { predictFromArtifact } from "@/lib/model/predict";
@@ -153,7 +151,6 @@ export default function ModelPage() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <DestinationAd variant="bar" intent="plan" placement="model-top" />
       <header className="border-b border-hairline">
         <div className="page-container flex h-16 items-center justify-between gap-6">
           <LogoLink />
@@ -321,13 +318,15 @@ export default function ModelPage() {
             Full model card: <span className="t-data">docs/MODEL_CARD.md</span>
           </p>
         </section>
-
-        <div className="mt-12">
-          <DestinationAd variant="inline" intent="plan" placement="model-report" />
-        </div>
       </main>
 
-      <SiteFooter />
+      <footer className="mt-16 border-t border-hairline md:mt-24">
+        <div className="page-container py-6">
+          <p className="t-small measure text-muted">
+            Planning aid only. Not medical advice.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

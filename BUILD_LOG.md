@@ -1175,52 +1175,17 @@ thresholds and Sun Life stability window remain VERIFY.
   used a reader proxy. Recording files and the two recording variables were removed from
   production.
 
-## House destination advertisements (2026-11-25)
+## Conversion analytics (2026-11-25)
 
-- **Campaign surface.** Added a first-party ad system with three layouts: a dark landing
-  poster, a site-footer strip, and a paper inline card. The footer strip appears on every page
-  with `SiteFooter`; the poster and inline cards sit on landing, pricing, and the saved-trip
-  list.
-- **Destination personalization.** `lib/ads/campaign.ts` resolves a display city, applies a
-  curated city note only when the country matches, and otherwise keeps generic health-trip
-  copy. The destination comes from the trip, the last built destination in local storage, the
-  browser time zone, or a rotating featured city. No health profile is read and no geolocation
-  permission is requested.
-- **Click path.** Plan ads open the planner prefilled with `?destination=<city>` after
-  sign-up or directly for a signed-in reader. Care Circle ads link to `/pricing`. Plan clicks
-  and pricing clicks are separate targets.
-- **Measurement.** `POST /api/ads/click` writes aggregate JSONL rows to
-  `PLANMYTRIP_ADS_DIR` (default `/var/lib/planmytrip/ads`) with no account id, IP address, or
-  health field. `npm run ads:report` prints counts by destination, placement, intent, layout,
-  and target. The privacy notice documents the local destination and aggregate counts.
-- **Gate.** `npm run typecheck`, `npm run lint`, and `npm run build` pass. `npm test` passes
-  after the design-guard wording fix. The ad click route has isolated route tests for a valid
-  click, a cross-origin rejection, and a malformed payload.
-
-## Report ad coverage (2026-11-25)
-
-- **Every report surface.** Saved-trip reports and the workspace report now carry a
-  destination-specific inline ad with report copy: "Make this Paris report current" for free
-  accounts and "Plan another Paris trip" for Care Circle accounts. The account page, privacy,
-  terms, model report, sign-in, and sign-up gained placements as well; every public page now
-  carries at least one labelled ad.
-- **Above the fold.** Added a compact top bar above the sticky site header on every page that
-  uses `SiteHeader`, plus the sign-in, sign-up, and model headers. Public pages show the plan
-  CTA; signed-in pages show the Care Circle CTA, so the bar cannot replace an unsaved plan.
-- **Report context.** `campaignFor(destination, intent, "report")` adds the report-specific
-  headline and body without changing the destination, link, or aggregate click record. The
-  ad still never reads a health profile.
-- **Conversion funnel.** Ad anchors now expose `data-cta` (`ad_plan`, `ad_care_circle`, or
-  `ad_plans`) and `data-surface` so the first-party CTA analytics listener can attribute
-  sign-up and checkout conversion to a placement. The aggregate JSONL route remains the
-  ad-specific source of truth.
-- **Privacy-safe analytics.** Added the PostHog client (`lib/analytics.ts`), public pageview,
-  auth, checkout, CTA, plan-build, save, and feedback events. Autocapture, session recording,
-  exception capture, and heatmaps stay off; DNT and Global Privacy Control disable the client.
-  The privacy notice documents the browser identifier, allowlisted events, and the data that
-  never leaves the product. Ad clicks emit both `ad_clicked` and the aggregate JSONL row.
-- **Gate.** Full typecheck, test, lint, and build pass; the production deploy is restarted
-  through the normal deploy script after the commit.
+- **Ad campaign reverted.** The destination-ad campaign was briefly added to this product by
+  mistake in steps 70-73. Step 74 removes it; the cross-sell campaign belongs on
+  IsMyTripSafe.com, where the visitor traffic is.
+- **Privacy-safe analytics retained.** The PostHog client (`lib/analytics.ts`), public
+  pageview, auth, checkout, CTA, plan-build, save, and feedback events stay. Autocapture,
+  session recording, exception capture, and heatmaps stay off; DNT and Global Privacy Control
+  disable the client. The privacy notice documents the browser identifier and the data that
+  never leaves the product.
+- **Gate.** Full typecheck, test, lint, and build pass before the revert deploy.
 
 ## Next action
 

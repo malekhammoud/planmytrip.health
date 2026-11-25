@@ -3,7 +3,6 @@
 
 import { UserButton } from "@clerk/nextjs";
 import { LogoLink, LogoMark } from "@/components/Logo";
-import { DestinationAd } from "@/components/ads/DestinationAd";
 import { FeedbackButton } from "@/components/FeedbackButton";
 import { LinkButton } from "@/components/ui";
 
@@ -16,13 +15,6 @@ export interface SiteHeaderProps {
 /** Sticky 64px letterhead: brand lockup, public anchors, and the account control. */
 export function SiteHeader({ publicView = false }: SiteHeaderProps) {
   return (
-    <>
-      <DestinationAd
-        variant="bar"
-        intent={publicView ? "plan" : "upgrade"}
-        placement="site-top"
-        signedIn={!publicView}
-      />
       <header className="sticky top-0 z-30 h-16 border-b border-hairline bg-paper">
       <div className="page-container flex h-full items-center justify-between gap-4 sm:gap-6">
         <LogoLink />
@@ -83,20 +75,13 @@ export function SiteHeader({ publicView = false }: SiteHeaderProps) {
         )}
       </div>
       </header>
-    </>
   );
 }
 
 /** Closing notice. Below 640px saved trips stay reachable here. */
-export function SiteFooter({ adDestination }: { adDestination?: string }) {
+export function SiteFooter() {
   return (
     <footer className="mt-16 border-t border-hairline md:mt-24">
-      <DestinationAd
-        variant="strip"
-        intent="upgrade"
-        placement="site-footer"
-        destination={adDestination}
-      />
       <div className="page-container flex flex-col gap-3 py-6 sm:flex-row sm:items-baseline sm:justify-between">
         <div className="flex items-start gap-3">
           <LogoMark size={18} className="mt-0.5 shrink-0 text-ink" />

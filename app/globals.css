@@ -441,21 +441,6 @@
     line-height: 16px;
     font-variant-numeric: tabular-nums;
   }
-
-  /*
-   * The house-ad city line. It is a campaign display element, not a general type
-   * class: only components/ads uses it. Uppercase letters and tight leading make the
-   * destination the poster, while the rest of the ad stays on the type scale.
-   */
-  .ad-poster-city {
-    font-family: var(--font-serif);
-    font-size: clamp(48px, 8.5vw, 112px);
-    font-weight: 400;
-    line-height: 0.86;
-    letter-spacing: -0.045em;
-    text-transform: uppercase;
-    overflow-wrap: anywhere;
-  }
 }
 
 /* Day numbers in the 64px itinerary column; unlayered so the class is always emitted. */

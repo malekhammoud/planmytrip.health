@@ -5,11 +5,10 @@ import { capture } from "@/lib/analytics";
 import { Onboarding } from "@/components/Onboarding";
 import { PlanWorkspace } from "@/components/PlanWorkspace";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
-import { rememberAdDestination } from "@/lib/ads/destinationMemory";
 import { buildHealthTripPlan, type HealthTripPlan } from "@/lib/healthTripEngine";
 import type { TripConfig } from "@/lib/agent/agentTypes";
 import type { BillingEntitlements } from "@/lib/billing/plans";
-import { DEFAULT_TRIP, type TripDraft } from "@/lib/onboarding";
+import { DEFAULT_TRIP } from "@/lib/onboarding";
 import { parseInstallId } from "@/lib/data/validation";
 
 /**
@@ -40,21 +39,14 @@ function readInstallId(): string {
  */
 export function PlannerHome({
   entitlements,
-  initialDestination = "",
 }: {
   entitlements: BillingEntitlements;
-  /** Destination carried in from a house-ad link, before the first build. */
-  initialDestination?: string;
 }) {
   const [view, setView] = useState<"onboarding" | "workspace">("onboarding");
   const [trip, setTrip] = useState<TripConfig | null>(null);
   const [deployNonce, setDeployNonce] = useState(0);
   const [installId] = useState(readInstallId);
   const [runId, setRunId] = useState("");
-  const initialDraft = useMemo<TripDraft>(
-    () => ({ ...DEFAULT_TRIP, destination: initialDestination }),
-    [initialDestination],
-  );
 
   const plan = useMemo<HealthTripPlan | null>(() => {
     if (trip === null) return null;
@@ -67,7 +59,6 @@ export function PlannerHome({
 
   function handleBuild(config: TripConfig): void {
     capture("plan_build_started", { page: window.location.pathname });
-    rememberAdDestination(config.destination);
     setTrip(config);
     setRunId(crypto.randomUUID());
     setDeployNonce((nonce) => nonce + 1);
@@ -87,7 +78,7 @@ export function PlannerHome({
       <div className="flex-1">
         <div id="onboarding-screen" hidden={view !== "onboarding"}>
           <Onboarding
-            initial={trip ?? initialDraft}
+            initial={trip ?? DEFAULT_TRIP}
             entitlements={entitlements}
             onComplete={handleBuild}
             onCancel={trip === null ? undefined : () => setView("workspace")}
@@ -112,7 +103,7 @@ export function PlannerHome({
         ) : null}
       </div>
 
-      <SiteFooter adDestination={trip?.destination} />
+      <SiteFooter />
     </div>
   );
 }

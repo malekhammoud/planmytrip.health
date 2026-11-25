@@ -1,18 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AgentPlanView } from "@/components/AgentPlanView";
 import { DeleteSavedTripButton } from "@/components/DeleteSavedTripButton";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
-import { DestinationAd } from "@/components/ads/DestinationAd";
 import { CareCardButton, ItineraryBoard } from "@/components/ItineraryBoard";
 import { UpgradeCallout } from "@/components/UpgradeCallout";
 import { Button, Callout, LinkButton } from "@/components/ui";
 import { VenueMissionControl } from "@/components/venue/VenueMissionControl";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useVenueResearch } from "@/hooks/useVenueResearch";
-import { rememberAdDestination } from "@/lib/ads/destinationMemory";
-import { isPaidPlan, type BillingEntitlements } from "@/lib/billing/plans";
+import type { BillingEntitlements } from "@/lib/billing/plans";
 import { describeTrip } from "@/lib/describeTrip";
 import { buildHealthTripPlan } from "@/lib/healthTripEngine";
 import type { SavedTrip } from "@/lib/savedTrips";
@@ -83,11 +81,6 @@ export function SavedTripView({
     enabled: entitlements.venueResearch && venueRequested,
   });
 
-  // Keep the site-wide house ad on the same destination the reader came back to.
-  useEffect(() => {
-    rememberAdDestination(saved.trip.destination);
-  }, [saved.trip.destination]);
-
   const scrollToChecks = (): void => {
     window.setTimeout(() => {
       document.getElementById("venue-deck-heading")?.scrollIntoView({
@@ -143,17 +136,6 @@ export function SavedTripView({
               rates under Checked places for current facts.
             </p>
           </Callout>
-        </div>
-
-        <div className="mt-6">
-          <DestinationAd
-            variant="inline"
-            context="report"
-            intent={isPaidPlan(entitlements.plan) ? "plan" : "upgrade"}
-            placement="saved-trip-report"
-            destination={saved.trip.destination}
-            signedIn
-          />
         </div>
 
         <section aria-labelledby="saved-plan-heading" className="mt-12">
@@ -241,7 +223,7 @@ export function SavedTripView({
           before booking.
         </p>
       </main>
-      <SiteFooter adDestination={saved.trip.destination} />
+      <SiteFooter />
     </div>
   );
 }

@@ -11,7 +11,6 @@ import { PlanPanel } from "@/components/PlanPanel";
 import { AdjustmentsPanel } from "@/components/VerificationAdjustments";
 import { WorkspaceSection } from "@/components/WorkspaceSection";
 import { UpgradeCallout } from "@/components/UpgradeCallout";
-import { DestinationAd } from "@/components/ads/DestinationAd";
 import { VenueMissionControl } from "@/components/venue/VenueMissionControl";
 import { useAgentPlan } from "@/hooks/useAgentPlan";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
@@ -27,7 +26,7 @@ import {
 import { WORKER_IDS } from "@/lib/swarmTypes";
 import type { HealthTripPlan } from "@/lib/healthTripEngine";
 import type { TripConfig } from "@/lib/agent/agentTypes";
-import { isPaidPlan, type BillingEntitlements } from "@/lib/billing/plans";
+import type { BillingEntitlements } from "@/lib/billing/plans";
 import type { VenueResearchState } from "@/lib/venue/venueState";
 
 /** Props for {@link PlanWorkspace}. */
@@ -432,17 +431,6 @@ export function PlanWorkspace({
           >
             <LiveRail state={state} swarm={swarm.state} />
           </WorkspaceSection>
-        </div>
-
-        <div className="mt-16">
-          <DestinationAd
-            variant="inline"
-            context="report"
-            intent={isPaidPlan(entitlements.plan) ? "plan" : "upgrade"}
-            placement="workspace-report"
-            destination={trip.destination}
-            signedIn
-          />
         </div>
       </div>
 

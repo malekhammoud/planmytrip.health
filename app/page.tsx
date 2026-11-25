@@ -2,7 +2,6 @@ import { auth } from "@clerk/nextjs/server";
 import type { Metadata } from "next";
 import { LandingPage } from "@/components/landing/LandingPage";
 import { PlannerHome } from "@/components/PlannerHome";
-import { safeDestination } from "@/lib/ads/campaign";
 import { entitlementsFromHas } from "@/lib/billing/plans";
 
 export const dynamic = "force-dynamic";
@@ -23,24 +22,10 @@ export const metadata: Metadata = {
 /**
  * Signed-out visitors get the public landing page; a signed-in visitor goes straight to
  * the planner. The page performs its own auth check, so Clerk middleware is not the
- * authorization boundary. A `destination` search param arrives from a house-ad link and
- * prefills the first trip step after sign-up.
+ * authorization boundary.
  */
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<{ destination?: string | string[] }>;
-}) {
+export default async function Home() {
   const { userId, has } = await auth();
   if (userId === null) return <LandingPage />;
-  const requested = (await searchParams).destination;
-  const destination = safeDestination(
-    Array.isArray(requested) ? requested[0] : requested,
-  );
-  return (
-    <PlannerHome
-      entitlements={entitlementsFromHas(has)}
-      initialDestination={destination?.slice(0, 120) ?? ""}
-    />
-  );
+  return <PlannerHome entitlements={entitlementsFromHas(has)} />;
 }
