@@ -3,7 +3,7 @@ import type { AnchorHTMLAttributes } from "react";
 /** Visual variants for {@link LinkButton}; mirrors {@link Button}. */
 export type LinkButtonVariant = "primary" | "accent" | "secondary" | "ghost";
 
-/** Sizes for {@link LinkButton}. `md` is the 44px tap target. */
+/** Sizes for {@link LinkButton}. Both sizes keep a 44px minimum tap target. */
 export type LinkButtonSize = "sm" | "md";
 
 /** Props for {@link LinkButton}. */
@@ -30,7 +30,7 @@ const VARIANT_CLASSES: Record<LinkButtonVariant, string> = {
 };
 
 const HEIGHT_CLASSES: Record<LinkButtonSize, string> = {
-  sm: "min-h-9",
+  sm: "min-h-11",
   md: "min-h-11",
 };
 

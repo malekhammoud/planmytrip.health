@@ -107,6 +107,27 @@ const SAFETY_ROWS = [
   },
 ] as const;
 
+const SAFETY_SAMPLE = [
+  {
+    label: "Pacing score",
+    value: "72",
+    unit: "/100",
+    note: "Modeled estimate",
+  },
+  {
+    label: "Daily step ceiling",
+    value: "7,000",
+    unit: "steps",
+    note: "For the sample profile",
+  },
+  {
+    label: "Modeled risk reduction",
+    value: "59",
+    unit: "%",
+    note: "Versus a standard sightseeing day",
+  },
+] as const;
+
 const STEPS = [
   {
     number: "01",
@@ -290,7 +311,7 @@ export function LandingPage() {
                 recovery. The plan is built inside them.
               </p>
               <p className="t-data-sm mt-3 text-muted">
-                Modeled estimate · Health Safety Score and risk reduction
+                Modeled estimate · pacing score and risk reduction
               </p>
             </div>
             <dl className="grid grid-cols-1 gap-0 border-t border-solid border-hairline-strong sm:grid-cols-2">
@@ -308,16 +329,24 @@ export function LandingPage() {
             </dl>
           </div>
 
-          <ProductShot
-            className="mt-10"
-            src="/landing/safety-envelope.webp"
-            alt="The PlanMyTrip.health safety envelope: a modeled health safety score of 72 out of 100, a daily step ceiling of 7,000 steps, and a modeled risk reduction of 59 percent."
-            width={1200}
-            height={648}
-            crop={{ aspect: "1200 / 410", position: "bottom" }}
-            sizes="(min-width: 1200px) 1120px, 100vw"
-            caption="The safety envelope · a modeled score, a daily step ceiling, and a modeled risk reduction."
-          />
+          <div className="mt-10 grid grid-cols-1 gap-px border-y border-solid border-hairline-strong bg-hairline sm:grid-cols-3">
+            {SAFETY_SAMPLE.map((metric) => (
+              <div
+                key={metric.label}
+                className="bg-paper py-5 sm:px-5 sm:first:pl-0 sm:last:pr-0"
+              >
+                <p className="t-label text-muted">{metric.label}</p>
+                <p className="mt-2 flex items-baseline gap-2">
+                  <span className="t-metric text-ink">{metric.value}</span>
+                  <span className="t-data text-muted">{metric.unit}</span>
+                </p>
+                <p className="t-data-sm mt-1 text-muted">{metric.note}</p>
+              </div>
+            ))}
+          </div>
+          <p className="t-data-sm mt-3 text-muted">
+            Sample plan · London, Ontario · modeled values, not a measurement.
+          </p>
         </section>
 
         <section

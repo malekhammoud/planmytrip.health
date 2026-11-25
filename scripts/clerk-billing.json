@@ -26,8 +26,8 @@
         "include_in_jwt": true
       },
       "live_verification": {
-        "name": "Live browser verification",
-        "description": "Run the live destination advisory check and the live venue menu and room-rate research.",
+        "name": "Live destination check",
+        "description": "Run a live destination health advisory check plus live venue menu and room-rate research.",
         "publicly_visible": true,
         "include_in_jwt": true
       },

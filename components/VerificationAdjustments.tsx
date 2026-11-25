@@ -1,5 +1,5 @@
 /**
- * Verification adjustment switches.
+ * Destination-check adjustment switches.
  *
  * Inputs: typed adjustments, the master switch, disabled ids, and change handlers.
  * Outputs: a master Checkbox, one toggle per adjustment, a diff line, and provenance.
@@ -39,7 +39,7 @@ export function AdjustmentsPanel({
   if (adjustments.length === 0) {
     return (
       <p className="mt-4 t-small text-muted">
-        No live adjustments match this verification.
+        No live adjustments match this destination check.
       </p>
     );
   }
@@ -54,8 +54,8 @@ export function AdjustmentsPanel({
         </p>
       </div>
       <p className="t-small measure mt-1 text-muted">
-        Verification can only tighten the engine plan. Turning an adjustment off restores
-        the engine value.
+        The destination check can only tighten the engine plan. Turning an adjustment off
+        restores the engine value.
       </p>
       <div className="mt-2">
         <Checkbox

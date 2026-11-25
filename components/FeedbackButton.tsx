@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { CheckCircle2, MessageSquare, Star, X } from "lucide-react";
 import { Button, TextArea } from "@/components/ui";
 
@@ -30,15 +35,54 @@ export function FeedbackButton({ className = "" }: { className?: string }) {
   const [rating, setRating] = useState(0);
   const [message, setMessage] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    const trigger = triggerRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusTimer = window.setTimeout(() => {
+      dialogRef.current
+        ?.querySelector<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        )
+        ?.focus();
+    }, 0);
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKey);
+      trigger?.focus();
+    };
   }, [open]);
+
+  const onDialogKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
+    if (event.key !== "Tab") return;
+    const panel = dialogRef.current;
+    if (panel === null) return;
+    const focusable = panel.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  };
 
   const submit = async () => {
     if ((rating === 0 && message.trim().length < 3) || state === "sending") return;
@@ -68,7 +112,10 @@ export function FeedbackButton({ className = "" }: { className?: string }) {
         variant="ghost"
         size="sm"
         leadingIcon={MessageSquare}
-        onClick={() => setOpen(true)}
+        onClick={(event) => {
+          triggerRef.current = event.currentTarget;
+          setOpen(true);
+        }}
         className={`t-small text-muted hover:text-ink ${className}`}
       >
         Feedback
@@ -82,9 +129,11 @@ export function FeedbackButton({ className = "" }: { className?: string }) {
           }}
         >
           <div
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="pmt-feedback-title"
+            onKeyDown={onDialogKeyDown}
             className="w-full max-w-lg rounded-frame border border-solid border-hairline bg-paper p-5"
           >
             <div className="flex items-start justify-between gap-4">
@@ -117,7 +166,7 @@ export function FeedbackButton({ className = "" }: { className?: string }) {
               </div>
             ) : (
               <>
-                <div className="mt-4 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Feedback type">
+                <div className="mt-4 flex flex-wrap gap-1.5" role="group" aria-label="Feedback type">
                   {([
                     ["bug", "Something's broken"],
                     ["feature", "Feature idea"],
@@ -127,22 +176,20 @@ export function FeedbackButton({ className = "" }: { className?: string }) {
                       key={id}
                       variant={category === id ? "secondary" : "ghost"}
                       size="sm"
-                      role="radio"
-                      aria-checked={category === id}
+                      aria-pressed={category === id}
                       onClick={() => setCategory(id)}
                     >
                       {label}
                     </Button>
                   ))}
                 </div>
-                <div className="mt-2 flex items-center gap-1" role="radiogroup" aria-label="Rate PlanMyTrip">
+                <div className="mt-2 flex items-center gap-1" role="group" aria-label="Rate PlanMyTrip">
                   {[1, 2, 3, 4, 5].map((n) => (
                     <Button
                       key={n}
                       variant="ghost"
                       size="sm"
-                      role="radio"
-                      aria-checked={rating === n}
+                      aria-pressed={rating === n}
                       aria-label={`${n} star${n === 1 ? "" : "s"}`}
                       onClick={() => {
                         setRating(n);

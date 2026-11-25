@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
 export type ButtonVariant = "primary" | "accent" | "secondary" | "ghost";
 
 /**
- * Button sizes. `md` and `sm` are the general sizes; `lg` is 48px and exists
+ * Button sizes. Every size keeps a 44px minimum tap target; `lg` is 48px and exists
  * only for the onboarding and build primary actions. Do not use `lg` elsewhere.
  */
 export type ButtonSize = "sm" | "md" | "lg";
@@ -32,7 +32,7 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
 };
 
 const HEIGHT_CLASSES: Record<ButtonSize, string> = {
-  sm: "min-h-9",
+  sm: "min-h-11",
   md: "min-h-11",
   lg: "min-h-12",
 };

@@ -24,8 +24,8 @@ export default function Error({
       <p className="t-label text-muted">PlanMyTrip.health</p>
       <h1 className="t-title mt-3">This page did not open.</h1>
       <p className="t-small mt-3 max-w-md leading-relaxed text-muted">
-        Something failed on our side, not on yours. Nothing you entered was lost.
-        Try again, or return to the planner.
+        Something failed on our side. Try again, or return to the planner. If you were
+        saving a trip, check your saved trips before retrying.
       </p>
       <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
         <Button onClick={() => retry()}>Try again</Button>

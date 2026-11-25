@@ -35,7 +35,7 @@ const FALLBACK: Record<PlannerAgentPhase, string> = {
   idle: "Ready when the next plan runs.",
   queued: "Opening the session.",
   researching: "Reading live sources.",
-  writing: "Composing the JSON summary.",
+  writing: "Writing the summary.",
   complete: "Research complete.",
   error: "No usable result returned.",
 };
