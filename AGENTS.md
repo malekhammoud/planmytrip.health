@@ -110,6 +110,7 @@ and this file agree at that commit. Only the orchestrator commits.
 | 70. Destination house ads | [x] | `feat(ads): add destination-personalized house ads` |
 | 71. Report ads and conversion analytics | [x] | `feat(ads): extend house ads to every report` |
 | 72. Above-the-fold ad bar | [x] | `fix(ads): show the campaign above the fold` |
+| 73. Narrow-screen ad bar | [x] | `fix(ads): keep the top ad bar readable on narrow screens` |
 
 ## 3. Commands
 

@@ -23,7 +23,7 @@ export function AdBar({
   return (
     <div className="bg-ink text-paper">
       <div className="page-container flex items-center gap-3 py-2">
-        <p className="t-label shrink-0 text-hairline">
+        <p className="t-label min-w-0 truncate text-hairline sm:shrink-0">
           Advertisement · {campaign.city}
         </p>
         <p className="t-small hidden min-w-0 flex-1 truncate text-paper md:block">
