@@ -26,3 +26,14 @@ export async function auth(): Promise<{
 export function clerkMiddleware(): () => undefined {
   return () => undefined;
 }
+
+/** Minimal backend client stand-in for account-deletion route tests. */
+export async function clerkClient(): Promise<{
+  users: { deleteUser: (userId: string) => Promise<{ id: string }> };
+}> {
+  return {
+    users: {
+      deleteUser: async (userId: string) => ({ id: userId }),
+    },
+  };
+}

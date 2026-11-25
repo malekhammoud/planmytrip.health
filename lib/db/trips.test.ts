@@ -8,7 +8,6 @@ import {
   getCapture,
   getStoredDose,
   listModelRuns,
-  listTrips,
   recordModelRun,
   saveDossier,
   saveOutcome,
@@ -254,7 +253,7 @@ describeDb("trip capture storage", () => {
     expect(Number.isFinite(row?.offset)).toBe(true);
   });
 
-  it("lists trips and counts outcomes for one install", async () => {
+  it("counts outcomes for the research store", async () => {
     await saveDossier(dossier());
     await saveOutcome("run-12345678", "install-12345678", {
       flare: false,
@@ -265,8 +264,6 @@ describeDb("trip capture storage", () => {
       notes: null,
       reportedAt: "2026-12-21T10:00:00.000Z",
     });
-    const trips = await listTrips("install-12345678");
-    expect(trips.some((trip) => trip.runId === "run-12345678")).toBe(true);
     const counts = await captureCounts();
     expect(counts.trips).toBeGreaterThanOrEqual(1);
     expect(counts.outcomes).toBeGreaterThanOrEqual(1);
@@ -379,7 +376,6 @@ describeDb("trip capture storage", () => {
 
   it("clamps list limits without throwing", async () => {
     await saveDossier(dossier());
-    await expect(listTrips("install-12345678", Number.NaN)).resolves.toBeDefined();
     await expect(listModelRuns(0)).resolves.toBeDefined();
     await expect(listModelRuns(10_000)).resolves.toBeDefined();
   });

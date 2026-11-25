@@ -81,8 +81,6 @@ export interface WorkerState {
   retrievedAt: string | null;
   rawResult: string | null;
   parseError: string | null;
-  /** Authenticated same-origin recording path, when one was archived. */
-  recordingUrl: string | null;
   errorCode: SwarmErrorCode | null;
   /** Calm, user-facing failure cause. */
   errorMessage: string | null;
@@ -176,7 +174,6 @@ export type SwarmAction =
       rawResult?: string;
       parseError?: string;
       cachedAt?: string;
-      recordingUrl?: string;
       seq?: number;
       ts?: string;
       mock?: true;
@@ -259,7 +256,6 @@ export function createWorker(phase: WorkerPhase): WorkerState {
     retrievedAt: null,
     rawResult: null,
     parseError: null,
-    recordingUrl: null,
     errorCode: null,
     errorMessage: null,
   };

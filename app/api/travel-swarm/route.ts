@@ -13,8 +13,11 @@
 
 import { readBilling } from "@/lib/billing/server";
 import { buildCachedSwarmEvents } from "@/lib/cache/cachedEvents";
-import { archiveSwarmCache } from "@/lib/cache/swarmArchive";
-import { readCachedSwarm, type SwarmCacheWriteWorker } from "@/lib/cache/swarmCache";
+import {
+  readCachedSwarm,
+  writeCachedSwarm,
+  type SwarmCacheWriteWorker,
+} from "@/lib/cache/swarmCache";
 import { captureSwarmFindings } from "@/lib/data/capture";
 import type { WorkerFindingSummary } from "@/lib/data/types";
 import type { ConcurrencyDenialReason } from "@/lib/concurrency";
@@ -125,7 +128,6 @@ export async function POST(request: Request): Promise<Response> {
   const pendingCaptures: Promise<void>[] = [];
   const sources: Partial<Record<WorkerId, SwarmSourceItem[]>> = {};
   const purposes: Partial<Record<WorkerId, { purpose: string; tinyfishApi?: TinyfishApi }[]>> = {};
-  const runIds: Partial<Record<WorkerId, string>> = {};
   const startedAt: Partial<Record<WorkerId, string>> = {};
   const completions: Partial<Record<WorkerId, SwarmCacheWriteWorker>> = {};
 
@@ -146,7 +148,6 @@ export async function POST(request: Request): Promise<Response> {
   const emit = (event: SwarmEvent): void => {
     if (event.event === "worker_started") {
       startedAt[event.data.worker] = event.data.startedAt;
-      if (event.data.runId !== null) runIds[event.data.worker] = event.data.runId;
     }
     if (event.event === "worker_sources") {
       sources[event.data.worker] = mergeSources(
@@ -178,9 +179,6 @@ export async function POST(request: Request): Promise<Response> {
         purposes: purposes[worker] ?? [],
         ...(event.data.rawResult === undefined ? {} : { rawResult: event.data.rawResult }),
         ...(event.data.parseError === undefined ? {} : { parseError: event.data.parseError }),
-        ...(event.data.recordingUrl === undefined
-          ? {}
-          : { recordingUrl: event.data.recordingUrl }),
       };
       findings.push({
         worker,
@@ -222,16 +220,9 @@ export async function POST(request: Request): Promise<Response> {
       event.data.completed.length === workers.length &&
       event.data.failed.length === 0
     ) {
-      // Recordings and the cache write finish after the stream's terminal frame, so a
-      // long video download never delays the live result.
-      void archiveSwarmCache({
-        identity: input,
-        workers,
-        values: completions,
-        runIds,
-        apiKey,
-        now: event.data.ts,
-      }).catch(() => {
+      // The cache write finishes after the stream's terminal frame, so it never delays
+      // the live result.
+      void writeCachedSwarm(input, workers, completions, event.data.ts).catch(() => {
         // A cache miss on the next request is harmless.
       });
     }

@@ -152,9 +152,6 @@ export function buildCachedSwarmEvents(
         cachedAt: cached.cachedAt,
         ...(value.rawResult === undefined ? {} : { rawResult: value.rawResult }),
         ...(value.parseError === undefined ? {} : { parseError: value.parseError }),
-        ...(value.recordingUrl === undefined
-          ? {}
-          : { recordingUrl: value.recordingUrl }),
       },
     });
   }

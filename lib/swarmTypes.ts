@@ -198,8 +198,6 @@ export interface WorkerCompletePayload extends SwarmWorkerEnvelope {
   parseError?: string;
   /** When the live result was produced and cached. */
   cachedAt?: string;
-  /** Authenticated same-origin recording path, when one was archived. */
-  recordingUrl?: string;
 }
 
 /** Payload for worker_error: a calm, user-facing failure. */

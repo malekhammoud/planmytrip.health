@@ -105,12 +105,6 @@ function asCachedAt(value: unknown): string | undefined {
     : undefined;
 }
 
-function asRecordingUrl(value: unknown): string | undefined {
-  if (typeof value !== "string" || value.length > 500) return undefined;
-  if (/^\/api\/recordings\/[0-9a-f-]{36}$/.test(value)) return value;
-  return asHttpUrl(value) ?? undefined;
-}
-
 function asTextList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   const texts = value.filter(
@@ -246,9 +240,6 @@ export function applyFrame(
         ...(asCachedAt(raw.cachedAt) === undefined
           ? {}
           : { cachedAt: asCachedAt(raw.cachedAt) }),
-        ...(asRecordingUrl(raw.recordingUrl) === undefined
-          ? {}
-          : { recordingUrl: asRecordingUrl(raw.recordingUrl) }),
         seq: asSeq(raw.seq),
         ts,
         mock,

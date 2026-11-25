@@ -5,8 +5,8 @@
  * live swarm run.
  * Outputs: a complete cached worker set or a merged cache write.
  * Invariants: a hit requires every requested worker; findings pass the same normaliser
- * the route uses; sources and progress lines are bounded real telemetry; recordings are
- * same-origin app paths or https URLs; mock results are never stored.
+ * the route uses; sources and progress lines are bounded real telemetry; mock results are
+ * never stored.
  */
 
 import { WORKER_SOURCES, normalizeWorkerResult } from "@/lib/swarmGoals";
@@ -41,8 +41,6 @@ export interface CachedSwarmWorker {
   purposes: readonly { purpose: string; tinyfishApi?: TinyfishApi }[];
   rawResult?: string;
   parseError?: string;
-  /** Authenticated same-origin recording path, when a recording was archived. */
-  recordingUrl?: string;
 }
 
 /** A complete cache hit for a requested worker set. */
@@ -62,7 +60,6 @@ export interface SwarmCacheWriteWorker {
   purposes: readonly { purpose: string; tinyfishApi?: TinyfishApi }[];
   rawResult?: string;
   parseError?: string;
-  recordingUrl?: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -139,12 +136,6 @@ function asPurposes(
   return purposes;
 }
 
-function asRecordingUrl(value: unknown): string | undefined {
-  if (typeof value !== "string" || value.length > 500) return undefined;
-  if (/^\/api\/recordings\/[0-9a-f-]{36}$/.test(value)) return value;
-  return isHttpUrl(value) ? value : undefined;
-}
-
 function workerFrom(value: unknown, worker: WorkerId, cachedAt: string): CachedSwarmWorker | null {
   if (!isRecord(value)) return null;
   const sourceUrl = asSourceUrl(value.sourceUrl, worker);
@@ -162,9 +153,6 @@ function workerFrom(value: unknown, worker: WorkerId, cachedAt: string): CachedS
     purposes: asPurposes(value.purposes),
     ...(typeof value.rawResult === "string" ? { rawResult: value.rawResult.slice(0, 2_000) } : {}),
     ...(typeof value.parseError === "string" ? { parseError: value.parseError.slice(0, 500) } : {}),
-    ...(asRecordingUrl(value.recordingUrl) === undefined
-      ? {}
-      : { recordingUrl: asRecordingUrl(value.recordingUrl) }),
   };
 }
 
@@ -211,9 +199,6 @@ export async function writeCachedSwarm(
       ...value,
       sources: value.sources.slice(0, SOURCE_LIMIT),
       purposes: value.purposes.slice(0, PURPOSE_LIMIT),
-      ...(value.recordingUrl === undefined
-        ? {}
-        : { recordingUrl: asRecordingUrl(value.recordingUrl) }),
     };
   }
   const expiresAt = new Date(Date.parse(now) + SWARM_TTL_MS).toISOString();

@@ -341,7 +341,6 @@ async function runAttempt(
             cursorStyle: SWARM_RUN_LIMITS.cursorStyle,
             maxDurationSeconds: SWARM_RUN_LIMITS.maxDurationSeconds,
           },
-          captureRecording: process.env.TINYFISH_RECORDING === "1",
           signal: controller.signal,
           onUnknownEvent: () => context.onUnknownEvent?.(),
           onEvent: (event) => {

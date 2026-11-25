@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { SiteFooter, SiteHeader } from "@/components/SiteChrome";
 import { CLERK_APPEARANCE } from "@/lib/clerkAppearance";
 import { signInHref } from "@/lib/redirects";
@@ -48,6 +49,18 @@ export default async function AccountPage({
             />
           </Suspense>
         </div>
+
+        <section
+          aria-labelledby="delete-account-heading"
+          className="mt-16 border-t border-hairline pt-8"
+        >
+          <h2 id="delete-account-heading" className="t-label text-muted">
+            Delete account
+          </h2>
+          <div className="mt-3">
+            <DeleteAccountButton />
+          </div>
+        </section>
       </main>
       <SiteFooter />
     </div>

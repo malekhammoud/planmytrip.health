@@ -1,8 +1,8 @@
 /**
- * TinyFish run-detail lookup for archived recordings.
+ * TinyFish run-detail lookup for stream recovery.
  *
  * Inputs: a run id and the server-side API key.
- * Outputs: the presigned video URL when TinyFish has finished writing the recording.
+ * Outputs: the authoritative run record when TinyFish has one, or null.
  * Invariants: the key travels only in the request header; the response body never reaches
  * a log or an error message; missing or malformed fields become null.
  */
@@ -13,22 +13,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function asVideoUrl(value: unknown): string | null {
-  if (typeof value !== "string" || value.length > 4_000) return null;
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === "https:" ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// VERIFY: the run-detail video_url is a presigned recording URL. Confirm its lifetime
-// and the provider's permission to archive a copy locally before relying on it.
 /** Fetches one run's current detail. Returns null for any non-2xx or malformed body. */
 export async function fetchTinyfishRun(
   runId: string,
@@ -49,21 +33,4 @@ export async function fetchTinyfishRun(
   }
 }
 
-/**
- * Polls the run detail until a recording URL appears. Recordings are written after the
- * run settles, so a short bounded wait is expected.
- */
-export async function fetchTinyfishVideoUrl(
-  runId: string,
-  apiKey: string,
-  attempts = 6,
-  delayMs = 2_500,
-): Promise<string | null> {
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const run = await fetchTinyfishRun(runId, apiKey);
-    const url = asVideoUrl(run?.video_url);
-    if (url !== null) return url;
-    if (attempt < attempts - 1) await sleep(delayMs);
-  }
-  return null;
-}
+

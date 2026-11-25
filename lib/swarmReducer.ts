@@ -244,7 +244,6 @@ export function swarmReducer(state: SwarmState, action: SwarmAction): SwarmState
         retrievedAt: action.retrievedAt,
         rawResult: action.rawResult ?? null,
         parseError: action.parseError ?? null,
-        recordingUrl: action.recordingUrl ?? null,
         errorCode: null,
         errorMessage: null,
       });
@@ -271,7 +270,6 @@ export function swarmReducer(state: SwarmState, action: SwarmAction): SwarmState
           retrievedAt: null,
           rawResult: null,
           parseError: null,
-          recordingUrl: null,
           errorCode: action.code ?? null,
           errorMessage: action.message,
         }),

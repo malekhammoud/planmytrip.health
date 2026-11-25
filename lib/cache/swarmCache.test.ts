@@ -64,16 +64,4 @@ describe("verification cache", () => {
     expect(await readCachedSwarm(identity, WORKER_IDS)).toBeNull();
   });
 
-  it("keeps only same-origin or https recording paths", async () => {
-    const withRecording = values();
-    withRecording.advisory = {
-      ...withRecording.advisory!,
-      recordingUrl: "/api/recordings/6f5b6f34-7e0c-4c78-9f0a-2b3c4d5e6f70",
-    };
-    await writeCachedSwarm(identity, WORKER_IDS, withRecording);
-    const cached = await readCachedSwarm(identity, ["advisory"]);
-    expect(cached?.workers.advisory?.recordingUrl).toBe(
-      "/api/recordings/6f5b6f34-7e0c-4c78-9f0a-2b3c4d5e6f70",
-    );
-  });
 });

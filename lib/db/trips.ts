@@ -2,13 +2,12 @@
  * PostgreSQL persistence for trip dossiers, outcomes, and model runs.
  *
  * Inputs: a consented TripDossier, bounded swarm findings, an outcome, or a trained
- * artifact. Outputs: rows, safe trip summaries, and TrainingRow[] for offline training.
+ * artifact. Outputs: rows and TrainingRow[] for offline training.
  * Invariants: writes are keyed by run_id and scoped by install_id; an outcome write only
  * succeeds for the install that owns the run; exported rows always carry an explicit label;
  * every JSON column is JSONB and every query is parameterized.
  */
 
-import type { Condition } from "../types";
 import { isCondition } from "../types";
 import { adherenceMultiplier } from "../data/dose";
 import { DATA_SCHEMA_VERSION, ENGINE_VERSION } from "../data/types";
@@ -268,51 +267,6 @@ export async function saveOutcome(
     ],
   );
   return (result.rowCount ?? 0) > 0;
-}
-
-/** One safe trip summary for the client; never includes another install's data. */
-export interface TripSummary {
-  runId: string;
-  createdAt: string;
-  destination: string;
-  days: number;
-  condition: Condition;
-  flare: boolean | null;
-  reportedAt: string | null;
-}
-
-/** Lists recent trips for one install. */
-export async function listTrips(
-  installId: string,
-  limit = 20,
-): Promise<TripSummary[]> {
-  await ensureSchema();
-  const result = await getPool().query(
-    `SELECT run_id, created_at, request_json, label_flare, outcome_at
-     FROM trip_captures
-     WHERE install_id = $1 AND request_json <> '{}'::jsonb
-     ORDER BY created_at DESC
-     LIMIT $2`,
-    [installId, boundedLimit(limit)],
-  );
-  return result.rows
-    .map(toRow)
-    .filter((row): row is CaptureRow => row !== null)
-    .flatMap((row) => {
-      const request = asRequest(parseJson(row.request_json));
-      if (request === null) return [];
-      return [
-        {
-          runId: row.run_id,
-          createdAt: row.created_at,
-          destination: request.destination,
-          days: request.days,
-          condition: request.condition,
-          flare: row.label_flare,
-          reportedAt: row.outcome_at,
-        },
-      ];
-    });
 }
 
 /** Number of captured trips with and without outcomes. */

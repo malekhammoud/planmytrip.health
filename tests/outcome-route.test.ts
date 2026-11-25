@@ -1,5 +1,4 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { GET as getTrips } from "@/app/api/trips/route";
 import { POST as postOutcome } from "@/app/api/trips/outcome/route";
 import type { TripDossier } from "@/lib/data/types";
 import { closeDatabase, ensureSchema, resetDatabaseForTests } from "@/lib/db/postgres";
@@ -121,35 +120,4 @@ describeDb("trip outcome routes", () => {
     expect(response.status).toBe(400);
   });
 
-  it("returns only the install's trips", async () => {
-    const response = await getTrips(
-      new Request(`http://localhost:3000/api/trips?installId=${installId}`),
-    );
-    expect(response.status).toBe(200);
-    const body = (await response.json()) as {
-      trips: Array<{ runId: string; flare: boolean | null }>;
-    };
-    expect(body.trips.some((trip) => trip.runId === runId)).toBe(true);
-    expect(body.trips[0]?.flare).toBe(true);
-  });
-
-  it("accepts the install id from a header so it stays out of URLs", async () => {
-    const response = await getTrips(
-      new Request("http://localhost:3000/api/trips", {
-        headers: { "x-install-id": installId },
-      }),
-    );
-    expect(response.status).toBe(200);
-    const body = (await response.json()) as {
-      trips: Array<{ runId: string }>;
-    };
-    expect(body.trips.some((trip) => trip.runId === runId)).toBe(true);
-  });
-
-  it("rejects a missing install id", async () => {
-    const response = await getTrips(
-      new Request("http://localhost:3000/api/trips"),
-    );
-    expect(response.status).toBe(400);
-  });
 });

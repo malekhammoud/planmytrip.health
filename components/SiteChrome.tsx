@@ -95,6 +95,18 @@ export function SiteFooter() {
           >
             Saved trips
           </a>
+          <a
+            href="/privacy"
+            className="t-small inline-flex min-h-11 items-center text-muted transition-colors duration-150 hover:text-ink hover:underline"
+          >
+            Privacy
+          </a>
+          <a
+            href="/terms"
+            className="t-small inline-flex min-h-11 items-center text-muted transition-colors duration-150 hover:text-ink hover:underline"
+          >
+            Terms
+          </a>
           <FeedbackButton />
         </div>
       </div>

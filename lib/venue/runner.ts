@@ -156,7 +156,6 @@ async function runProvider(
         cursorStyle: "standard",
         maxDurationSeconds: 90,
       },
-      captureRecording: false,
       signal: combined,
       onEvent: (event) => {
         if (event.type === "STARTED" && event.runId !== null) runId = event.runId;
