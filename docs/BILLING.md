@@ -8,7 +8,7 @@ Clerk Billing is enabled for the production application
 | Plan | Price | Who it is for |
 | --- | --- | --- |
 | **Free Preview** (`free_user`) | $0 | A first, low-commitment plan with the safety envelope. |
-| **Care Circle** (`care_circle`) | $9/month or $60/year | Patients and caregivers planning up to two trips a month. Annual is the intended plan. |
+| **Care Circle** (`care_circle`) | $9/month or $60/year | Frequent travellers planning up to two trips a month, with live checks and unlimited saved trips. Annual is the intended plan. |
 
 The annual price is entered through Clerk's monthly-equivalent field: `500` cents
 ($5.00/month) produces a $60.00 annual total. Clerk Billing only supports USD. The
@@ -33,26 +33,30 @@ must match Clerk exactly.
 | `preview_live_plan` | yes | yes (display) | Free live plans are capped at one per calendar year. |
 | `one_saved_trip` | yes | yes (display) | Free saved trips are capped at one. |
 | `long_trips` | no | yes | `/api/agent-plan` rejects more than 7 days for free; Care Circle gets 20. |
-| `live_verification` | no | yes | `/api/travel-swarm` returns `403 upgrade_required` without it. |
-| `venue_research` | no | yes | `/api/venue-research` returns `403 upgrade_required` without it. |
+| `live_verification` | no | yes | Named "Live destination check" in Clerk; `/api/travel-swarm` returns `403 upgrade_required` without it. |
+| `venue_research` | no | yes | Named "Live menus and room rates"; `/api/venue-research` returns `403 upgrade_required` without it. |
 | `two_live_plans` | no | yes (display) | `tripsPerPeriod: 2` per month for Care Circle; one per year for Free. |
 | `saved_trips_unlimited` | no | yes | `/api/saved-trips` enforces the free one-trip cap. |
 
 `lib/billing/server.ts` reads `auth()` once and exposes `userId` plus an entitlement
 snapshot. Every paid API checks it server-side; client hiding is only an affordance.
 
-Live (uncached) planner runs are counted in `billing_usage` by Clerk user, metric, allowance
-period, and run id. A cache hit, a mock run, and a repeated terminal frame do not consume a
-plan. The counter is not a substitute for a billing webhook; it is a product fair-use guard.
-Care Circle includes 2 live plans per calendar month. The verification and venue routes are
-paid features; cached results make repeated checks cheap.
+Live (uncached) planner runs are reserved in `billing_usage` by Clerk user, metric, and
+allowance period. The reservation is one transaction with an advisory lock over the account,
+metric, and period: it counts and inserts the usage event before any model work starts. A
+limit refusal returns `trip_limit`; a database failure returns 503 and fails closed rather
+than granting an unmetered run. The server generates the event id, so a client `runId` cannot
+manufacture or reuse usage. A cache hit, a mock run, and a cached replay do not reserve a plan.
+The reservation is not a substitute for a billing webhook; it is a product fair-use guard.
+Care Circle includes 2 live plans per calendar month. The destination check and venue routes
+are paid features; cached results make repeated checks cheap.
 
 The current free limits are:
 
 - one live plan per calendar year
 - seven days maximum
 - one saved trip
-- no live TinyFish verification or venue research
+- no live destination check or venue research
 - safety envelope and care card always available
 
 The current Care Circle limits are:
@@ -60,24 +64,48 @@ The current Care Circle limits are:
 - two live plans per calendar month
 - twenty days maximum
 - unlimited saved trips
-- live verification and venue research
+- live destination check and venue research
 - safety envelope and care card always available
+
+## Live-run guards
+
+Plan entitlements are not the only cost guard. `lib/liveLimits.ts` enforces one live run per
+account on every live surface, plus process-wide concurrency, cooldowns, a venue daily cap,
+and a geocoder budget:
+
+| Guard | Default |
+| --- | --- |
+| Planner | 2 global live plans, 15-second account cooldown |
+| Destination check | 3 global checks, 15-second cooldown |
+| Venue research | 2 global passes, 30-second cooldown, 8 passes per account per UTC day |
+| Geocoder | 60 search/reverse requests per account per minute |
+
+Every value has a `PLANMYTRIP_*` environment override. `PLANMYTRIP_LIVE_DISABLED=1` is the
+kill switch: new live work returns a calm 503 while cached results and the safety envelope
+keep working. The guards are in-process and single-instance; a restart clears them. Move them
+to a shared store before running more than one app instance. A refused guard returns 429 with
+`Retry-After`.
 
 ## UI and management
 
 - `/pricing` renders Clerk's `PricingTable` with the Paper and Ink appearance bridge.
 - `/account` renders `UserProfile`, including the plan, payment method, invoices, and
-  cancellation/plan switching.
-- The signed-in header links to Plans and Saved trips; the public header links to Pricing.
+  cancellation/plan switching, plus the delete-account control.
+- The signed-in header links to Plans and Saved trips; the public header links to Pricing,
+  How it works, and sign-in.
 - Free surfaces show an upgrade callout instead of a control that would fail.
 - `SaveTripButton` handles the server's `saved_trip_limit` response and links to plans.
+- The planner's plan-limit callout uses the server's `plan_limit` / `trip_limit` code, points
+  to plans, and keeps the free safety envelope available.
 - A successful checkout returns to `/pricing?checkout=success`; the page reports whether
   the session already carries the paid plan.
 
 ## Applying the catalog
 
 `scripts/clerk-billing.json` is the reproducible production catalog. It contains no
-secrets. Use the uploaded production schema as the source of truth.
+secrets. The consumer-reset copy is applied on the production instance: `live_verification`
+is named "Live destination check" and `venue_research` is named "Live menus and room rates".
+Use the uploaded production schema as the source of truth.
 
 ```bash
 npx -y clerk@latest auth login
@@ -127,12 +155,12 @@ If webhooks are added, use Clerk's dot-notation events (`subscription.created`,
 ## Pilot checks
 
 - The shipped launch price is $9/month or $60/year, intentionally below the $79/year
-  research target so the first paid plan stays fair for patients and caregivers. Two live
-  plans a month is 24 live plans a year; at $2-$4 of compute per live trip, heavy use can
-  exceed the annual price. Monitor p95 cost and add a fair-use limit or price test if needed.
+  research target so the first paid plan stays fair for individual travellers. Two live plans
+  a month is 24 live plans a year; at $2-$4 of compute per live trip, heavy use can exceed the
+  annual price. Monitor p95 cost and add a fair-use limit or price test if needed.
 - Free to Care Circle conversion, checkout completion, and 12-month renewal intent.
-- Cost per live plan and per verification from TinyFish and OpenCode logs; the target is
-  under $10 p95 per paid trip.
+- Cost per live plan, destination check, and venue pass from TinyFish and OpenCode logs; the
+  target is under $10 p95 per paid trip.
 - Which plan interval users choose, and whether the monthly option cannibalizes annual.
 - Refund, cancellation, and failed-payment reasons.
 - A real checkout in production with a real card before announcing the plan. The Clerk

@@ -5,19 +5,21 @@ the current step and decisions. Update this file in the same commit as any chang
 
 ## 1. What this is
 
-PlanMyTrip.health is a health-first travel planner for patients and caregivers, often
-anxious, on a phone or laptop. It does four jobs: a team of OpenCode specialists plans the
-trip, the biological engine turns condition limits into a paced safety envelope, three
-parallel TinyFish browser agents open the selected venue pages for live menus and room rates
-while the user watches, and a consented outcome loop calibrates the pacing estimate against
-what actually happened.
+PlanMyTrip.health is health-aware trip planning for consumers: people who want their health,
+energy, and budget to shape a real trip instead of guessing. It does four jobs: a team of
+OpenCode specialists plans the trip, the biological engine turns the chosen health profile into
+a paced safety envelope, one TinyFish browser check reads the Government of Canada travel
+advisory for the destination, and live venue checks open the selected menus and booking pages
+for current facts while the user watches. A consented outcome loop calibrates the pacing
+estimate against what actually happened.
 
 It is a planning aid, never medical advice: a well-typeset clinical chart crossed with a Swiss
 timetable, typographic and ruled with hairlines. The pacing strip and the numbered route map
 are the signature elements. The concierge plans venues and sequence; the engine owns the
-physiological ceiling. See section 7.
+physiological ceiling. The destination check can only tighten the plan, and venue evidence is
+display-only. See section 7.
 
-The data loop is part of the product, not analytics: one consented dossier per run, one
+The data loop is part of the product, not analytics: one consented dossier per live run, one
 explicit outcome per trip, and a versioned calibration artifact. The computed dose is the
 asset; an agent's self-reported step count never enters a training row. See `docs/ML.md`.
 Planning requires a Clerk account. Saved trips are account-owned snapshots; the consented
@@ -78,6 +80,26 @@ and this file agree at that commit. Only the orchestrator commits.
 | 40. Public landing page and brand mark | [x] | `feat(landing): add public landing page and brand mark` |
 | 41. Clerk Billing and Care Circle | [x] | `feat(billing): add Clerk Billing plans and entitlements` |
 | 42. Reliable account links | [x] | `fix(ui): make account links use full navigation` |
+| 43. Production checkpoint and ops setup | [x] | `chore: checkpoint production state before ops integration` |
+| 44. Local health probe and error reporting | [x] | `feat(ops): report errors and expose a local health probe` |
+| 45. Clerk proxy health headers | [x] | `fix(ops): preserve internal health headers through Clerk proxy` |
+| 46. Safe-deploy artifacts ignored | [x] | `chore: ignore safe-deploy rollback artifacts` |
+| 47. Deploy sha ignored | [x] | `chore: ignore the generated deploy sha file` |
+| 48. Health-safe feedback intake | [x] | `feat(feedback): add a health-safe feedback prompt and intake route` |
+| 49. Full navigation from error boundaries | [x] | `fix(ops): allow full navigation from error boundaries` |
+| 50. Consumer core reset | [x] | `refactor(product): remove medication, insurance, and pharmacy surfaces` |
+| 51. Health-aware consumer landing | [x] | `feat(landing): reposition around health-aware travel` |
+| 52. Site trust and support polish | [x] | `feat(site): polish pricing, trust, and support surfaces` |
+| 53. Auth return paths | [x] | `fix(auth): preserve return paths after sign-in` |
+| 54. Two-step health-aware onboarding | [x] | `feat(onboarding): rebalance the two-step health-aware flow` |
+| 55. Consumer copy and feedback focus | [x] | `fix(ui): polish consumer copy, tap targets, and feedback focus` |
+| 56. Live limits and cache identity | [x] | `fix(backend): harden live reservations, limits, and cache identity` |
+| 57. Destination check surface | [x] | `feat(ui): polish destination check surface` |
+| 58. Workspace and saved-trip polish | [x] | `feat(ui): polish workspace command surface and saved trips` |
+| 59. Route stays open, check exposed | [x] | `fix(ui): keep the route open and expose the destination check` |
+| 60. Privacy and account deletion | [x] | `feat(privacy): remove recordings and add account deletion` |
+| 61. Cross-origin deletion guard | [x] | `fix(account): reject cross-origin deletion requests` |
+| 62. Consumer reset documentation | [x] | `docs(agents): document the consumer product reset` |
 
 ## 3. Commands
 
@@ -96,7 +118,7 @@ npm run data:synthetic      # deterministic cohort -> JSONL + optional Postgres 
 npm run data:export         # labeled Postgres rows -> gitignored training JSONL
 npm run model:train         # JSONL -> lib/model/model.json + docs/MODEL_CARD.md
 npm run model:demo          # data:synthetic then model:train
-npm run cache:seed -- --run-id <id>   # seed verification cache from a capture row
+npm run cache:seed -- --run-id <id>   # seed the destination-check cache from a capture row
 npm run cache:seed -- --plan-file <json>  # seed a planner cache from a saved run
 npm run typecheck && npm test && npm run lint && npm run build   # full gate
 ```
@@ -117,15 +139,22 @@ host, build first, then `chown -R planmytrip:planmytrip .next` before restarting
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Browser and server render | Required to sign in. The key is public by design. |
 | `CLERK_SECRET_KEY` | Server only, Clerk middleware, route handlers, proxy | Required. Never expose it to client code, logs, or the repository. |
 | `NEXT_PUBLIC_CLERK_PROXY_URL` | Browser and server render | Defaults to `/__clerk`. Production Clerk's domain `proxy_url` must use the same path. |
-| `TINYFISH_API_KEY` | Server only, `app/api/travel-swarm/route.ts` | Each worker emits `worker_error` code `missing_api_key`; the stream still returns 200. Never log, echo, or commit it. |
-| `TINYFISH_RECORDING` | Server only, swarm runner and archive | When `1`, asks TinyFish for a recording and archives it locally. Off otherwise; live checks are unaffected. |
-| `PLANMYTRIP_RECORDINGS_DIR` | Server only, `lib/cache/recordings.ts` | Defaults to `$HOME/recordings` in production and `.next/cache/recordings` elsewhere. Must be writable by the app user. |
+| `TINYFISH_API_KEY` | Server only, destination and venue routes | The destination check emits `worker_error` code `missing_api_key`; venue checks fail each page the same way. Both streams still return 200. Never log, echo, or commit it. |
 | `PLANMYTRIP_CACHE` | Server only, cache store | Set `0` to disable both cache tiers. Enabled by default when a database is configured. |
 | `PLANMYTRIP_CACHE_MEMORY` | Server only, cache store | Force (`1`) or disable (`0`) the in-process tier. Production enables it automatically when `DATABASE_URL` is set; tests use `1` without a database. |
-| `SWARM_MOCK` | Server only, swarm route | Only when `1` and `NODE_ENV !== "production"`; mock events carry `mock: true`. Ignored in production. |
+| `SWARM_MOCK` | Server only, destination check route | Only when `1` and `NODE_ENV !== "production"`; mock events carry `mock: true`. Ignored in production. |
 | `SWARM_MOCK_SPEED` | Server only, mock timeline | Multiplies the scripted mock clock; tests use `50`. Ignored in production. |
-| `SWARM_MOCK_FAIL` | Server only, mock timeline | One worker id that fails with `site_blocked`; used to exercise the error UI. Ignored in production. |
+| `SWARM_MOCK_FAIL` | Server only, mock timeline | The `advisory` worker id fails with `site_blocked`; used to exercise the error UI. Ignored in production. |
 | `AGENT_MOCK` | Server only, planner route | Only when `1` and `NODE_ENV !== "production"`; every planner payload carries `mock: true`. Ignored in production. |
+| `PLANMYTRIP_LIVE_DISABLED` | Server only, all live routes | Set `1` to stop new live planner, destination, and venue runs without a deploy. Cached results and the safety envelope still work. |
+| `PLANMYTRIP_PLANNER_MAX_CONCURRENT` | Server only, planner guard | Global simultaneous live plans. Default 2; clamped to 1-20. One live plan per account is always enforced. |
+| `PLANMYTRIP_PLANNER_COOLDOWN_SEC` | Server only, planner guard | Seconds before an account may start another live plan. Default 15; `0` disables the cooldown. |
+| `PLANMYTRIP_SWARM_MAX_CONCURRENT` | Server only, destination guard | Global simultaneous destination checks. Default 3; clamped to 1-20. |
+| `PLANMYTRIP_SWARM_COOLDOWN_SEC` | Server only, destination guard | Seconds before an account may start another destination check. Default 15. |
+| `PLANMYTRIP_VENUE_MAX_CONCURRENT` | Server only, venue guard | Global simultaneous venue passes. Default 2; clamped to 1-20. |
+| `PLANMYTRIP_VENUE_COOLDOWN_SEC` | Server only, venue guard | Seconds before an account may start another venue pass. Default 30. |
+| `PLANMYTRIP_VENUE_DAILY_LIMIT` | Server only, venue budget | Venue passes per account per UTC day. Default 8; `0` denies every pass. |
+| `PLANMYTRIP_GEOCODE_PER_MINUTE` | Server only, geocode routes | Autocomplete and reverse-geocode requests per account per minute. Default 60; `0` denies every request. |
 | `OPENCODE_SERVER_URL` | Server only, `lib/agent/agentClient.ts` | When empty, the app discovers or starts the local OpenCode service. |
 | `OPENCODE_SERVER_USERNAME` / `OPENCODE_SERVER_PASSWORD` | Server only, explicit OpenCode server | Optional Basic auth for an explicit server. Never log or commit them. |
 | `OPENCODE_MODEL` | Server only, planner sessions | Optional `provider/model`; when empty the service default is used. The default free model can hit a quota, so production should set a paid model. |
@@ -137,10 +166,19 @@ host, build first, then `chown -R planmytrip:planmytrip .next` before restarting
 | `GEOCODER_REVERSE_URL` | Server only, geocoder | Optional reverse endpoint for current location and map pins. Defaults to the search endpoint's sibling `/reverse`; must return Photon-shaped GeoJSON. |
 | `NEXT_PUBLIC_MAP_TILE_URL` | Browser, `components/TripMap.tsx` | Defaults to public OpenStreetMap tiles; production should use a licensed tile endpoint. |
 | `NEXT_PUBLIC_MAP_ATTRIBUTION` | Browser, `components/TripMap.tsx` | Defaults to the OpenStreetMap attribution. |
-| `DATABASE_URL` | Server only, `lib/db/postgres.ts` | Required for capture. The app returns 500 JSON for trip routes and capture stays best-effort until a database is configured. |
+| `DATABASE_URL` | Server only, `lib/db/postgres.ts` | Required for saved trips, billing reservations, cache, and capture. Scoped APIs return 500 JSON and capture stays best-effort until a database is configured. |
 | `DATABASE_SSL` | Server only, Postgres pool | Set `true` only for a managed provider that requires TLS. Certificates are validated; use `NODE_EXTRA_CA_CERTS` for a private CA rather than disabling verification. |
-| `PLANMYTRIP_CAPTURE_MOCK` | Server only, capture paths | Only when `1`; allows mock planner and swarm runs to be stored for tests. Never enable in production. |
-| `NODE_ENV` | Next.js, mock guards | Next sets it; production disables both mock modes. |
+| `DATABASE_STATEMENT_TIMEOUT_MS` | Server only, Postgres pool | Per-statement timeout. Defaults to 10000; values below 1000 fall back. A hung query fails instead of pinning a pool client or an SSE stream. |
+| `DATABASE_QUERY_TIMEOUT_MS` | Server only, Postgres pool | Per-query client timeout. Defaults to 10000; values below 1000 fall back. |
+| `PLANMYTRIP_CAPTURE_MOCK` | Server only, capture paths | Only when `1`; allows mock planner and destination runs to be stored for tests. Never enable in production. |
+| `PLANMYTRIP_FEEDBACK_DIR` | Server only, feedback route | Local JSONL fallback directory. Defaults to `/var/lib/planmytrip/feedback`; must be writable by the app user. |
+| `OPS_HEALTH_TOKEN` | Server only, `/api/health` | When set, the local probe requires `x-ops-token`; an empty value leaves it local-only and unauthenticated. Never expose it to the browser. |
+| `OPS_INGEST_URL` | Server only, ops and feedback routes | Local control-plane endpoint. Defaults to `http://127.0.0.1:3100`. |
+| `OPS_INGEST_TOKEN` | Server only, ops and feedback routes | Shared control-plane token. Reporting and central feedback stay disabled when empty. |
+| `OPS_REPORTING` | Server only, server reporter | Set `0` to disable server error forwarding even when a token is present. |
+| `DEPLOY_SHA` | Server only, health probe and ops event | Release marker. The health route falls back to `/opt/planmytrip.health/.deploy-sha`. |
+| `NEXT_PUBLIC_RELEASE` | Browser, client error reporter | Optional release label sent with browser error reports. Never a secret. |
+| `NODE_ENV` | Next.js, mock guards | Next sets it; production disables the mock modes. |
 
 `.env.example` is committed; `.env*` is ignored except it. Never read, print, or commit a real
 `.env*` file. Local use: `cp .env.example .env.development.local`, set the Clerk pair,
@@ -148,12 +186,14 @@ host, build first, then `chown -R planmytrip:planmytrip .next` before restarting
 `npm run db:init` and `npm run dev`. The development-only filename keeps the production
 `next start` from reading the local secret file. The OpenCode service must be installed and
 authenticated for live planning; `AGENT_MOCK=1` needs neither a key nor a service. Production
-keeps database, Clerk, and provider secrets in `/etc/planmytrip.env`; production also sets
-`TINYFISH_RECORDING=1` and leaves the cache enabled. The production Clerk
-application is `app_3MR7sJ2fhslkGXYl4yRqjseO13C`; its production domain uses the same-origin
-Frontend API proxy at `https://planmytrip.health/__clerk`. Dashboard sign-in does not
-authenticate the Clerk CLI; run `npx -y clerk@latest auth login` on the host before targeting
-account-level CLI resources. See `docs/AUTH.md`.
+keeps database, Clerk, and provider secrets in `/etc/planmytrip.env`, and leaves the cache
+enabled. The recording archive and its `TINYFISH_RECORDING` / `PLANMYTRIP_RECORDINGS_DIR`
+variables were removed; if the production environment or disk still carries either, delete
+them as operator cleanup. The production Clerk application is
+`app_3MR7sJ2fhslkGXYl4yRqjseO13C`; its production domain uses the same-origin Frontend API
+proxy at `https://planmytrip.health/__clerk`. Dashboard sign-in does not authenticate the
+Clerk CLI; run `npx -y clerk@latest auth login` on the host before targeting account-level CLI
+resources. See `docs/AUTH.md`.
 
 ## 5. Architecture
 
@@ -161,93 +201,98 @@ Every tracked source file, annotated; `package-lock.json` and generated files
 (`next-env.d.ts`, `.next`, `tsconfig.tsbuildinfo`) are omitted by category.
 
 ```text
-app/  globals.css, layout.tsx, page.tsx, icon.svg, apple-icon.png, model/page.tsx, pricing/page.tsx, account/[[...account]]/, sign-in/[[...sign-in]]/, sign-up/[[...sign-up]]/, trips/, trips/[id]/, mock-browser/[worker]/, api/travel-swarm/route.ts, api/agent-plan/route.ts, api/recordings/[id]/route.ts, api/geocode/search/route.ts, api/geocode/reverse/route.ts, api/venue-research/route.ts, api/saved-trips/route.ts, api/saved-trips/[id]/route.ts, api/trips/route.ts, api/trips/outcome/route.ts
-lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditionProfiles.ts, sunLifeRules.ts, healthScore.ts, itineraryBuilder.ts
-      swarm: swarmTypes.ts (wire contracts), swarmConfig.ts, swarmState.ts, swarmReducer.ts, swarmRunner.ts, swarmGoals.ts, swarmMock.ts, swarmTelemetry.ts, swarmErrors.ts, sse.ts, tinyfish.ts, tinyfishEvents.ts
+app/  globals.css, layout.tsx, page.tsx, error.tsx, global-error.tsx, icon.svg, apple-icon.png, privacy/page.tsx, terms/page.tsx, model/page.tsx, pricing/page.tsx, account/[[...account]]/, sign-in/[[...sign-in]]/, sign-up/[[...sign-up]]/, trips/, trips/[id]/, mock-browser/[worker]/, api/account/delete/route.ts, api/agent-plan/route.ts, api/feedback/route.ts, api/geocode/search/route.ts, api/geocode/reverse/route.ts, api/health/route.ts, api/ops/report/route.ts, api/saved-trips/route.ts, api/saved-trips/[id]/route.ts, api/travel-swarm/route.ts, api/trips/outcome/route.ts, api/venue-research/route.ts
+lib/  engine: healthTripEngine.ts (entry), healthTripTypes.ts, types.ts, conditionProfiles.ts, healthScore.ts, itineraryBuilder.ts
+      swarm: swarmTypes.ts (wire contracts), swarmConfig.ts, swarmState.ts, swarmReducer.ts, swarmRunner.ts, swarmGoals.ts, swarmMock.ts, swarmTelemetry.ts, swarmErrors.ts, sse.ts, tinyfish.ts, tinyfishEvents.ts, tinyfishRuns.ts (run detail)
       agent: agentTypes.ts (wire contracts), agentRequest.ts, agentProfiles.ts, agentPrompts.ts, agentConfig.ts, agentClient.ts, agentWarmup.ts, agentRunner.ts, agentSession.ts, agentParse.ts, agentPlanParse.ts, agentFallback.ts, agentGeocode.ts, agentEvents.ts, agentMock.ts, plannerReducer.ts, plannerStage.ts
-      data: types.ts (versioned contract), dose.ts, tripDossier.ts, capture.ts, validation.ts, savedTrips.ts (account contract)
-      db: postgres.ts (pg pool + schema), trips.ts (capture repository), savedTrips.ts (account repository), billingUsage.ts (allowance-period plan counter)
+      data: types.ts (versioned contract), dose.ts, tripDossier.ts, capture.ts, validation.ts
+      db: postgres.ts (pg pool, timeouts, schema), trips.ts (capture repository), savedTrips.ts (account repository), account.ts (account deletion), billingUsage.ts (atomic allowance reservation)
       billing: plans.ts (plan and feature contract), server.ts (request entitlement snapshot)
       model: types.ts, math.ts, features.ts, logistic.ts, calibration.ts, train.ts, predict.ts, artifact.ts, model.json
       output: describeTrip.ts, pacingStrip.ts, careCard.ts, planMotion.ts
       verification: verificationOverlay.ts
       route: routeTypes.ts (wire contracts), geometry.ts, legs.ts, optimizer.ts, routeStops.ts, routeDay.ts, routePlan.ts, mapsLink.ts
-      cache: cacheKey.ts (identities), cacheStore.ts (memory and Postgres), planCache.ts, swarmCache.ts, cachedEvents.ts, swarmArchive.ts, recordings.ts, tinyfishRuns.ts (run detail)
+      cache: cacheKey.ts (identities), cacheStore.ts (memory and Postgres), planCache.ts, swarmCache.ts, cachedEvents.ts, venueCache.ts
       geocode: types.ts (place contracts), search.ts (Photon/Nominatim search and reverse)
-      venue: types.ts (evidence and request contracts), goals.ts (menu and hotel schemas), runner.ts
-      mapTiles.ts (shared tile URL and attribution)
+      venue: types.ts (evidence and request contracts), goals.ts (menu and hotel schemas), runner.ts, url.ts (public URL gate), format.ts, venueState.ts (pure reducer)
+      ops: client.ts (browser reporter), server.ts (server reporter), pendingWrites.ts (bounded settle)
+      live: concurrency.ts (lease guard), liveLimits.ts (env guard), rateLimit.ts (window and daily budgets)
+      mapTiles.ts (shared tile URL and attribution), redirects.ts (safe return paths), clerkAppearance.ts, dates.ts, onboarding.ts, savedTrips.ts (account contract)
 hooks/  useSwarm.ts, swarmStream.ts, swarmFrames.ts, swarmBatch.ts, useNow.ts, useElapsed.ts, useReducedMotion.ts, usePhaseAnnouncement.ts, usePlanMotion.ts, useAgentPlan.ts, useVenueResearch.ts, venueFrames.ts, plannerStream.ts, plannerFrames.ts
-components/  Logo.tsx, Onboarding.tsx, LocationField.tsx, LocationPickerDialog.tsx, CachedRecordings.tsx, PlannerHome.tsx, PlanWorkspace.tsx, WorkspaceSection.tsx, SiteChrome.tsx, CommandBar.tsx, CommandDock.tsx, LiveRail.tsx, PlanPanel.tsx, DayFocus.tsx, SaveTripButton.tsx, SavedTripView.tsx, DeleteSavedTripButton.tsx, UpgradeCallout.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, RoutePanel.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, VerificationAdjustments.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
+components/  Logo.tsx, Onboarding.tsx, LocationField.tsx, LocationPickerDialog.tsx, PlannerHome.tsx, PlanWorkspace.tsx, WorkspaceSection.tsx, SiteChrome.tsx, FeedbackButton.tsx, CommandBar.tsx, CommandDock.tsx, LiveRail.tsx, PlanPanel.tsx, DayFocus.tsx, SaveTripButton.tsx, SavedTripView.tsx, DeleteSavedTripButton.tsx, DeleteAccountButton.tsx, UpgradeCallout.tsx, AgentTeamPanel.tsx, AgentRoster.tsx, AgentActivityFeed.tsx, AgentPlanView.tsx, AgentPlanDays.tsx, AgentPicks.tsx, RoutePanel.tsx, TripMap.tsx, ItineraryBoard.tsx, PacingStrip.tsx, VerificationAdjustments.tsx, TripOutcomePanel.tsx, WorkerFindings.tsx
 components/landing/  LandingPage.tsx, ProductShot.tsx
 components/venue/  VenueMissionControl.tsx (run bar, tabs, activity, source ledger), VenueWorkerTile.tsx, VenueLiveView.tsx (iframe, clock, fullscreen), VenueEvidencePreview.tsx, VenueEvidenceCards.tsx
-components/mission/  MissionControl.tsx, StatusBar.tsx, FocusView.tsx, WorkerTile.tsx, ActivityFeed.tsx, TempoStrip.tsx, SourcesList.tsx, FindingsReveal.tsx, PreRun.tsx, ConnectionStatus.tsx, Elapsed.tsx, missionMeta.ts
-components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Disclosure.tsx, Field.tsx, LinkButton.tsx, Metric.tsx, NumberInput.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextInput.tsx, numberInput.ts (clampInteger), sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
+components/mission/  MissionControl.tsx, FocusView.tsx, ActivityFeed.tsx, SourcesList.tsx, FindingsReveal.tsx, PreRun.tsx, Elapsed.tsx, NewMark.tsx, missionMeta.ts
+components/ui/  index.ts, Button.tsx, Callout.tsx, Checkbox.tsx, DataRow.tsx, Disclosure.tsx, Field.tsx, LinkButton.tsx, Metric.tsx, NumberInput.tsx, SectionHeader.tsx, Select.tsx, Skeleton.tsx, Slider.tsx, StatusGlyph.tsx, TextArea.tsx, TextInput.tsx, numberInput.ts (clampInteger), sliderFill.ts (sliderFillPercent), metricBars.ts (metricBarWidths)
 public/pitch/  index.html, deck.css, deck.js, basil.jpg, fonts/
 public/landing/  route-detail.webp, venue-detail.webp, safety-envelope.webp
 scripts/  db-init.ts, export-training.ts, synthetic.ts, train-model.ts, seed-cache.ts, clerk-billing.json
 data/  synthetic-trips.jsonl
 docs/  ML.md, MODEL_CARD.md, PITCH.md, ROUTE.md, VENUE.md, AUTH.md, BILLING.md
-tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, model-artifact.test.ts, data-loop.test.ts, billing-gates.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-runner-isolation.test.ts, swarm-recovery.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, outcome-route.test.ts, cache-route.test.ts, geocode-route.test.ts, venue-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts, mocks/clerk-server.ts
-module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, planMotion.test.ts, savedTrips.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmTypes.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/billing/: plans.test.ts; lib/cache/: cacheKey.test.ts, planCache.test.ts, swarmCache.test.ts, cachedEvents.test.ts, venueCache.test.ts; lib/geocode/: types.test.ts, search.test.ts; lib/venue/: types.test.ts, format.test.ts, venueState.test.ts, runner.test.ts; lib/dates.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts, plannerStage.test.ts; lib/route/: geometry.test.ts, legs.test.ts, optimizer.test.ts, routePlan.test.ts, mapsLink.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts, savedTrips.test.ts, tripCache.test.ts, billingUsage.test.ts; lib/model/: artifact.test.ts, calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts, numberInput.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts, venueFrames.test.ts
-root  proxy.ts, package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, instrumentation.ts, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
+tests/  contrast.test.ts, design-guard.test.ts, smoke.test.ts, instrumentation.test.ts, model-artifact.test.ts, data-loop.test.ts, billing-gates.test.ts, live-guards.test.ts, swarm-route.test.ts, swarm-runner.test.ts, swarm-recovery.test.ts, swarm-retry.test.ts, agent-route.test.ts, agent-capture.test.ts, swarm-capture.test.ts, account-delete-route.test.ts, outcome-route.test.ts, cache-route.test.ts, geocode-route.test.ts, venue-route.test.ts, healthTripFixtures.ts, swarm-route-fixtures.ts, mocks/clerk-server.ts
+module tests  lib/: onboarding.test.ts, careCard.test.ts, describeTrip.test.ts, healthTripEngine.test.ts, healthTripEngineRules.test.ts, pacingStrip.test.ts, planMotion.test.ts, savedTrips.test.ts, redirects.test.ts, rateLimit.test.ts, concurrency.test.ts, swarmGoals.test.ts, swarmMock.test.ts, swarmTypes.test.ts, swarmReducer.test.ts, swarmReducerResults.test.ts, swarmTelemetry.test.ts, swarmErrors.test.ts, verificationOverlay.test.ts, tinyfish.test.ts, tinyfishEvents.test.ts; lib/billing/: plans.test.ts; lib/cache/: cacheKey.test.ts, planCache.test.ts, swarmCache.test.ts, cachedEvents.test.ts, venueCache.test.ts; lib/geocode/: types.test.ts, search.test.ts; lib/venue/: types.test.ts, url.test.ts, format.test.ts, venueState.test.ts, runner.test.ts; lib/ops/: pendingWrites.test.ts; lib/dates.test.ts; lib/agent/: agentRequest.test.ts, agentWarmup.test.ts, agentParse.test.ts, agentPlanParse.test.ts, agentFallback.test.ts, agentEvents.test.ts, agentPrompts.test.ts, agentGeocode.test.ts, plannerReducer.test.ts, plannerStage.test.ts; lib/route/: geometry.test.ts, legs.test.ts, optimizer.test.ts, routePlan.test.ts, mapsLink.test.ts; lib/data/: dose.test.ts, tripDossier.test.ts; lib/db/: trips.test.ts, savedTrips.test.ts, account.test.ts, tripCache.test.ts, billingUsage.test.ts; lib/model/: artifact.test.ts, calibration.test.ts, logistic.test.ts, train.test.ts; components/ui/: sliderFill.test.ts, metricBars.test.ts, numberInput.test.ts; components/mission/: missionMeta.test.ts; hooks/: swarmFrames.test.ts, swarmBatch.test.ts, plannerFrames.test.ts, plannerStream.test.ts, venueFrames.test.ts
+root  proxy.ts, package.json, tsconfig.json, next.config.ts, eslint.config.mjs, vitest.config.mts, instrumentation.ts, instrumentation-client.ts, .github/workflows/ci.yml, .env.example, .gitignore, README.md, AGENTS.md, BUILD_LOG.md
 ```
 
-Data flow: `Onboarding` collects a `TripConfig`; the page normalizes it, increments
-`deployNonce`, and reveals `PlanWorkspace`. The page memoizes `buildHealthTripPlan` and passes
-the engine plan to the workspace. `PlanWorkspace` calls `useAgentPlan`, which POSTs
-`/api/agent-plan`; `useSwarm` POSTs `/api/travel-swarm` with the same token. Planner
-events flow through `plannerFrames`/`plannerReducer` into the command bar, seven-agent deck,
-activity rail, route stage, and map; TinyFish events flow through
-`useSwarm`/`swarmReducer` into live verification. The engine plan feeds the safety envelope
-and supplies every concierge day with its step and walking ceiling. The engine and the safety
-envelope render independently of both agent teams. The finished plan is also projected into a
-travel route in `AgentPlanView`; the route is derived from the plan and never writes back.
-After `plan_ready`, `useVenueResearch` POSTs the selected stay and meal places to
-`/api/venue-research`; checked menus and rates flow into the venue deck and the plan's place
-rows. Venue evidence is a separate display layer and never changes the engine envelope, the
-computed dose, or the cache identity of the plan.
+Data flow: `Onboarding` collects a `TripDraft` in two steps, "The trip" and "Your pace", and
+`PlannerHome` normalizes it into a `TripConfig`, creates a per-run id, increments `deployNonce`,
+and reveals `PlanWorkspace`. `PlannerHome` memoizes `buildHealthTripPlan` and passes the engine
+plan to the workspace. `PlanWorkspace` calls `useAgentPlan`, which POSTs `/api/agent-plan`; `useSwarm`
+POSTs `/api/travel-swarm` with the same run and install ids when the account has the live check.
+Planner events flow through `plannerFrames`/`plannerReducer` into the command bar, seven-agent
+deck, activity rail, route stage, and map; TinyFish events flow through
+`useSwarm`/`swarmReducer` into the destination-check surface and the tightening overlay. The
+engine plan feeds the safety envelope and supplies every concierge day with its step and
+walking ceiling. The engine and the safety envelope render independently of both live layers.
+The finished plan is also projected into a travel route in `AgentPlanView`; the route is derived
+from the plan and never writes back. After `plan_ready`, `useVenueResearch` POSTs the selected
+stay and meal places to `/api/venue-research`; checked menus and rates flow into the checked
+places deck and the plan's place rows. Venue evidence is a separate display layer and never
+changes the engine envelope, the computed dose, or the cache identity of the plan.
 
-The page also owns a random install id and a per-run id; both agent POSTs carry them. On
-`plan_ready` the planner route rebuilds the engine plan server-side and writes a consented
-dossier; on `swarm_done` the swarm route writes bounded findings. The finished plan posts one
-explicit outcome. A missing outcome is excluded from training, never read as a negative.
+`PlannerHome` owns a random install id and a per-run id; both agent POSTs carry them. On a live
+`plan_ready`, the planner route rebuilds the engine plan server-side and writes a consented
+dossier; a cache replay never writes a dossier or consumes a plan. On `swarm_done` the
+destination route writes bounded findings when consent was given. The finished plan posts one
+explicit outcome from its disclosure. A missing outcome is excluded from training, never read
+as a negative.
 
-`app/page.tsx` reads `auth()`. A signed-out visitor sees the public landing page, which
-explains the product, shows real captures, and routes to `/sign-up`; a signed-in visitor sees
-the planner under `PlannerHome`. Planning still requires an account. The signed-in header
-carries `Saved trips` and the Clerk `UserButton`. `/trips` lists account-owned snapshots and
-`/trips/[id]` reopens one. The install id and the consented research capture remain anonymous
-and are not linked to the Clerk account.
+`app/page.tsx` reads `auth()`. A signed-out visitor sees the public landing page (an inline
+render, not a redirect), which explains the product, shows the product captures, and routes to
+`/sign-up`; a signed-in visitor sees the planner under `PlannerHome`. Planning still requires an
+account. The signed-in header carries `Saved trips` and the Clerk `UserButton`. `/trips` lists
+account-owned snapshots with Older/Newer paging and `/trips/[id]` reopens one. The install id
+and the consented research capture remain anonymous and are not linked to the Clerk account.
 
-### Cached planner and verification
+### Cached planner and destination check
 
-`lib/cache/` is a two-tier result cache in front of both agent teams. `cacheKey.ts` normalises
-destination, condition, medication, preferences, budget, and transport into a canonical key;
-`cacheStore.ts` keeps an in-process map over an idempotent `trip_cache` table. A planner read
-tries the exact preference key, then the newest row for the same destination, days, and
-condition and labels that related match in the interface. A verification read requires every
-requested worker, so a single-worker retry can reuse a complete recorded set. Plans live 30
-days and verification 14 days; a hit records its hit count without delaying the response.
+`lib/cache/` is a two-tier result cache in front of the planner and the destination check.
+`cacheKey.ts` normalises destination, condition, preferences, budget, transport, check-in date,
+and party size into a canonical key; `cacheStore.ts` keeps an in-process map over an idempotent
+`trip_cache` table. A planner read tries the exact key, then the newest row for the same
+destination, days, and condition and labels that related match in the interface. A related row
+is only served when its check-in date and party size also match; rows written before those
+fields existed are an honest miss. A destination-check read requires every requested worker, so
+a retry can reuse a complete recorded set. Plans live 30 days and destination checks 14 days; a
+hit records its hit count without delaying the response. Venue evidence has its own
+place-scoped cache and TTLs, described in `docs/VENUE.md`.
 
 `/api/agent-plan` checks the cache before it touches OpenCode. A hit emits the same planner
 contract in one fast pass: `planner_started`, one `agent_result` per agent, `plan_ready` with
 `cached`, `cachedAt`, and `cacheMatch`, then `planner_done`. `/api/travel-swarm` does the same
 with `worker_status`, `worker_started`, recorded `worker_sources` and `worker_progress`,
-`worker_complete`, then `swarm_done`. Cached frames are real recorded telemetry, never
-invented progress; they carry `cached: true`, and the workspace shows a "Cached plan" or
-"Cached verification" callout with the original date. Both routes add `X-Plan-Cache` or
-`X-Swarm-Cache: hit|miss`.
+`worker_complete`, then `swarm_done`. Cached frames are real recorded telemetry, never invented
+progress; they carry `cached: true`, and the workspace shows a "Cached plan" or "Checked"
+callout with the original date. Both routes add `X-Plan-Cache` or `X-Swarm-Cache: hit|miss`.
+A cached replay also skips the billing reservation, so it never consumes a live-plan allowance
+or creates a research dossier.
 
-A live miss writes the finished result after the terminal frame. When `TINYFISH_RECORDING=1`,
-the swarm runner asks TinyFish for a recording; `tinyfishRuns.ts` reads the run-detail
-`video_url`, `recordings.ts` archives the WebM under `PLANMYTRIP_RECORDINGS_DIR`, and
-`/api/recordings/[id]` serves it only to a signed-in user. `FocusView` plays the recording
-after the live frame ends. A cached plan also renders `CachedRecordings` under its cache
-callout, a closed-by-default archive of the same videos, so recordings are discoverable
-without opening the verification section. Both players use `preload="none"` and load only
-when played. Cache keys exclude origin, run id, install id, and Clerk identity;
-the cache writes no training label and never runs for mock data. `npm run cache:seed` can seed
-a verification row from an existing capture or a planner row from a saved JSON file.
+A live miss writes the finished result after the terminal frame. There is no recording archive:
+`/api/recordings`, `lib/cache/recordings.ts`, and `swarmArchive.ts` were removed, and TinyFish
+is never asked for a video. The live preview URL still expires and is never replayed from cache.
+Cache keys exclude origin, run id, install id, and Clerk identity; the cache writes no training
+label and never runs for mock data. `npm run cache:seed` can seed a destination-check row from
+an existing capture or a planner row from a saved JSON file.
 
 ### Accounts and saved trips
 
@@ -264,16 +309,28 @@ The `saved_trips` table stores one validated `TripConfig` and `AgentTripPlan` sn
 condition. Saving the same run updates the same row. Store and render paths both run
 `normalizeWirePlan`; mock plans are never saved. The saved view rebuilds the deterministic
 engine envelope from the saved trip, so the safety limits are current while the concierge plan,
-places, and sources stay the captured snapshot. Live verification is not stored or rechecked
-there. The anonymous `trip_captures` table is unchanged and never stores the Clerk user id.
+places, and sources stay the captured snapshot. Live destination findings are not stored or
+rechecked there. Venue evidence is not stored either: the saved page shows an explicit
+"Refresh menus and rates" action instead of opening live pages on load. Deleting a saved trip
+asks for a second confirmation. The anonymous `trip_captures` table is unchanged and never
+stores the Clerk user id.
+
+`/trips` reads 30 rows plus one sentinel, so it offers Older/Newer paging without a total
+count. The page and API both enforce the free one-saved-trip limit before writing. Account
+deletion is `POST /api/account/delete`: it rejects a cross-origin browser request, removes the
+account's `saved_trips` and `billing_usage` rows in one transaction, then deletes the Clerk
+user. Anonymous captures are not linked to the account and are deliberately not deleted. The
+old install-scoped `GET /api/trips` log and `/api/recordings` route are gone.
 
 The Clerk production keys live in `/etc/planmytrip.env`; never put the secret in a
 `NEXT_PUBLIC_*` variable, a committed file, or a log. The production application is
 `app_3MR7sJ2fhslkGXYl4yRqjseO13C`. The Dashboard selection does not authenticate the Clerk CLI;
 use `npx -y clerk@latest auth login` on the host before account-level CLI commands. The
 prebuilt form reads literal Paper and Ink values from `lib/clerkAppearance.ts`; Clerk does not
-resolve `var(--token)` in its own color variables. Full schema, privacy, and rollout notes are
-in `docs/AUTH.md`.
+resolve `var(--token)` in its own color variables. `lib/redirects.ts` validates return paths
+for `/sign-in` and account links, so a signed-out click returns to the page it came from and
+never becomes an open redirect. Full schema, privacy, and rollout notes are in `docs/AUTH.md`;
+the public notices are `/privacy` and `/terms`.
 
 ### Billing and entitlements
 
@@ -286,12 +343,17 @@ supports recurring subscriptions only, so the research-recommended one-time Trip
 Stripe Checkout outside Clerk Billing.
 
 `lib/billing/plans.ts` maps Clerk plan and feature claims to explicit limits:
-`free_user` gets one live plan per calendar year, 7 days, one saved trip, no live
-verification, and no venue research. `care_circle` gets two live plans per calendar month,
-20 days, unlimited saved trips, and both live layers. The safety envelope and care card are
-always free. `lib/billing/server.ts` reads `auth()` once; every paid API enforces its feature
-server-side before work starts. `lib/db/billingUsage.ts` counts live planner runs by Clerk
-user, metric, allowance period, and run id; cache hits and mock runs do not consume a plan.
+`free_user` gets one live plan per calendar year, 7 days, one saved trip, no live destination
+check, and no venue research. `care_circle` gets two live plans per calendar month, 20 days,
+unlimited saved trips, and both live layers. The safety envelope and care card are always
+free. `lib/billing/server.ts` reads `auth()` once; every paid API enforces its feature
+server-side before work starts. `live_verification` is presented as the "Live destination
+check" feature: it covers the advisory check plus live venue menus and rates. `venue_research`
+is the separate venue feature. `lib/db/billingUsage.ts` reserves a live plan atomically: an
+advisory lock over the user, metric, and period wraps the count and insert, and a database
+failure returns `error` so the route fails closed instead of granting an unmetered run. Cache
+hits, mock runs, and cached replays do not consume a plan. The server generates the usage event
+id, so a client `runId` cannot manufacture usage.
 
 `/pricing` renders Clerk's `PricingTable`, `/account` renders `UserProfile` for plan and
 invoice management, and the header/footer link both. `UpgradeCallout` replaces a paid
@@ -350,47 +412,49 @@ and the required attribution. The Leaflet flag prefix is disabled. Tiles and geo
 production dependencies with licences to verify; see section 9.
 
 The workspace is one page, not a tabbed report. A sticky `CommandBar` carries trip identity,
-the mission stage with a four-step rail, both run clocks, agent/step/source/finding counts,
-the newest activity line, the trip actions, and two real progress rules (planners and checks).
-Below it a named-area CSS grid reflows through four stages: the planning deck leads while
-sessions open (`forming`), the deck keeps the width while research lands (`researching`), the
-deck stays open while the concierge composes (`composing`), and the finished stage leads while
-the deck collapses (`ready`). Verification spans the full width at ready. Panels move by grid
-area, never by unmounting, so both streams and all three preview frames continue while the
-layout changes.
+the mission stage with a four-step rail, the plan and check clocks, specialist progress, the
+live-plan allowance, and the trip actions. Below it a named-area CSS grid reflows through four
+stages: the route stage leads while sessions open (`forming`), the deck keeps the width while
+research lands (`researching`), the deck stays open while the concierge composes (`composing`),
+and the finished route leads while the deck collapses (`ready`). The destination check and
+checked places open while they run; at ready the route and "Pacing and safety" open. Panels
+move by grid area, never by unmounting, so both streams and every venue preview frame continue
+while the layout changes.
 
 `WorkspaceSection` is the relevance layer. Each live surface opens only while it carries the
-work: the planning deck while sessions run, verification while checks run, and the route stage
-once checks settle. A settled surface collapses to one line with its real counts; the reader
-can reopen any section. The body stays mounted and becomes inert while closed, so a collapse
-never aborts a stream or unmounts a preview. `components/ui/Disclosure.tsx` supplies the
-accessible button, the animated grid-row body, and the reduced-motion path. `lib/agent/plannerStage.ts`
-derives the stage, the surface mode, the rail state, and the newest agent purely from the
-planner state.
+work: the route stage and research deck while sessions run, the destination check while it
+checks, checked places while venues are read, and pacing and safety once the plan is ready. A
+settled surface collapses to one line with its real counts; the reader can reopen any section.
+The body stays mounted and becomes inert while closed, so a collapse never aborts a stream or
+unmounts a preview. `components/ui/Disclosure.tsx` supplies the accessible button, the animated
+grid-row body, and the reduced-motion path. `lib/agent/plannerStage.ts` derives the stage, the
+surface mode, the rail state, and the newest agent purely from the planner state.
 
-A fixed five-item `CommandDock` appears below 1024px and jumps to the route stage, deck,
-verification, safety envelope, and activity rail. A running stream carries a live dot. Every
-jump target has scroll margin for the fixed header and bar.
+A fixed six-item `CommandDock` appears below 1024px and jumps to Route, Team, Places, Check,
+Safety, and Feed. A running stream carries a live dot. Every jump target has scroll margin for
+the fixed header and bar.
 
 `DayFocus` is the map control: "All days" or one 44px day button, arrow, Home, and End keys,
 and a focus strip with that day's estimate and ceiling, walking distance, recovery minutes, and
-checkpoint. Selecting a day fits the map to its stops, dims the other markers, opens the
-matching route and day-plan rows, and rules the matching envelope row. A `Map` action on a
-route day and a "Show ... on the map" action in an open day scroll the map back into view.
+checkpoint. The workspace starts on "All days"; selecting one fits the map to its stops, dims
+the other markers, opens the matching route and day-plan rows, and rules the matching envelope
+row. A `Map` action on a route day and a "Show ... on the map" action in an open day scroll the
+map back into view.
 
 The planning deck shows only agents that are still working, with phase, role, and newest line.
 Completed and failed agents fold into one "Completed agents" disclosure. At ready the deck is
 also collapsed by its section. The deck follows the agent with the newest activity line unless
 the reader pins one, and the focused agent's history, result, or error opens below.
 
-The activity rail switches between the planning signal and the verification feed. It follows
-the stream with the newest real line, and verification once the plan is ready, unless the
-reader pins one; `Follow live` restores auto-follow. Both feeds stay mounted. The planner
-signal shows the newest two lines with an "Earlier updates" disclosure; the verification feed
-shows the newest three with an "Earlier activity" archive. The verification section shows three
-worker tiles, one mounted live frame per worker, and the focused worker's sources and findings
-inside a disclosure. The safety envelope keeps every day's step and walking caps and the
-over-cap caution visible; the focused day opens its pacing strip, block list, and checkpoint.
+The activity rail switches between the planning signal and the destination feed. It follows
+the stream with the newest real line, and the destination feed once the plan is ready, unless
+the reader pins one; `Follow live` restores auto-follow. Both feeds stay mounted. The planner
+signal shows the newest two lines with an "Earlier updates" disclosure; the destination feed
+shows the newest three with an "Earlier activity" archive. The destination check itself is one
+calm card: pre-run copy, a status line, a "Watch live" disclosure, and source-backed findings;
+it shows no raw JSON, step count, tempo strip, or provider internals. The safety envelope keeps
+every day's step and walking caps and the over-cap caution visible; the focused day opens its
+pacing strip, block list, and checkpoint.
 
 While the route is forming, `PlanPanel` holds the space with a designed route skeleton, seven
 real phase ticks, and the trip's true day slots. `DayFocus` labels the focused day with the
@@ -422,7 +486,7 @@ Google. `docs/ROUTE.md` records the algorithm, complexity, and limits.
 
 `lib/venue/` and `/api/venue-research` are the TinyFish extraction layer. The concierge still
 discovers places and synthesises the route; TinyFish now opens the exact menu or booking URL
-and returns structured page facts. It is not the verification layer and it requests no
+and returns structured page facts. It is not the destination-check layer and it requests no
 recording or preview archive.
 
 The route requires Clerk auth, declares `maxDuration = 300`, and validates a bounded request:
@@ -431,7 +495,11 @@ job opens `bookingUrl ?? sourceUrl`; an eat job opens `menuUrl ?? sourceUrl`. Ho
 only with a check-in date and use `checkIn + days` as check-out. Each plan checks at most two
 hotels and three restaurants, three browsers at a time, with a 75s job timeout, 45s run-record
 recovery, a 255s run budget, one retry, and a fallback from the preferred URL to the plan's
-source page. The terminal frame always arrives inside the route budget.
+source page. `lib/venue/url.ts` rejects any URL that is not absolute http(s) or whose host is
+loopback, private, link-local, unique-local, multicast, reserved, or single-label before a
+browser job starts. The route enforces one live pass per account, two globally, a 30-second
+cooldown, and eight passes per account per UTC day by default. The terminal frame always
+arrives inside the route budget.
 
 The venue SSE contract mirrors the other two streams. Every frame carries `worker`, `seq`,
 `ts`, and optional `cached`. `venue_started` lists every job; `venue_status` moves
@@ -475,15 +543,14 @@ endpoint, event, cache, safety, and live-check contract is in `docs/VENUE.md`.
 
 ### Data loop and calibration model
 
-Capture is opt-in on the onboarding health step. `app/page.tsx` owns a random install id
+Capture is opt-in on the onboarding health step. `PlannerHome` owns a random install id
 (localStorage, never a cookie) and a per-run `runId`; both agent POSTs carry them.
 `useAgentPlan`/`useSwarm` pass them through, and `parsePlannerRequest`/`isSwarmRequestBody`
-validate them. The planner route rebuilds the engine plan server-side on `plan_ready` and
-writes a `TripDossier`; the swarm route writes bounded findings on `swarm_done`. The finished
-plan renders `TripOutcomePanel`, which posts one explicit outcome to `/api/trips/outcome`.
-`GET /api/trips` lists only that install's trips; the install id is preferred in an
-`X-Install-Id` header so it stays out of proxy logs, with the query parameter kept for
-compatibility.
+validate them. The planner route rebuilds the engine plan server-side on a live `plan_ready`
+and writes a `TripDossier`; a cached replay never writes one. The destination route writes
+bounded findings on `swarm_done`. The finished plan renders `TripOutcomePanel`, which posts one
+explicit outcome to `/api/trips/outcome`. The old install-scoped `GET /api/trips` list was
+removed with the recordings cleanup; there is no browser trip log now.
 
 `lib/data/dose.ts` is the single dose model. It maps concierge block kinds to exertion, raises
 hike exertion from verified distance, elevation, and difficulty, counts walking kinds only,
@@ -519,10 +586,12 @@ change a live plan, and a static test proves no live API, capture, or planning m
 imports it. When real data arrives, the learned model may only tighten a cap, never widen it
 above the profile ceiling.
 
-`lib/db/postgres.ts` owns a parameterized `pg` pool and the idempotent `trip_captures` and
-`model_runs` schema; `npm run db:init` applies it. Production, development, and tests use
-separate PostgreSQL databases through `DATABASE_URL`. Capture is best-effort but the planner
-and swarm streams wait for their pending writes before closing. `scripts/synthetic.ts` writes
+`lib/db/postgres.ts` owns a parameterized `pg` pool, per-query and per-statement timeouts, and
+the idempotent `trip_captures`, `model_runs`, `saved_trips`, `trip_cache`, and `billing_usage`
+schema; `npm run db:init` applies it. Production, development, and tests use separate
+PostgreSQL databases through `DATABASE_URL`. Capture is best-effort but the planner and
+destination streams wait a bounded two seconds for their pending writes before closing, so a
+hung database cannot hold the terminal frame open. `scripts/synthetic.ts` writes
 the JSONL cohort and marks every row `synthetic: true`; when `DATABASE_URL` is set it also
 seeds the same dossiers into Postgres for inspection. `scripts/export-training.ts` writes
 only explicitly labeled rows to the gitignored training JSONL and excludes mock plans, other
@@ -554,50 +623,57 @@ cultural, and transit blocks count steps.
 
 `PACING_POLICY`: first-day 0.45, middle 0.8, final 0.4 of the ceiling. To add a condition:
 add the id and label in `lib/types.ts`; add a readonly profile with a VERIFY line and floor;
-add a generic medication name and `CONDITION_CHECKPOINTS` entry; update this table and
-section 9; run both engine test files. Exhaustive `Record<Condition, ...>` types fail
-typecheck until complete.
+add a `CONDITION_CHECKPOINTS` entry; update this table and section 9; run both engine test
+files. Exhaustive `Record<Condition, ...>` types fail typecheck until complete.
 
 ### Onboarding and live workspace
 
-`app/page.tsx` owns only three things: `view` (`onboarding` or `workspace`), `trip`
-(`TripConfig | null`), and `deployNonce`. It memoizes `buildHealthTripPlan` from the current
-trip. `Onboarding` owns its draft, two steps, `medicationTouched`, and validation. The page
-renders both screens and hides the inactive one with `hidden`, so editing never discards a
-running workspace. `onComplete` normalizes the draft, sets the trip, increments `deployNonce`,
-and reveals the workspace; `onCancel` resets the draft and returns to the running workspace.
-The workspace is keyed by `deployNonce`, so a new build or replan remounts it at the top and
-aborts older streams.
+`PlannerHome` owns the two screens (`onboarding` or `workspace`), the trip, the per-run id,
+`deployNonce`, and the anonymous install id. `app/page.tsx` only chooses the public landing or
+the signed-in planner. `Onboarding` owns its draft, the two steps, the explicit health profile,
+and validation. The page renders both screens and hides the inactive one with `hidden`, so
+editing never discards a running workspace. `onComplete` normalizes the draft, sets the trip,
+creates a run id, increments `deployNonce`, and reveals the workspace; `onCancel` resets the
+draft and returns to the running workspace. The workspace is keyed by `deployNonce`, so a new
+build or replan remounts it at the top and aborts older streams.
 
-`Onboarding` is one focused screen, not a rail. Step 01 collects destination (the only hard
-gate), duration, budget, and optional preferences. Destination and the optional starting point
-are both `LocationField` comboboxes: typing searches `/api/geocode/search` after a 220ms
-debounce and offers at most six city or place rows. `Use current location` reads the browser
-position through `/api/geocode/reverse`. Destination asks for the city label; starting point
-asks for the exact place and enables high-accuracy positioning, so it is as specific as a map
-pin. `Pick on map` opens `LocationPickerDialog`, a mounted-only modal Leaflet map that places a
-pin, reverse-geocodes the exact point, and fills the field only after a place is named.
-Suggestions, current location, and the map all write a canonical label into the controlled
-text, and the map picker returns focus to its field. Duration is a bounded integer field
-(2-20 days), not a slider. Budget is a three-stop slider over Value, Balanced, and Premium.
-Step 02 collects condition, medication (name only), Sun Life coverage, the anonymous capture
-opt-in, the live coverage alert, and a review sentence.
-The left column carries only the New trip label and the headline; the right column is a 420px
-form on desktop and stacks below at 1024. There is no deploy action before the form is complete.
+`Onboarding` is one focused screen, not a rail, and is labelled 01 The trip / 02 Your pace.
+Step 01 collects destination (the only gate for this step), start date, duration, travellers,
+and the optional starting point. Duration is a bounded integer field up to the plan's
+`maxTripDays` (2-20 days), not a slider. Destination and the optional starting point are both
+`LocationField` comboboxes: typing searches `/api/geocode/search` after a 220ms debounce and
+offers at most six city or place rows. `Use current location` reads the browser position through
+`/api/geocode/reverse`. Destination asks for the city label; starting point asks for the exact
+place and enables high-accuracy positioning, so it is as specific as a map pin. `Pick on map`
+opens `LocationPickerDialog`, a mounted-only modal Leaflet map that places a pin,
+reverse-geocodes the exact point, and fills the field only after a place is named. Suggestions,
+current location, and the map all write a canonical label into the controlled text, and the map
+picker returns focus to its field.
+
+Step 02 collects an explicit health profile (nothing is preselected), budget, transport,
+optional preferences, and the anonymous capture opt-in. The profile label says it sets pacing
+ceilings, not a diagnosis. Budget is a three-stop slider over Value, Balanced, and Premium. The
+review sentence and details line show the trip, party, transport, budget, and preferences. The
+plan allowance sentence names the account's included live plans and day ceiling without
+inventing a remaining count, and links to `/pricing`. The left column carries only the New trip
+label and the headline; the right column is a 420px form on desktop and stacks below at 1024.
 The draft helpers live in `lib/onboarding.ts` and are pure-tested. The persistent site footer
-keeps the planning-aid notice; the onboarding column no longer repeats it.
+keeps the planning-aid notice and privacy/terms links; the onboarding column no longer repeats
+it.
 
-`PlanWorkspace` is the one-page result screen: trip summary with Edit trip and Plan again, the
-live `MissionBand`, the sectioned route, safety envelope, and verification. `MissionBand` shows
-the current stage, a counting elapsed timer, completed agents, a progress bar, and a four-step
-rail with calm failure copy. `AgentTeamPanel` holds the seven-agent deck and the planning signal
-graph; `AgentRoster` shows each agent's phase, role, and newest message or activity line, and
-`AgentActivityFeed` turns the bounded log into a bar graph plus a five-line ticker. `PlanPanel`
-shows the finished concierge plan, a designed route-forming skeleton with an animated dashed
-route, or a calm retry. The safety envelope carries `CareCardButton` and `ItineraryBoard`; live
-verification carries `MissionControl`. Everything is mounted for the whole page, so neither
-stream aborts while the reader scrolls. `TripMap` receives `visible` and calls `invalidateSize`
-when the page returns; a hidden page-level workspace also passes `visible=false`.
+`PlanWorkspace` is the one-page result screen and live command surface. `CommandBar` carries
+trip identity, stage, clocks, specialist progress, allowance, and Save trip / Edit trip /
+Re-run plan; `WorkspaceSection` keeps the route, research deck, destination check, checked
+places, pacing and safety, and activity rail mounted. `AgentTeamPanel` holds the seven-agent
+deck and the planning signal graph; `AgentRoster` shows each agent's phase, role, and newest
+message or activity line, and `AgentActivityFeed` turns the bounded log into a bar graph plus a
+five-line ticker. `PlanPanel` shows the finished concierge plan, a designed route-forming
+skeleton with an animated dashed route, or a calm retry that distinguishes a plan limit from a
+failure. The safety section carries `CareCardButton` and `ItineraryBoard`; the destination check
+carries `MissionControl`; checked places carry `VenueMissionControl`. The outcome form is a
+collapsed "After your trip" disclosure inside the finished plan. Everything is mounted for the
+whole page, so no stream aborts while the reader scrolls. `TripMap` receives `visible` and calls
+`invalidateSize` when the page returns; a hidden page-level workspace also passes `visible=false`.
 
 The page uses staggered section, deck, activity, signal, and marker motion. Every effect is
 decorative and every animation is disabled under reduced motion. No phase renders the word
@@ -607,46 +683,27 @@ are 24/40px; the footer sits 64px/96px below. The onboarding split is `1fr / 420
 gap at 1024+; the workspace summary wraps its actions below the trip sentence. The page fits
 375px without horizontal scroll, and controls stay at least 44px tall.
 
-### Live verification mission control
+### Destination check
 
 `PlanWorkspace` owns `useSwarm` and passes `state`, `runInput`, `retry`, and `rerun` to
-`MissionControl`. The mission control is one mounted surface: a sticky status bar, the
-pre-run instruction rows, three worker tiles, one hero live view per worker, the activity
-feed, the source ledger, and findings. Nothing is conditionally unmounted while a run is
-live, so all three hidden preview iframes keep their streams.
+`MissionControl`. The destination check is one calm surface with a pre-run row, one status card,
+a "Watch live" disclosure, source-backed findings, a checked-date note, and a stale-input
+caution. It shows no raw JSON, step count, tempo strip, provider internals, or invented partial
+finding. The same worker state feeds the tightening overlay and the "Destination check" line in
+the safety section.
 
-The status bar is 48px and sticky inside the verification section. It reads the running
-count, elapsed time, and `steps, sources, findings`; a finished run reads "Verification
-complete" with a Re-run action. Its visually hidden `aria-live="polite"` line announces only
-started, finished, and failed phase changes, at most once every three seconds.
-`components/mission/Elapsed.tsx` owns the clock and is the only component that re-renders on
-it. The browser title is `(n running) PlanMyTrip.health` while live,
-`Verified n/3 - PlanMyTrip.health` when settled, and the plain title otherwise.
-
-Worker tiles are a `role="tablist"` with arrow, Home, and End keys and a 2px ink top rule on
-the selected tile. Focus follows the worker with the newest progress unless the reader pins a
-tile; the line reads "Following activity" or "Pinned to <name>" with an Unpin action. The
-focused `FocusView` is a 16:10 surface frame with a 32px chrome bar: phase glyph, worker,
-preview host, a pulsing LIVE marker, elapsed time, `step n of 150 max`, and an Expand action
-using the Fullscreen API. Beneath it the "Now" line crossfades on a real purpose change and
-the tempo strip draws five-second buckets from accepted steps. Completion shows "Run complete"
-for one second, auto-follows the next active worker, and replaces the iframe with the
-archived recording when one exists, or a static "Stream ended" frame after 1.5s.
-
-`ActivityFeed` is a 320px internal scroller with All, Advisory, Pharmacy, and Coverage filters.
-Lines carry `+MM:SS`, a worker tag, and the real purpose. The newest line types at about 40
-characters per second only when fewer than three lines arrived together; older lines settle to
-muted after two seconds. The feed auto-scrolls only while the reader is at the bottom, then
-offers "Jump to latest (n)". Heartbeats never become lines; the merged feed is capped at 300.
-`SourcesList` grows from `worker_sources` and search/fetch steps, deduplicates by URL or title,
-and links each row with `noopener noreferrer`. `FindingsReveal` shows typed DataRow lists only
-after COMPLETE, with a 60ms row stagger, provenance, retrieved time, and the raw JSON toggle.
-`lib/swarmErrors.ts` maps every error code to calm copy and a retryable flag.
-
-`PreRun` lists the three target hosts, what each will check, and a disclosure with the exact
-goal string. `MissionControl` also shows the mock caution, a stale-inputs caution with Re-run,
-and a dimmed findings state. Every visible change is backed by an accepted event; there are no
-percentages, ETAs, or partial findings.
+`MISSION_WORKERS` names the single advisory worker and its host, `travel.gc.ca`.
+`components/mission/Elapsed.tsx` owns the clock. The browser title is
+`Checking destination - PlanMyTrip.health` while live, `Destination checked -
+PlanMyTrip.health` when complete, and the plain title otherwise. A hidden `aria-live="polite"`
+line announces only started, finished, and failed phase changes, at most once every three
+seconds. `FocusView` shows the phase glyph, page name, elapsed time, source count, the current
+purpose, a retry on failure, and an optional live iframe in a `referrerPolicy="no-referrer"` /
+`sandbox="allow-scripts allow-same-origin"` frame. `PreRun` names the target host, what will be
+checked, and the exact goal in a disclosure. `FindingsReveal` renders typed rows only after
+COMPLETE, with provenance and retrieved time; `SourcesList` deduplicates by URL or title and
+links with `noopener noreferrer`. `lib/swarmErrors.ts` maps every error code to calm copy and a
+retryable flag.
 
 Worker state machine (pure `lib/swarmReducer.ts`):
 
@@ -660,29 +717,20 @@ complete/error --run_started (same worker)--> queued
 Each worker keeps `runId`, start and end times, the current purpose, up to 200 steps, a
 step count, heartbeat count and last time, up to 100 deduplicated sources, up to 20 notes,
 a retry count, and the last accepted sequence. Duplicate or out-of-order `seq` values are
-ignored. `lib/swarmTelemetry.ts` derives elapsed time, five-second tempo buckets, connection
-health (`live`, `quiet` after 12s, `stalled` after 30s), the bounded merged feed, a summary
-(running, steps, sources, findings), merged source rows, and staleness. `hooks/useSwarm.ts`
-batches stream actions through `hooks/swarmBatch.ts` so a burst causes one reducer pass per
-animation frame. `hooks/useNow.ts` ticks once a second only while a worker is queued or
-running; idle pages have no clock.
+ignored. `lib/swarmTelemetry.ts` derives elapsed time, connection health (`live`, `quiet` after
+12s, `stalled` after 30s), the bounded merged feed, a summary (running, steps, sources,
+findings), merged source rows, and staleness. `hooks/useSwarm.ts` batches stream actions through
+`hooks/swarmBatch.ts` so a burst causes one reducer pass per animation frame. `hooks/useNow.ts`
+ticks once a second only while a worker is queued or running; idle pages have no clock.
 
 Worker events are accepted only from queued or running; `run_started` is the only exit from
-idle. Progress keeps the last three purposes. `streaming_url` accepts only https on
-`mock.invalid`, `*.unikraft.app`, or `*.tinyfish.io` (VERIFY) in `lib/swarmState.ts` and
-`hooks/swarmFrames.ts`, plus the dev-only same-origin `/mock-browser/<worker>` path; all other
-hosts are rejected. A live worker has a 280s client budget inside a 300s route. TinyFish caps
-each browser run at 100s or its default step ceiling, but queue delay and recording
-finalization can push the wall clock near three minutes. If the SSE stream ends before
-COMPLETE, the runner polls `GET /v1/runs/{id}` and uses the authoritative run record. A
-transient failure retries once, a worker failure never aborts its siblings, and
+idle. `streaming_url` accepts only https on `mock.invalid`, `*.unikraft.app`, or `*.tinyfish.io`
+(VERIFY) in `lib/swarmState.ts` and `hooks/swarmFrames.ts`, plus the dev-only same-origin
+`/mock-browser/<worker>` path; all other hosts are rejected. A live worker has a 280s client
+budget inside a 300s route. If the SSE stream ends before COMPLETE, the runner polls
+`GET /v1/runs/{id}` and uses the authoritative run record. A transient failure retries once, and
 `/api/travel-swarm` declares `maxDuration = 300`. `swarm_done` stores completed and failed
-lists. Any `mock: true` payload shows the "Mock data" caution Callout; a full run clears it.
-
-The frame sets `referrerPolicy="no-referrer"` and
-`sandbox="allow-scripts allow-same-origin"`. Preparing shows a static explanation, never a
-skeleton of fake activity. A completed worker's iframe stays mounted for 1.5 seconds after its
-last event, then unmounts; none of the three hidden frames is recreated by switching tiles.
+lists. Any `mock: true` payload shows the "Sample result" caution; a live run clears it.
 
 ### Verification overlay
 
@@ -690,29 +738,28 @@ last event, then unmounts; none of the three hidden frames is recreated by switc
 returns a new plan and typed adjustments. It only tightens: an advisory heat, air-quality,
 altitude, outbreak, or allergen match appends a bounded verified note to affected day
 checkpoints, and a heat or air-quality match on a sensitive condition extends that day's
-recovery block by 30 minutes, at most once per day. A coverage pre-authorization string becomes
-a display-only checklist adjustment. Step and walking ceilings, scores, and the Sun Life alert
-never change. Unmatched, null, or "Not found" findings produce no adjustment; a master switch
-and per-adjustment ids control what applies. Ids, order, and reason text are deterministic, and
-reapplying the result is a no-op.
+recovery block by 30 minutes, at most once per day. Step and walking ceilings, scores, and the
+care card's planning notice never change. Unmatched, null, or "Not found" findings produce no
+adjustment; a master switch and per-adjustment ids control what applies. Ids, order, and reason
+text are deterministic, and reapplying the result is a no-op.
 
 ### KPI strip and paced itinerary
 
 `ItineraryBoard` derives everything from `plan`; agent results never feed it directly, except
-through the typed verification overlay. The KPI strip shows Health Safety Score (`/100`,
-baseline compare bars), Daily Step Ceiling (`steps`), and Flare / ER Risk Reduction (`%`), both
-modeled figures with a "Modeled estimate" sub-line and an input tooltip. It is three-up from
-768px and stacks below that width. A border-topped line reads
-`Live verification: n of 3 sources checked` and updates as workers return findings. KPI numbers
-tween over 300ms with `lib/planMotion.ts`; a changed value shows a hairline diff block such as
-`Step ceiling 6,000 to 5,000 steps` for four seconds. `hooks/usePlanMotion.ts` owns the tween
-and the four-second diff lifetime; reduced motion returns the final value immediately.
+through the typed verification overlay. The KPI strip shows Pacing score (`/100`, baseline
+compare bars), Daily step ceiling (`steps`), and Modeled risk reduction (`%`), both modeled
+figures with a "Modeled estimate" sub-line and an input tooltip. It is three-up from 768px and
+stacks below that width. A border-topped line reads
+`Destination check: n of 1 source checked` and updates when the advisory returns findings. KPI
+numbers tween over 300ms with `lib/planMotion.ts`; a changed value shows a hairline diff block
+such as `Step ceiling 6,000 to 5,000 steps` for four seconds. `hooks/usePlanMotion.ts` owns the
+tween and the four-second diff lifetime; reduced motion returns the final value immediately.
 
 Each day is a hairline row, not a card: a 64px day number using `.t-metric-day`, title, pacing
 rule, strip, block list, and accent-soft checkpoint. A 160px column carries step and walk caps
 as stacked DataRows (one-decimal km); mobile shows two columns. `.day-row` applies the global
 240ms rise and 40ms stagger; reduced motion disables both. A day with an applied recovery
-adjustment gets `.anim-arrive`, an "Adjusted by verification" t-label, the
+adjustment gets `.anim-arrive`, an "Adjusted by the destination check" t-label, the
 `Afternoon recovery 30 to 60 min` diff line, and the source link and retrieved time. The inline
 SVG strip in `components/PacingStrip.tsx` has a 64px plot, an HTML 16px axis, ink bars at
 `exertion / 3`, a hatched 12px recovery bar, and two-hour labels from 08:00. Exertion bars use
@@ -720,9 +767,9 @@ SVG strip in `components/PacingStrip.tsx` has a 64px plot, an HTML 16px axis, in
 `--dur-base` and stop under reduced motion. The block list is its text equivalent.
 
 `CareCardButton` is the SectionHeader action. `buildCareCard` is pure and deterministic:
-title, trip facts, blank line, Sun Life alert, blank line, `Daily checkpoints`, one
+title, trip facts, blank line, `Daily checkpoints`, one
 `Day <n> (step cap <n> steps): <checkpoint>` line per day, an optional
-`Applied verification adjustments` section with each applied adjustment's source URL and
+`Applied destination-check adjustments` section with each applied adjustment's source URL and
 retrieved time, blank line, planning notice (exact text in `lib/careCard.ts`). With no days it
 prints `No itinerary days are available.` Copy uses `navigator.clipboard.writeText` with a
 two-second "Copied" label and a live status announcement; on failure a read-only textarea shows
@@ -766,19 +813,51 @@ and vanilla JavaScript; do not rebuild it in React.
   `proxy.ts` forwards only Clerk's auth request headers; Next 16.4.6 hangs if Clerk's full
   request-header override set is passed through. Do not drop that filter without a build and
   live request check.
+- **Consumer position:** the product speaks to travellers who want their health, energy, and
+  budget to shape the trip. It is not a clinical service, a patient portal, or an insurance
+  product. The health profile sets pacing ceilings; it never diagnoses, treats, or sells
+  coverage. The landing, onboarding, and footer copy keep that boundary.
+- **Explicit health profile:** the health profile starts empty and is required before a build.
+  The interface calls it a profile, says it sets ceilings rather than a diagnosis, and never
+  infers one from another answer. The draft normalizer returns null until a supported profile
+  is chosen.
+- **One destination check:** a single TinyFish worker reads the Government of Canada advisory
+  page for the destination. The product removed pharmacy, medication, and coverage workers, so
+  there is no three-worker mission control, no provider JSON in the interface, and no coverage
+  claim to verify. The check may add a verified note or lengthen recovery; it never widens a
+  cap.
+- **Venue-first evidence:** the concierge chooses and sequences places; TinyFish opens the
+  selected menu or booking URL and returns checked facts. The venue deck and the plan's place
+  rows show those facts with their source and checked time. Venue evidence is display-only and
+  never changes the envelope, dose, health score, or cache identity.
 - **Saved trips are account-owned, captures are anonymous:** `saved_trips` is scoped by
   `clerk_user_id` and stores a validated trip and plan snapshot. `trip_captures` remains
   consent-gated, keyed by the random install id, and never stores the Clerk user id. Deleting a
-  saved trip never deletes a research capture.
+  saved trip never deletes a research capture. Account deletion removes account rows, then the
+  Clerk user; anonymous captures stay separate by design.
+- **Account deletion is explicit and ordered:** `POST /api/account/delete` requires a signed-in
+  session, rejects a cross-origin browser request, deletes `saved_trips` and `billing_usage` in
+  one transaction, and only then deletes the Clerk user. If the database cleanup fails, the
+  Clerk account is left open so the traveler can retry. The shared cache is not account data.
 - **Free safety, paid proof:** the safety envelope, caps, caution copy, and care card are free
-  for every account. Care Circle sells the expensive proof and capacity: live verification,
-  live venue menus and rates, 20-day trips, two live plans a month, and unlimited saved trips.
-  The free tier is one live 7-day plan a year and one saved trip. Every gate is enforced in a
-  server route, not only in the client.
+  for every account. Care Circle sells the expensive proof and capacity: the live destination
+  check, live venue menus and rates, 20-day trips, two live plans a month, and unlimited saved
+  trips. The free tier is one live 7-day plan a year and one saved trip. Every gate is enforced
+  in a server route, not only in the client.
 - **Clerk Billing, not a local billing table:** the active plan and features come from the
-  Clerk session; `billing_usage` is only the fair-use counter. `/account` delegates payment
+  Clerk session; `billing_usage` is the fair-use reservation log. `/account` delegates payment
   method, invoice, cancellation, and plan switching to `UserProfile`. Billing webhooks are not
   required for access and are not implemented yet.
+- **Reservations fail closed:** a live plan reserves its allowance in one transaction with an
+  advisory lock over the account, metric, and period. A limit refusal returns `trip_limit`; a
+  database failure returns 503 instead of granting an unmetered run. The server generates the
+  usage event id, so a client run id cannot manufacture or reuse usage. Cached and mock runs
+  never reserve.
+- **Live limits are in memory and single-instance:** `lib/concurrency.ts` and `lib/rateLimit.ts`
+  hold per-account and global leases, cooldowns, the venue UTC-day cap, and the geocoder
+  per-minute budget in process state. One live run per account is always enforced; the
+  configured global caps default to planner 2, destination 3, and venue 2. A process restart
+  clears them, and a multi-instance deployment would need a shared store.
 - **Account chrome uses full navigation:** the brand lockup, header, footer, model-page, and
   saved-trip account links are native anchors, not client `Link` transitions. A stale client
   router must never trap a pricing, sign-in, or saved-trip click; the page reloads cleanly.
@@ -786,14 +865,12 @@ and vanilla JavaScript; do not rebuild it in React.
   the default `external` prop is true. Header link hit areas are padded and carry their own
   stacking context.
 - **Fair launch price, annual-first:** the research target was $79/year, but the shipped launch
-  price is $9/month or $60/year to stay fair for patients and caregivers. Clerk's
+  price is $9/month or $60/year to stay fair for individual travellers. Clerk's
   monthly-equivalent field produces $60/year. The production instance does not have the
   annual-only update enabled, so the $9 monthly option is visible as a flexibility option.
   Enable the update and set the monthly amount to zero to remove it.
 - **Scaffold in place:** `.git` and a user-owned `README.md` existed; the README is untouched.
   Generated `cacheComponents` and `partialPrefetching` were removed.
-- **Sun Life:** the stability window was not supplied and stays `null`; alerts say so. Never
-  invent a number. One `SUN_LIFE_RULES` serves engine and workers.
 - **Engine split:** profiles, score, itinerary, types, and rules are separate files under 250
   lines; the public entry re-exports.
 - **No live key:** tests, `SWARM_MOCK=1`, and `AGENT_MOCK=1` only; never call TinyFish or the
@@ -812,26 +889,33 @@ and vanilla JavaScript; do not rebuild it in React.
   picker all resolve to a bounded destination string. No coordinate, permission state, or
   geolocation trace is added to `TripConfig`, the capture dossier, or the cache key. The map
   pin is a UI aid; the itinerary still derives place coordinates from verified research.
-- **PostgreSQL, not SQLite:** `pg` with a parameterized pool is the capture, saved-trip,
-  usage, and model-run store. `saved_trips` carries the account-owned snapshot;
-  `billing_usage` carries the calendar-year live-plan counter; `trip_captures` and
-  `model_runs` carry the anonymous research loop. The schema is idempotent and applied by
-  `npm run db:init`; production, development, and tests use separate databases. No SQLite file
-  or binary demo database is committed. Database writes are awaited before the SSE stream
-  closes.
+- **PostgreSQL, not SQLite:** `pg` with a parameterized pool is the cache, saved-trip,
+  reservation, capture, and model-run store. `saved_trips` carries the account-owned snapshot;
+  `billing_usage` carries one usage event per live plan and allowance period; `trip_captures`
+  and `model_runs` carry the anonymous research loop; `trip_cache` carries both cache tiers.
+  The schema is idempotent and applied by `npm run db:init`; production, development, and tests
+  use separate databases. Per-statement and per-query timeouts stop a hung query from pinning a
+  pool client or an SSE stream. No SQLite file or binary demo database is committed. Best-effort
+  writes wait at most two seconds before the SSE stream closes.
 - **Computed dose, not self-report:** the concierge's `stepEstimate` is an agent claim. Every
   training row is computed from block kind, duration, exertion, and verified hike elevation,
   so live and fallback plans yield comparable doses. A displayed day is inside its cap only
   when the agent estimate and the computed dose both fit; an empty day is unsafe, not zero.
 - **Cache results, not progress:** a cached destination replays completed planner and
-  verification results in about a second. Frames keep the real event contract and carry
+  destination results in about a second. Frames keep the real event contract and carry
   `cached: true`; no percentage, ETA, or fake step is added. A planner cache key includes the
-  preference set, with a clearly labelled destination + days + condition + medication fallback. A
-  verification key requires all requested workers. Mock data is never cached, cache writes
-  never block a live result, and the cached plan is a snapshot, not a live recheck.
-- **Recordings are evidence, not a preview:** when recording is enabled, the archive stores
-  the real TinyFish run video locally and serves it only to signed-in users. The live preview
-  URL still expires and is never replayed from cache.
+  preference set, check-in date, and party size; the related fallback must match the date and
+  party too. A destination-check key requires every requested worker. Mock data is never
+  cached, cache writes never block a live result, and the cached plan is a snapshot, not a live
+  recheck.
+- **Cached plans never create dossiers:** only a live `plan_ready` writes a consented research
+  dossier. A cache replay has no fresh consent signal and must not add a duplicate or stale
+  training row; the planner route skips capture when the cache produced the plan.
+- **No recording archive:** the recording experiment was removed. `/api/recordings`,
+  `lib/cache/recordings.ts`, `swarmArchive.ts`, `CachedRecordings`, and the recording
+  environment variables are gone. TinyFish is never asked for a video, and the live preview is
+  the page itself, not a recording. Any existing files and production env values are operator
+  cleanup, not an app feature.
 - **Calibration, not a new predictor:** the engine's modeled risk is the prior log-odds; the
   model learns the residual. A zero-coefficient artifact is exactly the engine, and a
   synthetic artifact can never drive a live plan.
@@ -855,7 +939,8 @@ and vanilla JavaScript; do not rebuild it in React.
   running plan survives Edit trip and Back to plan. The workspace is keyed by `deployNonce` to
   reset the page and streams on a new build.
 - **One page keeps streams alive:** every live surface is mounted for the whole workspace.
-  Do not bring back conditional tab panels or unmount verification while the plan forms.
+  Do not bring back conditional tab panels or unmount the destination check or checked places
+  while the plan forms.
 - **Collapse by relevance, never by unmount:** `WorkspaceSection` opens the surface carrying
   the live work and collapses settled surfaces to a real summary. A reader can reopen any
   section. Closed bodies stay mounted and inert, so a collapse never aborts a stream. The
@@ -869,14 +954,19 @@ and vanilla JavaScript; do not rebuild it in React.
   opens the selected menu or booking URL and returns structured facts with a source and checked
   time. A venue pass uses at most five pages, three browsers at a time, no recording, and a
   fallback from the preferred URL to the plan source page. Venue evidence is display-only: it
-  never changes a cap, the dose, the health score, or the Sun Life alert.
+  never changes a cap, the dose, or the health score.
+- **Only public venue URLs reach TinyFish:** `lib/venue/url.ts` rejects non-http(s), loopback,
+  private, link-local, unique-local, multicast, reserved, and single-label hosts before a
+  browser job starts. The check is syntactic and performs no DNS lookup, so it does not catch
+  DNS rebinding; the provider's network boundary remains part of the control.
 - **Venue cache is separate and place-scoped:** the v2 key includes the place id as well as the
   URL (and dates plus party for hotels), so a shared city listing cannot collide across two
   restaurants. Menus freshen for 7 days and rates for 12 hours; cached frames replay real
   recorded sources and activity offsets, never invented progress.
-- **Legacy verification remains mounted:** the video verification layer is legacy product
-  direction, but it is still compiled and its cached-recording path still works. Retire it in
-  its own step after the venue surface is stable; do not leave a half-removed section.
+- **Privacy and terms are product surfaces:** `/privacy` and `/terms` are public pages linked
+  from the footer. They describe the account, anonymous research, live checks, geocoding,
+  feedback, and operational logs in plain language. Legal review is still required before a
+  paid pilot.
 - **Public landing, private planner:** `/` shows the landing page to a signed-out visitor and
   `PlannerHome` to a signed-in one. Planning, saved trips, and the workspace still require
   Clerk. The landing uses real captures of this app with the London sample trip; they are the
@@ -1001,30 +1091,29 @@ prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.5:1 or better.
 ## 8. Medical safety rules
 
 - The product is a planning aid, not medical advice. The persistent footer reads: "Planning
-  aid only. Not medical advice. Confirm with your clinician and insurer before you travel."
+  aid only. Not medical advice. Confirm health and travel insurance details before you travel."
+  The product does not diagnose, treat, sell insurance, or tell anyone to take or change a
+  medication.
 - All physiological thresholds live in one typed `CONDITION_PROFILES` constant in
   `lib/conditionProfiles.ts`, each with a rationale, a modeled residual-risk floor, and a
   `// VERIFY:` flag. No magic numbers elsewhere.
 - `healthSafetyScore` and `riskReductionPct` are deterministic modeled estimates from the
   documented formula. Label them "Modeled estimate" with an input tooltip. Never call them
   measured or clinically validated.
-- Insurance rules (60-day cap, Allianz Global Assistance 24/7 pre-authorization, the
-  pre-existing stability window) live in one `SUN_LIFE_RULES` constant in
-  `lib/sunLifeRules.ts`, marked `// VERIFY against current group policy`. The window is
-  `null` and unconfirmed. The alert says "Verify with your plan administrator".
-- The calibration model is a planning-aid estimate. Show "Modeled estimate" until a
-  real-data artifact reaches the pooled tier; never present synthetic output as clinical
-  evidence. The model may only tighten a cap, never widen it above the profile ceiling.
-- Never suggest doses or medication changes. Medication information is limited to generic
-  and brand names, customs, and carry rules. The concierge prompts forbid telling the traveler
-  to take or use a medication; copy refers to the clinician's plan.
+- The calibration model is a planning-aid estimate. Show "Modeled estimate" until a real-data
+  artifact reaches the pooled tier; never present synthetic output as clinical evidence. The
+  model may only tighten a cap, never widen it above the profile ceiling.
 - The concierge is a planning aid. Every day carries the engine's step and walking ceiling,
   recovery minutes, and checkpoint. Agent estimates are labelled as estimates; a day above a
   ceiling, including a day whose block dose exceeds the ceiling while its estimate does not,
   shows a caution and the Pacing limit always wins.
+- The destination check only tightens. It may add a verified note or extend recovery; it never
+  raises a step cap, walking cap, score, or risk reduction. Venue menus, rates, and allergen
+  notes are the page's own words, not a clinical guarantee.
 - The post-trip label requires an explicit flare answer; an untouched control is never saved
   as a negative. The public outcome route ignores free text. The research capture is keyed by
-  the anonymous install id; Clerk account identity is stored only on saved trips.
+  the anonymous install id; Clerk account identity is stored only on saved trips and account
+  deletion.
 - Agent findings show the source URL and retrieved time. Missing fields show "Not found",
   never a guess. Malformed JSON shows the raw text plus a parse error.
 - Geocoded coordinates are labelled approximate. A place without a verified or geocoded
@@ -1032,7 +1121,9 @@ prove the rules. `tests/contrast.test.ts` checks 13 pairs at 4.5:1 or better.
 
 ## 9. VERIFY register
 
-Regenerate with `grep -rn "VERIFY:" app lib components`; there are 28 entries.
+Regenerate with `grep -rn "VERIFY:" app lib components`; there are 22 code markers.
+Five product-review rows do not carry a marker yet: destination goal, live limits, venue URL,
+cache identity, and account deletion.
 
 | File | What to verify |
 | --- | --- |
@@ -1041,14 +1132,16 @@ Regenerate with `grep -rn "VERIFY:" app lib components`; there are 28 entries.
 | `lib/conditionProfiles.ts` (pregnancy) | floor 18; 5,000-step ceiling, 3.0 km walking, 45-minute recovery, altitude, heat, and food safety against maternity guidance. |
 | `lib/conditionProfiles.ts` (food allergy) | floor 20; 6,000-step ceiling, 3.5 km walking, 30-minute optional recovery, heat, and allergens against allergy guidance. |
 | `lib/conditionProfiles.ts` (cardiac) | floor 22; 5,000-step ceiling, 3.0 km walking, 45-minute recovery, altitude, heat, and sodium/allergens against cardiology guidance. |
-| `lib/sunLifeRules.ts` (stability placeholder) | The window is `null`; confirm the real value with the plan administrator. Never invent a number. |
-| `lib/sunLifeRules.ts` (rules) | 60-day cap, Allianz 24/7 pre-authorization, and stability window against current group policy; record source and checked date. |
 | `lib/swarmState.ts` (preview allowlist) | Docs list `*.unikraft.app`; a live production run on 2026-11-21 returned `*.tetra-data.production.tinyfish.io`, so both provider domains are allowlisted. Recheck if TinyFish introduces another host family. |
 | `lib/swarmConfig.ts` (limits) | Custom `max_steps` is beta-gated on this account and returns 403 FORBIDDEN, so it must stay omitted. Confirm `max_duration_seconds: 100` and `cursor_style: "standard"` are accepted and one worker fits the 280s client/300s route budget after queue delay; the provider default is 150 steps. |
 | `lib/swarmRunner.ts` (stealth retry) | Confirm a `SITE_BLOCKED` retry with `browser_profile: "stealth"` is accepted, does not double-bill, and does not repeat a side effect. |
+| `lib/swarmGoals.ts` (destination goal) | Confirm the Government of Canada advisory page is the right single source, that the goal asks only for what the page states, and that the condition context does not become medical advice. |
 | `lib/tinyfishEvents.ts` (TF_API_RESULT) | The provider documents an array but not its item shape. This build reads only direct string `url` and `title`; confirm the real shape on a live run before widening it. |
-| `components/mission/FocusView.tsx` (iframe multi-viewer) | Confirm three distinct TinyFish previews can be embedded at once with two hidden but mounted. A concurrent-viewer limit would require pausing hidden frames. |
 | `lib/verificationOverlay.ts` (keyword rules) | Heat, air-quality, altitude, outbreak, and allergen keywords are product heuristics, not clinical thresholds. Have a clinician confirm the mapping and the 30-minute recovery extension. |
+| `lib/liveLimits.ts` (limits) | Planner 2, destination 3, and venue 2 global runs; 15s/15s/30s cooldowns; 8 venue passes per UTC day; 60 geocoder requests per minute. Confirm these suit real traffic and cost, and move the in-memory state to a shared store before running more than one instance. |
+| `lib/venue/url.ts` (URL gate) | The gate is syntactic: it rejects private literal hosts but performs no DNS lookup. Confirm the provider's network boundary also blocks rebinding and redirects before a public pilot. |
+| `lib/cache/cacheKey.ts` (date and party) | A related plan cache row must match check-in and travellers; confirm old rows without the signature are a miss, not a wrong stay. |
+| `lib/db/account.ts` (deletion and retention) | Confirm deleting `saved_trips` and `billing_usage`, then the Clerk user, is the intended order; confirm backups and anonymous captures have a documented retention/deletion answer. |
 | `lib/agent/agentGeocode.ts` (Nominatim) | Public Nominatim allows one request per second and requires an identifying User-Agent. Confirm the production geocoder's licence, quota, and attribution. |
 | `lib/agent/agentGeocode.ts` (fallback) | The optional fallback uses Photon's public demo API in production today. Confirm its licence, quota, attribution, and data-retention terms, or point `GEOCODER_FALLBACK_URL` at a licensed GeoJSON provider. |
 | `lib/geocode/search.ts` (autocomplete) | The onboarding search and reverse routes use the same Photon endpoints. Confirm the search quota, attribution, cache policy, and the permission copy for current location before a paid launch. |
@@ -1057,8 +1150,6 @@ Regenerate with `grep -rn "VERIFY:" app lib components`; there are 28 entries.
 | `lib/data/dose.ts` (recovery) | Recovery coverage counts only `rest` blocks. Confirm that meals, stay, and unplanned pauses should not count as recovery. |
 | `lib/route/legs.ts` (speeds) | 4.5 km/h walking, 18 km/h urban transit, 32 km/h driving, and the access and parking overheads are product assumptions. Confirm them for the destinations this product serves. |
 | `lib/route/mapsLink.ts` (Maps URLs) | Nine waypoints and the `walking`/`transit`/`driving` values against Google's Maps URLs reference; confirm the terms permit this deep-link handoff. |
-| `lib/cache/recordings.ts` (archive) | TinyFish recordings are WebM today. Confirm the codec, typical size, provider retention, and that local archival and authenticated replay are permitted. |
-| `lib/tinyfishRuns.ts` (video_url) | The run-detail `video_url` is a presigned recording. Confirm its lifetime and the provider's permission to archive a copy locally. |
 | `lib/venue/runner.ts` (limits) | 75s job, 45s recovery, 255s run budget, three concurrent browsers, and `max_duration_seconds: 90` against current TinyFish limits and billing; confirm one venue pass fits the 300s route. |
 | `lib/venue/goals.ts` (schemas) | The menu and hotel schemas use only object, array, string, number, and nullable fields with every property required; confirm against the provider's structured-output rules. |
 | `lib/cache/venueCache.ts` (TTL) | Seven-day menu and twelve-hour room-rate freshness are product choices; revisit them with measured venue change rates and provider retention terms. |
@@ -1069,9 +1160,14 @@ Regenerate with `grep -rn "VERIFY:" app lib components`; there are 28 entries.
 
 Clerk: the app uses `@clerk/nextjs` 7.10.7 against production application
 `app_3MR7sJ2fhslkGXYl4yRqjseO13C`. `ClerkProvider` sits inside `<body>`; required sign-in uses
-`/sign-in` and `/sign-up` with relative redirects, so the public host survives nginx. The
+`/sign-in` and `/sign-up` with relative redirects, so the public host survives nginx. A
+signed-out `/` renders the public landing page in place; it does not redirect. `/trips`,
+`/trips/[id]`, and `/account` redirect through `signInHref`, which validates the return path so
+a signed-in shopper lands back on the page they chose. `/privacy` and `/terms` are public. The
 production domain `planmytrip.health` is configured with `proxy_url:
 https://planmytrip.health/__clerk`; `clerkMiddleware` handles the Frontend API proxy.
+`POST /api/account/delete` removes account-owned rows, then the Clerk user; the request is
+same-origin only.
 `proxy.ts` wraps the middleware and forwards only `x-clerk-*` request headers. Next 16.4.6
 hangs when Clerk's full request-header override set (including `host` and `connection`) is
 returned; the filter is load-bearing. Clerk's Dashboard sign-in is not CLI authentication;
@@ -1082,10 +1178,13 @@ Clerk Billing: production has `free_user` ("Free Preview") and `care_circle`
 opted into the separate annual-only update, so monthly remains visible; set `amount: 0` in
 `scripts/clerk-billing.json` and re-apply after enabling it. `lib/billing/plans.ts` maps
 `long_trips`, `live_verification`, `venue_research`, and `saved_trips_unlimited` to product
-limits. `/pricing` renders `PricingTable`, `/account` renders `UserProfile`, and every paid
-route checks `auth().has()` before work. Live planner runs are counted in `billing_usage` by
-allowance period and run id. Clerk Billing is recurring-only, USD-only, has no tax/3DS/refunds,
-and adds 0.7% plus Stripe fees. The full catalog and commands are in `docs/BILLING.md`.
+limits. The `live_verification` feature is named "Live destination check" in the applied Clerk
+catalog and covers the advisory check plus the live venue layer; `venue_research` is named
+"Live menus and room rates". `/pricing` renders `PricingTable`, `/account` renders
+`UserProfile`, and every paid route checks `auth().has()` before work. Live planner runs are
+reserved in `billing_usage` by allowance period; a cache hit never reserves. Clerk Billing is
+recurring-only, USD-only, has no tax/3DS/refunds, and adds 0.7% plus Stripe fees. The full
+catalog and commands are in `docs/BILLING.md`.
 
 The nginx snippet `planmytrip-proxy.conf` sets `proxy_buffer_size 64k`, `proxy_buffers 8 32k`,
 and `proxy_busy_buffers_size 64k` while keeping `proxy_buffering off` for SSE. Clerk's sign-in
@@ -1160,10 +1259,10 @@ read only in the route; never log or echo it. `output_schema` is a top-level obj
 `nullable: true`, never type arrays, `oneOf`, `const`, or `additionalProperties`. Every worker
 sends `agent_config` with `cursor_style: "standard"` and `max_duration_seconds: 100`. Custom
 `max_steps` is deliberately omitted because the account is not enabled for it; the provider
-default is 150 steps. The limits live in `lib/swarmConfig.ts` and keep one worker inside the
-280s client budget and 300s route. When `TINYFISH_RECORDING=1`, the request also carries
-`capture_config: { recording: true }`; after completion, `GET /v1/runs/{id}` supplies the
-presigned `video_url` that `lib/tinyfishRuns.ts` reads and `lib/cache/recordings.ts` archives.
+default is 150 steps. The limits live in `lib/swarmConfig.ts` and keep one advisory worker
+inside the 280s client budget and 300s route. No `capture_config`, recording request, or
+`video_url` read remains; `lib/tinyfishRuns.ts` now only recovers the authoritative run record.
+Venue passes use `maxDurationSeconds: 90` and their own budget in `lib/venue/runner.ts`.
 
 Upstream `data: <json>` events: `STARTED` (run_id), `STREAMING_URL`, `PROGRESS`
 (purpose, optional tinyfish_api), `HEARTBEAT`, `COMPLETE` (status/result/error), and optional
@@ -1174,7 +1273,7 @@ the dev-only same-origin `/mock-browser/<worker>` path. On HTTP 400 `INVALID_INP
 retries once without `output_schema`; on `SITE_BLOCKED` it retries once with
 `browser_profile: "stealth"`. Each retry emits a `worker_note` with calm copy.
 
-TinyFish swarm frames all carry `worker`, a monotonic per-worker `seq`, an ISO `ts`, and
+Destination-check frames all carry `worker`, a monotonic per-worker `seq`, an ISO `ts`, and
 optional `mock`; `swarm_done` uses `worker: "swarm"` with its own sequence and is always last on
 a connected stream. Planner frames use `agentId` and their own `planner_done` terminal frame
 instead.
@@ -1197,8 +1296,8 @@ Headers are `text/event-stream; charset=utf-8`, `Cache-Control: no-cache, no-tra
 upstreams. Error codes: `missing_api_key`, `timeout`, `site_blocked`, `max_steps_exceeded`,
 `rate_limit`, `insufficient_credits`, `invalid_input`, `forbidden`, `cancelled`, `upstream_error`; invalid
 bodies 400 JSON. `/api/travel-swarm` declares `maxDuration = 300`. A stream that ends before
-`COMPLETE` is reconciled through `GET /v1/runs/{id}`; transient failures retry once, and one
-worker's failure never aborts its siblings.
+`COMPLETE` is reconciled through `GET /v1/runs/{id}`; transient failures retry once, and a
+failure settles the check without leaving the stream open.
 
 Mock mode needs no key or network; every payload carries `mock: true`, preview URLs use the
 dev-only `/mock-browser/<worker>` page, and the timeline is seeded. `SWARM_MOCK_SPEED`
@@ -1209,10 +1308,11 @@ with `site_blocked`:
 SWARM_MOCK=1 SWARM_MOCK_SPEED=50 npm run dev
 curl -N -X POST http://localhost:3000/api/travel-swarm \
   -H 'Content-Type: application/json' \
-  -d '{"destination":"Lisbon, Portugal","condition":"asthma_respiratory","medication":"albuterol inhaler"}'
+  -d '{"destination":"Lisbon, Portugal","condition":"asthma_respiratory"}'
 ```
 
-Each live run drives three real browsers; never call it in tests or routine development.
+One live destination run drives one real browser; a venue pass can open up to five. Never call
+either in tests or routine development.
 Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 <https://docs.tinyfish.ai/api-reference/automation/run-browser-automation-with-sse-streaming.md>,
 <https://docs.tinyfish.ai/live-preview.md>,
@@ -1220,8 +1320,9 @@ Docs: <https://docs.tinyfish.ai/tinyagent/api/agent/endpoints.md>,
 
 ## 11. Testing
 
-`npm test` runs Vitest once in a Node environment. The suite has 640 tests. Database-backed
-files skip when `DATABASE_URL` is absent. `tests/mocks/clerk-server.ts` replaces
+`npm test` runs Vitest once in a Node environment. At `4d4a844` the suite has 683 tests: 644
+pass and 39 skip without `DATABASE_URL`. Database-backed files skip when `DATABASE_URL` is
+absent. `tests/mocks/clerk-server.ts` replaces
 `@clerk/nextjs/server` in Vitest so route handlers can run outside Next's server boundary;
 proxy and Clerk provider behavior are covered by a production build and live request checks,
 not by the unit suite.
@@ -1229,16 +1330,25 @@ not by the unit suite.
 - `tests/design-guard.test.ts` and `tests/contrast.test.ts` guard styles and 13 WCAG AA token
   pairs; `tests/smoke.test.ts` covers the five conditions.
 - `lib/healthTripEngine*.test.ts` covers every condition x 2-20 days, caps, invariants,
-  recovery, scores, determinism, Sun Life, validation, docs, and re-exports. Shared input is
+  recovery, scores, determinism, validation, docs, and re-exports. Shared input is
   in `tests/healthTripFixtures.ts`.
 - `lib/tinyfish*.test.ts`, `lib/swarmGoals.test.ts`, `lib/swarmTypes.test.ts`,
-  `tests/swarm-route*.test.ts`, and `tests/swarm-runner*.test.ts` cover parsing, mapping,
+  `tests/swarm-route*.test.ts`, and `tests/swarm-runner.test.ts` cover parsing, mapping,
   schemas, normalisation, bounded upstream text, request bounds, missing key, isolation,
   retries, mock, timeout, abort, and swarm_done. All network is mocked.
 - `tests/swarm-recovery.test.ts` proves a stream that ends after STARTED recovers the
   authoritative COMPLETED run record, a recovered FAILED result retries once and then
-  completes, and two failures produce one final error. `tests/swarm-runner-isolation.test.ts`
-  proves an unexpected worker throw does not stop its sibling.
+  completes, and two failures produce one final error.
+- `lib/redirects.test.ts` proves a return path stays on this origin and rejects absolute,
+  protocol-relative, backslash, control-character, and overlong values.
+- `lib/rateLimit.test.ts` and `lib/concurrency.test.ts` cover fixed and UTC-day budgets, zero
+  limits, reset, one run per account, global caps, cooldowns, and idempotent release.
+  `tests/live-guards.test.ts` proves the kill switch returns 503 on every live surface, a
+  closed billing database returns 503, the planner and venue cooldowns return 429, and the
+  venue daily cap holds after the cooldown passes.
+- `lib/ops/pendingWrites.test.ts` proves best-effort writes settle or time out without holding
+  the stream. `lib/venue/url.test.ts` proves non-http, loopback, private, link-local,
+  multicast, reserved, single-label, and malformed URLs are rejected.
 - `lib/swarmReducer*.test.ts`, `lib/swarmTelemetry.test.ts`, `hooks/swarmFrames.test.ts`,
   `hooks/swarmBatch.test.ts`, `lib/swarmMock.test.ts`, `tests/swarm-retry.test.ts`,
   `lib/swarmErrors.test.ts`, `lib/pacingStrip.test.ts`, `lib/careCard.test.ts`,
@@ -1263,15 +1373,18 @@ not by the unit suite.
   parsing, city-level labels, duplicate removal, query bounds, coordinate bounds, reverse
   lookup, provider fallback, and the authenticated route errors.
 - `lib/cache/*.test.ts`, `tests/cache-route.test.ts`, and `lib/db/tripCache.test.ts` cover
-  normalised keys, exact and related planner reads, expiry, mock rejection, complete-set
-  verification reads, recorded telemetry replay, terminal-frame order, a full route cache hit
-  with no live session, and PostgreSQL exact/related and worker-set reads. The database file
-  skips without `DATABASE_URL`.
+  normalised keys, exact and related planner reads, date and party matching, expiry, mock
+  rejection, complete-set destination-check reads, recorded telemetry replay, terminal-frame
+  order, a full route cache hit with no live session, and PostgreSQL exact/related and
+  worker-set reads. The database file skips without `DATABASE_URL`.
+- `tests/agent-capture.test.ts` proves a cached plan replay does not create a research dossier;
+  the same file covers consent gating and the computed dose.
 - `lib/venue/*.test.ts`, `hooks/venueFrames.test.ts`, `lib/cache/venueCache.test.ts`, and
   `tests/venue-route.test.ts` cover menu and hotel request bounds, evidence normalisation,
-  price and date rules, grouping and checked stamps, reducer transitions, recorded activity
-  offsets, cache collisions on a shared listing URL, legacy evidence rows, fallback to the
-  plan source page, preview URL rejection, and the authenticated venue SSE route.
+  price and date rules, public URL validation, grouping and checked stamps, reducer
+  transitions, recorded activity offsets, cache collisions on a shared listing URL, legacy
+  evidence rows, fallback to the plan source page, preview URL rejection, and the authenticated
+  venue SSE route.
 - `lib/savedTrips.test.ts` covers saved-trip request bounds, normalisation, mock-plan rejection,
   and saved-trip id validation. `lib/db/savedTrips.test.ts` covers account-scoped upsert,
   list, read, delete, and cross-account isolation; it skips without `DATABASE_URL`. Route
@@ -1279,24 +1392,26 @@ not by the unit suite.
 - `lib/billing/plans.test.ts` covers free fallback, Care Circle feature mapping, paid plan
   detection, missing-feature caps, a throwing `has()`, and monthly/yearly allowance starts.
   `tests/billing-gates.test.ts` exercises the free-plan 403 responses for a 20-day trip,
-  live verification, and venue research. `lib/db/billingUsage.test.ts` covers run-id
-  idempotence and cross-user isolation; it skips without `DATABASE_URL`. The billing tests
-  never call Clerk or Stripe.
+  the live destination check, and venue research. `lib/db/billingUsage.test.ts` covers the
+  atomic reservation, limit refusal, server-generated event ids, and cross-user isolation; it
+  skips without `DATABASE_URL`. The billing tests never call Clerk or Stripe.
 - `lib/data/*.test.ts`, `lib/db/trips.test.ts`, and `lib/model/*.test.ts` cover computed dose,
   empty and over-cap days, block-level cap reconciliation, hike exertion, dossier and outcome
   parsing, free-text rejection, isotonic monotonicity, coefficient recovery, grouped folds,
   nested calibration, artifact validation, tier gating, PostgreSQL upserts, install scoping,
-  mock and stale-row export filters, and training export.
+  cached-plan capture exclusion, mock and stale-row export filters, and training export.
 - `tests/model-artifact.test.ts` proves the committed cohort, artifact, and model card are
   reproducible and that no live API, capture, or planning module imports the model; it also
   checks the documented ship gate. `lib/model/artifact.test.ts` proves malformed, stale, or
   zero-row artifacts fall back to the engine.
 - `tests/agent-capture.test.ts`, `tests/swarm-capture.test.ts`, `tests/outcome-route.test.ts`,
-  and `tests/data-loop.test.ts` run the real routes and repository against PostgreSQL:
-  consent gating, computed dose, swarm stub creation, explicit label storage, wrong-install
-  404, trip-log scoping, and capture to outcome to export to training to prediction. These
-  files skip when `DATABASE_URL` is absent; `vitest` runs files sequentially so schema
-  truncation cannot race across files.
+  `tests/data-loop.test.ts`, and `lib/db/account.test.ts` run the real routes and repository
+  against PostgreSQL: consent gating, cached-plan exclusion, computed dose, destination stub
+  creation, explicit label storage, wrong-install 404, account-scoped deletion, and capture to
+  outcome to export to training to prediction. These files skip when `DATABASE_URL` is absent;
+  `vitest` runs files sequentially so schema truncation cannot race across files.
+  `tests/account-delete-route.test.ts` proves the deletion route removes account rows before
+  Clerk, rejects a cross-origin request, and does not close the account when cleanup fails.
 
 Add pure-function tests beside the module or under `tests/`, named `*.test.ts`; Vitest includes
 `**/*.test.ts`. No component-test libraries. Mock fetch in route and SSE tests; never call the
@@ -1305,60 +1420,55 @@ exempting lines.
 
 ## 12. Known limitations and open questions
 
-- The Sun Life stability window is unknown and stored as `null`; no placeholder number is
-  shown. Confirm it with the plan administrator.
-- Live TinyFish SSE runs were verified on 2026-11-21: the key, progress events, and preview
-  URL worked; the preview host was `*.tinyfish.io`. The timeout was raised from 110s to 240s
-  after an advisory run was cut off, then to 300s after a production medication/customs run
-  timed out at four minutes. The follow-up production full three-worker run completed all three
-  workers with no failures; advisory and coverage were rich, while pharmacy returned empty
-  findings in that concurrent run after a standalone retry returned Salbutamol and local brands.
-  A 2026-11-21 one-page run completed advisory and coverage while medication/customs exposed a
-  Retry; the page keeps the failed column visible with its source and retry action. The new
-  mission control was exercised in mock mode only: three iframes rendered, the fail path
-  reached `SITE_BLOCKED`, and reduced motion switched every named class off. A 2026-11-22
-  London, Ontario run completed all three workers in 110.1s under the older 120s/100s limits with
-  recording enabled; three WebM recordings were archived and served from the authenticated
-  route. The cached replay returned the same 25 steps, 10 sources, and 3 findings in about
-  50-120 ms. A later provider run took 107s after a 65s queue delay, which exceeded the old
-  120s client budget even though TinyFish completed it; the current 280s client budget and
-  run-record recovery address that case. A 2026-11-22 full production route run for Hamilton,
-  Ontario completed all three workers in 164.6s with 38 steps, 30 sources, and 3 findings,
-  with no error or retry note. The recovery and retry paths are covered by mocked tests; a
-  deliberately forced live stream drop and the stealth retry still need a live check.
-  Clipboard permissions remain unverified.
+- The live limits are in-memory and single-instance. A process restart clears active leases,
+  cooldowns, the venue UTC-day count, and the geocoder minute window. A multi-instance
+  deployment needs a shared store before it can trust these caps.
+- Venue URL validation is syntactic. It rejects literal private hosts and non-http(s) schemes
+  but performs no DNS resolution, so a DNS-rebinding or redirect target is outside its check.
+  Confirm the provider's network boundary before treating it as a security control.
+- The database-backed reservation and account-deletion tests have not been run against a real
+  PostgreSQL instance in this docs branch. Run `npm run db:init` and the database suite against
+  staging before launch; an untested advisory lock or deletion transaction is not proof.
+- `/privacy` and `/terms` are drafted from the shipped data flows and need legal review before
+  a paid pilot. Coverage includes Clerk, OpenCode, TinyFish, Photon/Nominatim, map tiles,
+  Google Maps handoff, local feedback JSONL, and operational error reports.
+- Anonymous research captures are not linked to the Clerk account, so account deletion cannot
+  remove them. The privacy page explains this and tells the reader to clear local storage or
+  contact support. A retention and deletion path for captures is still required.
+- Existing recording files and `TINYFISH_RECORDING` / `PLANMYTRIP_RECORDINGS_DIR` values need
+  operator cleanup. The app no longer reads either variable, serves `/api/recordings`, or
+  archives a video; old files are not deleted automatically.
+- Saved-trip pagination has no total count. `/trips` reads one sentinel row to offer Older and
+  Newer, so the page says "Page n" without a total and an empty page can only link back.
+- A full live 7-agent planner pass plus the single destination check has not been run together
+  since the consumer reset. Earlier live runs completed specialist subsets; run one production
+  pass and record the exact completed/failed agents before calling the planner proven.
+- Live TinyFish destination runs were verified before the reset: the key, progress events, and
+  preview URL worked, and the preview host was `*.tinyfish.io`. The current single-worker
+  destination flow is covered by mocked tests; confirm a real advisory run, the 280s budget,
+  the stealth retry, and a forced stream drop on the deployed build.
 - The route tolerates unknown events, stringified `result` values, and partial payloads.
 - The preview allowlist covers `mock.invalid`, `*.unikraft.app` (docs), and `*.tinyfish.io`
   (verified live 2026-11-21).
-- Live concierge run 1 on 2026-11-21 (`OPENCODE_MODEL=opencode-go/deepseek-v4.1-flash`) completed
-  six of seven agents in about 10m45s; care timed out. Run 2 finished in about 12 minutes with
-  four of seven agents: table, trail, culture, and concierge. Stay, transit, and care returned
-  JSON the parser rejected, not timeouts. The plan still produced two capped days, six verified
-  places, and honest missing-stay/care copy. After run 2 the parser gained balanced-object
-  scanning, trailing-comma repair, and single-element array unwrapping, and geocoding gained a
-  simpler fallback query; these fixes are tested but not yet re-run live. Run a full 7-of-7
-  pass and a full three-worker TinyFish pass separately.
-- The runtime warmup runs at server start, so a normal first trip no longer pays service and
-  agent-registration latency. A production 4-day run on 2026-11-21 showed the first phase at
-  1 second, the first real searches at 3 seconds, and plan ready at 6m12s with all seven
-  specialists complete. A 2026-11-22 London seed took 409.5s live with all seven complete;
-  the exact cache hit returned in 269 ms and the signed-in onboarding click reached a ready
-  plan in 582 ms. If the OpenCode service itself is still starting, the first request still
-  waits; the mission band names that wait but cannot shorten it.
+- The default free model hit a provider quota during development; production must set
+  `OPENCODE_MODEL`. A quota failure maps to `agent_unavailable`.
+- The runtime warmup runs at server start, so a normal first trip does not pay service and
+  agent-registration latency. A production 4-day run before the reset reached plan ready in
+  about six minutes with all seven specialists; a London seed took about seven minutes and an
+  exact cache hit returned in 269 ms. If the OpenCode service itself is still starting, the
+  first request still waits; the command bar names the stage but cannot shorten it.
 - Trips are supported from 2 to 20 days. The modeled trip-length pressure saturates at seven
   days, so an 8-20 day trip carries the same length pressure as a seven-day trip rather than a
   new, unvalidated curve. The daily pacing factors stay the same for every middle day; a
   clinician should review cumulative load and rest-day spacing before a long-trip pilot. The
   synthetic model cohort was trained on shorter trips, so long-trip predictions are an
   extrapolation.
-- The workspace is intentionally one long page. On a phone, live verification sits below the
-  full safety envelope; both streams keep running while the reader scrolls. Do not reintroduce
-  tabs to shorten it.
+- The workspace is intentionally one long page. On a phone, the destination check and checked
+  places sit below the route; every live surface keeps running while the reader scrolls. Do not
+  reintroduce tabs to shorten it.
 - The KPI tween and four-second diff chip are wired to a plan prop change, but Edit trip
   remounts the workspace by design, so the current single-page flow does not exercise the chip
   in the browser. The math and lifetime are unit-tested; an in-place plan update will show it.
-- The default free model hit a provider quota during development; production must set
-  `OPENCODE_MODEL`. A quota failure maps to `agent_unavailable`.
 - The embedded `@opencode/sdk` host requires Node 26 for `await using`; this app is on Node 22
   and uses `@opencode/client` against a running OpenCode service. A production deployment must
   provide and supervise that service. Production runs the CLI from `/usr/local/bin` and keeps
@@ -1366,43 +1476,31 @@ exempting lines.
   model live in `/etc/planmytrip.env`, not the repo.
 - Geocoding is covered by mocked fetch tests; the live Nominatim pass has not been exercised
   against a real agent plan. Public OSM tiles and Nominatim are not production-scale endpoints.
-- The live plan is rendered from the current SSE run. A finished plan can now be saved as an
-  account-owned snapshot and reopened from `/trips`. There is no payment, booking, or rate
-  limiting yet; those are product work beyond this step.
-- Saved snapshots do not include live TinyFish verification, and they do not refresh source
-  URLs or opening hours. The saved page rebuilds the engine envelope and labels the snapshot;
-  confirm live details before booking.
-- Cached plans and verification are snapshots with a date, not a live recheck. A planner hit
-  can be an exact preference match or a destination + days + condition + medication fallback; the UI names
-  the fallback, and a reader who needs current hours or advisories must re-run. The cache has
-  no per-destination purge UI; rows expire after 30 days (plan) or 14 days (verification), and
-  `npm run cache:seed` can replace a demo row. Archived recordings are local files with no
-  automatic retention sweep yet; confirm storage, privacy, and deletion policy before a pilot.
+- Saved snapshots do not include destination findings, menus, or room rates, and they do not
+  refresh source URLs or opening hours. The saved page rebuilds the engine envelope, labels the
+  snapshot, and offers an explicit "Refresh menus and rates" action. Confirm live details before
+  booking.
+- Cached plans and destination checks are snapshots with a date, not a live recheck. A planner
+  hit can be an exact preference match or a same-destination related match, but only when the
+  check-in date and party size also match. The cache has no per-destination purge UI; rows
+  expire after 30 days (plan) or 14 days (destination check), and `npm run cache:seed` can
+  replace a demo row.
 - Venue evidence loads after `plan_ready` and does not yet feed the concierge before it
-  chooses places. The deck can check the selected venues, but a hotel with no rate or a
-  restaurant with no priced menu cannot cause the planner to choose a different place. Routing
-  a bounded evidence summary into a later synthesis or re-rank step is the next product move.
-- A 2026-11-22 London pass initially checked three of four pages: The Park Hotel London at
-  CA$199.00 a night through Synxis, Udupi Dosa at 12 Toast menu items, and Organique Cafe at 12
-  menu items. Locomotive Espresso failed after its HappyCow listing and official site exposed
-  no priced menu; the tile kept a retry and the other facts stayed usable. A later retry found
-  `locomotiveespressonorth.restaurants-us.com/menu` and returned 12 priced items from CA$3.00
-  to CA$5.00, shown with that third-party source. The final cached state has all four pages, 36
-  items, 10 sources, and 45 recorded actions. A hotel page may state only a nightly rate, so
-  total and taxes remain "Not stated"; a listing page may produce a zero-item menu with its own
-  explanation.
+  chooses places. A hotel with no rate or a restaurant with no priced menu cannot cause the
+  planner to choose a different place. Routing a bounded evidence summary into a later
+  synthesis or re-rank step is the next product move.
 - The TinyFish venue preview redirects to the provider's `tetra-streaming.tinyfish.io` DevTools
   inspector. It is a live page, not a recording. Headless screenshot tooling showed the
   inspector surface as blank while the remote page target was attached; a normal browser is
-  the acceptance check. The venue route never archives a preview or asks for a recording.
+  the acceptance check.
 - Venue cache rows are keyed by kind, URL, place id, and for hotels the dates and party, so a
   shared city listing cannot collide across restaurants. Menus expire after 7 days and rates
   after 12 hours; there is no purge UI yet. A re-run refreshes only the missing or failed
   pages and returns cached facts immediately. Venue evidence is not stored in a saved trip
-  snapshot; the saved page runs a fresh check.
-- A full venue pass can open up to five real browsers. Live calls must be budgeted and rate
-  limited before a public pilot; the route has per-job and per-run timeouts but no per-user
-  quota.
+  snapshot.
+- A full venue pass can open up to five real browsers. `lib/liveLimits.ts` now enforces one
+  pass per account, two globally, a 30-second cooldown, and eight passes per UTC day by
+  default; confirm those fair-use values and the TinyFish bill before a public pilot.
 - Location autocomplete, current location, and the map picker depend on browser permission
   and the configured geocoder. A denied permission or a provider outage leaves the typed city
   usable; the UI never fills an unverified place. Destination current location resolves to a
@@ -1412,12 +1510,13 @@ exempting lines.
   still derives venue points from verified research. Production currently uses Photon's public
   endpoint; confirm its quota, attribution, and retention terms, and verify the permission copy
   with real users before a pilot.
-- Consent and privacy: the destination, condition, medication name, and preferences are sent
-  to the configured OpenCode model provider; place queries and a current-location coordinate
-  go to the configured geocoder (Nominatim or Photon). Account identity and sessions are
-  handled by Clerk. The research capture is opt-in and keyed only by a random
-  localStorage install id; saved trips are separately account-owned. A retention policy,
-  account-deletion path, and full privacy review are still required before charging users.
+- Consent and privacy: the destination, health profile, preferences, dates, and party size are
+  sent to the configured OpenCode model provider. A destination check sends the destination and
+  health profile to TinyFish; venue checks send the selected menu or booking URL, dates, and
+  party size. Place queries and a current-location coordinate go to the configured geocoder
+  (Nominatim or Photon). Account identity and sessions are handled by Clerk. The research
+  capture is opt-in and keyed only by a random localStorage install id; saved trips are
+  separately account-owned and account deletion removes only that account data.
 - The committed `lib/model/model.json` is trained on synthetic trips. No real outcome has
   contributed a label; never present it as clinical evidence or use it for a live plan.
 - Responder bias and negative-label capture are unproven. A missing follow-up is excluded, not
@@ -1429,9 +1528,11 @@ exempting lines.
   is empty. Enabling it requires a Google OAuth client ID and secret in the Clerk dashboard,
   because production instances cannot use Clerk shared credentials. Until then the sign-in
   form shows email and password only.
-- Clerk provides authentication; there is no rate limiting. PostgreSQL runs on the host; a
-  production deployment still needs backups, access control, a retention/deletion path, and
-  database monitoring. Deleting a Clerk user does not yet delete `saved_trips` rows.
+- Clerk provides authentication; the app now has per-account live-run and geocoder limits, but
+  no general request rate limit at the proxy. PostgreSQL runs on the host; a production
+  deployment still needs backups, access control, monitoring, and a documented retention
+  policy. Account deletion removes `saved_trips` and `billing_usage`; confirm backups and
+  anonymous captures separately.
 - The production Clerk custom domain is routed through the same-origin proxy, not the
   `clerk.planmytrip.health` CNAME. The Dashboard domain's required CNAME records for email and
   account portal may still be pending; confirm DNS and sign-in methods after the first user
@@ -1441,8 +1542,8 @@ exempting lines.
   The one-time $29 Trip Pass from market research needs Stripe Checkout; Clerk Billing cannot
   sell one-time products. The free plan is one live 7-day plan per year and one saved trip.
   `billing_usage` resets monthly for Care Circle and yearly for Free, not on subscription
-  anniversary, and verification and venue runs are not separately metered; the paid feature
-  and cache remain the cost guard.
+  anniversary, and destination and venue runs are not separately metered; the paid feature
+  and cache remain the cost guard. A real paid checkout has not been run.
 - Billing has no webhook or invoice archive in the app. `has()` session claims are the
   authorization source, and `UserProfile` owns payment and cancellation. Clerk Billing is
   USD-only, does not calculate GST/HST, cannot complete 3-D Secure, and does not issue refunds.
@@ -1454,9 +1555,9 @@ exempting lines.
   tokens allow a dark theme later.
 - The engine invents no venues or geography. The concierge only selects from verified research.
 - A returning traveler can reopen an account-owned saved plan, but the post-trip outcome form
-  still appears only on the live plan. The saved page does not yet offer the outcome action;
-  close that loop before a pilot that depends on real labels. `GET /api/trips` remains the
-  anonymous install-scoped log, not the account list.
+  still appears only on the live plan. The saved page does not offer the outcome action; close
+  that loop before a pilot that depends on real labels. The old anonymous `GET /api/trips` log
+  was removed, so there is no install-scoped trip list.
 - The old rail and `ConstraintSidebar` were removed. The onboarding draft is the only input
   surface; do not reintroduce a permanent sidebar without revisiting the split-screen layout.
 - Route times are modeled from assumed speeds, not live transit schedules, traffic, elevation,
@@ -1470,14 +1571,18 @@ exempting lines.
   plan on each render, so the dose loop is unaffected.
 - A trip with several hotels anchors each day at the stay its own blocks reference, then at the
   first mapped stay. Luggage transfer between hotels is not modeled.
+- Clipboard permissions and the delete-account confirmation remain unverified in a real
+  browser; the route and unit tests cover the logic, not the platform permission prompts.
 
 ## 13. How to work here
 
 1. Read this file, then `BUILD_LOG.md`.
 2. Run `git log --oneline`, `git status`, and `git diff`; never discard uncommitted work.
 3. Find the first unchecked step in section 2 and continue there.
-4. Work in dependency order; no scope creep into pages, auth, payments, or analytics. The
-   consented PostgreSQL capture store and the calibration model are in scope.
+4. Work in dependency order; keep new work inside the consumer planning product. The
+   consented PostgreSQL capture store, account surfaces, live limits, and the calibration
+   model are in scope. Do not reintroduce medication, insurance, pharmacy, or coverage
+   surfaces without a product decision and a new step.
 5. Run the full gate; update this file in the same commit as any change it describes.
 6. Commit the exact message, push to `origin`, append to `BUILD_LOG.md`, and set its "Next action".
 7. Stuck: three attempts, then change approach once, then log the error under Blockers. Never loop.

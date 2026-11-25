@@ -43,6 +43,14 @@ only when `checkIn` is present; check-out is `checkIn + days`. An eat job opens
 `menuUrl ?? sourceUrl`. At most two hotels and three restaurants are checked per plan, three
 browsers at a time.
 
+Only public URLs reach a browser. `lib/venue/url.ts` requires an absolute http(s) URL and
+rejects loopback, private, link-local, unique-local, multicast, reserved, and single-label
+hosts. The check is syntactic and performs no DNS lookup, so confirm the provider's network
+boundary also blocks rebinding and redirects. The route enforces one live pass per account,
+two globally, a 30-second cooldown, and eight passes per account per UTC day by default; the
+global cap, cooldown, and daily cap have `PLANMYTRIP_VENUE_*` overrides.
+`PLANMYTRIP_LIVE_DISABLED=1` pauses new live work without a deploy.
+
 ## Timing and failure
 
 - 75s per browser job, 45s recovery from the authoritative run record.
@@ -53,6 +61,10 @@ browsers at a time.
   shows a caution with a retry.
 - A missing `TINYFISH_API_KEY` fails each worker with `missing_api_key` and still ends with
   `venue_done`. No key is ever sent to the browser or written to a log.
+- No recording is requested or archived. There is no `/api/recordings` route and no
+  `TINYFISH_RECORDING` variable; the live preview is the page itself, not a video.
+- A saved trip does not store venue evidence. Its "Checked places" section offers an explicit
+  "Refresh menus and rates" action, so opening a saved page never starts a live check.
 
 ## Events
 
@@ -92,8 +104,8 @@ checked page as a source.
 
 ## Safety
 
-Venue facts never change the safety envelope, the computed dose, the day ceilings, the health
-score, or the Sun Life alert. They answer "what does this page say today?" and nothing more.
+Venue facts never change the safety envelope, the computed dose, the day ceilings, or the
+health score. They answer "what does this page say today?" and nothing more.
 Prices are display-only; they do not enter the training row. The interface says "checked
 snapshot, not a booking guarantee" and asks the reader to confirm allergens, cross-contact,
 hours, and the final rate with the venue.

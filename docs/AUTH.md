@@ -24,18 +24,23 @@ host terminal before CLI commands that target the application, such as `config p
 
 Planning requires an account. The protected resources enforce their own checks:
 
-- `app/page.tsx` reads `auth()` and redirects signed-out visitors to `/sign-in`.
-- `app/trips/page.tsx` and `app/trips/[id]/page.tsx` redirect signed-out visitors.
-- `/api/agent-plan`, `/api/travel-swarm`, `/api/trips`, and `/api/trips/outcome` return
-  `401` JSON without a Clerk session.
-- `/api/saved-trips` and `/api/saved-trips/[id]` return `401` JSON without a session.
+- `app/page.tsx` reads `auth()`: a signed-out visitor gets the public landing page rendered
+  in place, not a redirect; a signed-in visitor gets the planner.
+- `app/trips/page.tsx`, `app/trips/[id]/page.tsx`, and `/account` redirect signed-out visitors
+  through `signInHref`, which keeps a validated return path.
+- `/api/agent-plan`, `/api/travel-swarm`, `/api/venue-research`, and `/api/trips/outcome`
+  return `401` JSON without a Clerk session.
+- `/api/saved-trips`, `/api/saved-trips/[id]`, and `/api/account/delete` return `401` JSON
+  without a session.
 
 `proxy.ts` installs `clerkMiddleware`, which makes the session available to server code,
 and handles the same-origin Frontend API proxy. It is not the authorization boundary.
-The wrapper forwards only Clerk's `x-clerk-*` request headers. Next 16.4.6 hangs if Clerk's
-full request-header override set (including `host` and `connection`) is returned unchanged;
-that filter is load-bearing. `/sign-in` and `/sign-up` are public, as are `/model`, `/pitch`,
-and static assets.
+The wrapper forwards only Clerk's `x-clerk-*` request headers plus the internal `x-ops-token`
+and `x-request-id` headers the local health probe needs. Next 16.4.6 hangs if Clerk's full
+request-header override set (including `host` and `connection`) is returned unchanged; that
+filter is load-bearing. `/sign-in` and `/sign-up` are public, as are `/model`, `/privacy`,
+`/terms`, `/pitch`, and static assets. The old install-scoped `GET /api/trips` log and
+`/api/recordings` route were removed.
 
 ## Sign-in form appearance
 
@@ -47,6 +52,16 @@ sync with `app/globals.css` when the palette changes. The design guard does not 
 Google is not enabled on the production instance. `user_settings.social` is empty, so Clerk
 renders email and password only. Production instances require a custom Google OAuth client ID
 and secret in the Clerk dashboard; shared development credentials are not valid in production.
+
+## Return paths
+
+`lib/redirects.ts` owns the only return-path check. A path must be an absolute same-origin path:
+it must start with one `/`, must not start with `//`, must not contain a backslash or a control
+character, and must stay under the length bound. Absolute URLs, protocol-relative URLs,
+backslash tricks, and malformed values are dropped rather than repaired. `/trips`,
+`/trips/[id]`, and `/account` pass the current path through `signInHref`, so a signed-in
+traveler lands back where they started and an unsafe `redirect_url` never becomes an open
+redirect.
 
 ## Saved-trip schema
 
@@ -80,22 +95,36 @@ does not delete a consented research capture.
 
 1. The signed-in traveler builds a plan.
 2. `SaveTripButton` posts `{ runId, trip, plan }` to `/api/saved-trips`.
-3. The server validates the Clerk session, trip, and plan, then upserts `saved_trips`.
-4. `/trips` lists only that account's summaries.
+3. The server validates the Clerk session, trip, and plan, then upserts `saved_trips`. The
+   free one-trip limit is checked before the write and returns `saved_trip_limit`.
+4. `/trips` lists only that account's summaries, 30 per page, with Older/Newer links. It has
+   no total count.
 5. `/trips/[id]` verifies ownership, reads the snapshot, and renders `SavedTripView`.
 6. The saved view rebuilds the deterministic engine envelope from the saved trip. The
-   concierge plan, places, sources, and caps remain the captured snapshot.
-7. Delete removes only that account's row and returns to `/trips`.
+   concierge plan, places, sources, and caps remain the captured snapshot. Destination
+   findings and venue evidence are not stored; "Refresh menus and rates" is an explicit
+   action, so opening a saved trip never starts a live check.
+7. Delete asks for a second confirmation, removes only that account's row, and returns to
+   `/trips`.
+
+`POST /api/account/delete` closes the account. It rejects a request whose `Origin` does not
+match the host, deletes the account's `saved_trips` and `billing_usage` rows in one
+transaction, and only then deletes the Clerk user. If the database cleanup fails, the Clerk
+account stays open so the traveler can retry. Anonymous research captures are not linked to
+the account and are deliberately untouched.
 
 ## Privacy and operations
 
-- The browser sends the destination, condition, medication name, and preferences to the
-  configured OpenCode model provider. Clerk receives account and session data. Place
-  queries go to Nominatim. Capture remains opt-in and separate.
-- A full account-deletion path is not implemented. A user can delete each saved trip;
-  Clerk account deletion must also clean up `saved_trips` by `clerk_user_id`.
-- Backups, retention windows, monitoring, and a privacy review are still required before
-  charging users.
+- The browser sends the destination, health profile, preferences, dates, and party size to
+  the configured OpenCode model provider. A destination check sends the destination and
+  health profile to TinyFish; venue checks send the selected menu or booking URL, dates, and
+  party size. Clerk receives account and session data. Place queries go to the configured
+  geocoder. Capture remains opt-in and separate.
+- `/privacy` and `/terms` are public pages linked from the footer. They describe the account,
+  anonymous research, live checks, geocoding, map tiles, the Google Maps handoff, feedback,
+  and operational error reports. They need legal review before a paid pilot.
+- Account deletion removes account-owned rows; backups, retention windows, monitoring, and a
+  retention/deletion answer for anonymous captures are still required before charging users.
 - Rotate the live secret key after any exposure. Replace it in `/etc/planmytrip.env`,
   rebuild if needed, and restart `planmytrip.service`.
 - The production app uses Clerk's domain `proxy_url` instead of a public

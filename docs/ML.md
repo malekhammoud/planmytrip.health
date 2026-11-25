@@ -20,10 +20,10 @@ this product knows what dose was prescribed.
 
 | Record | Fields |
 | --- | --- |
-| Request | destination, days, condition, medication name, interests, budget, coverage |
+| Request | destination, days, condition, interests, budget, optional check-in and travellers |
 | Engine | health safety score, baseline score, risk reduction, daily ceiling, engine dose |
 | Plan | source (concierge or fallback), computed dose, degraded flag, mock flag |
-| Verification | bounded specialist summaries and TinyFish findings |
+| Live checks | bounded specialist summaries and the destination advisory findings |
 | Features | peak exposure, recovery coverage, trip length, adherence, heat, altitude, baseline burden |
 | Consent | explicit capture flag, consent version, timestamp |
 | Outcome | flare yes/no, flare day, severity, care sought, self-reported adherence, notes |
@@ -182,15 +182,20 @@ model_runs
   metrics_json jsonb, artifact_json jsonb
 ```
 
-- The planner route writes the dossier when `plan_ready` fires; the stream waits for the
-  best-effort write before closing.
-- The swarm route writes a stub or updates findings when `swarm_done` fires.
+- The planner route writes the dossier when a live `plan_ready` fires; the stream waits at
+  most two seconds for the best-effort write before closing.
+- A cached plan replay never writes a dossier. It has no new consent signal and must not add a
+  duplicate or stale training row; the planner route skips capture on a cache hit.
+- The destination route writes a stub or updates findings when `swarm_done` fires.
 - The outcome route requires the same `runId` and `installId`; another browser cannot
   overwrite the label.
 - `exportTrainingRows()` returns only rows with an explicit label, excludes mock plans,
   and accepts only the current data schema and engine version.
 - A repeated run id cannot move to another install: the conflict update is scoped to the
   original install id.
+- Dossiers written before the medication and coverage fields were removed still read: the
+  stored `request_json` is an older shape, and export requires only destination, days,
+  condition, and features. New dossiers carry no medication or coverage field.
 
 Production uses its own `DATABASE_URL` in `/etc/planmytrip.env`. Local development uses
 `planmytrip_dev`; tests use `planmytrip_test` and skip database files when `DATABASE_URL` is
@@ -198,11 +203,10 @@ absent. The password is never committed or rendered in the app.
 
 ## 8. Consent and privacy
 
-Capture is opt-in on the health step of onboarding. The copy says:
+Capture is opt-in on the health-profile step of onboarding. The copy says:
 
-> Save this trip anonymously to improve pacing estimates. No name, email, or account.
-> You can record the outcome after your trip, and that is what calibrates future
-> estimates.
+> Save this trip anonymously to improve pacing. Optional and anonymous. Not linked to your
+> account. After the trip you can record one explicit outcome, which calibrates future pacing.
 
 The only identity is a random install id in `localStorage`. There is no account, cookie,
 email, IP log, or free-text transcript. The public outcome route ignores `notes`, so a
@@ -210,9 +214,9 @@ client cannot store free text through it. The outcome is an explicit yes or no; 
 interface requires an answer rather than treating an untouched checkbox as a negative, and
 an unanswered follow-up is not a negative and is excluded from training.
 
-Before charging users, this needs a privacy review, retention policy, and a clear
-statement of the model provider and geocoder data flows. Treat the database as a clinical
-asset, because it is one.
+`/privacy` and `/terms` now state the shipped data flows in plain language. Before charging
+users, this still needs legal review, a retention policy, and a deletion path for anonymous
+captures. Treat the database as a clinical asset, because it is one.
 
 ## 9. Current status
 
@@ -228,8 +232,10 @@ asset, because it is one.
 - One consented production browser trip is currently stored without an outcome, so it is
   excluded from training. The browser-test rows used to verify capture, dose, and the explicit
   outcome were removed after verification; the committed artifact remains synthetic.
-- There is no authentication or rate limiting; the store is a single PostgreSQL database
-  with no retention job or deletion endpoint yet.
+- Clerk now authenticates planning and account data. Live planner, destination, venue, and
+  geocoder paths have in-process fair-use guards. The anonymous capture store is still a
+  single PostgreSQL database with no retention job; account deletion removes account-owned
+  rows but deliberately leaves anonymous captures.
 
 ## 10. Scale-up ladder
 
@@ -269,7 +275,7 @@ rung.
 
 ```
 lib/data/      types.ts, dose.ts, tripDossier.ts, capture.ts, validation.ts
-lib/db/        postgres.ts, trips.ts
+lib/db/        postgres.ts, trips.ts, account.ts, billingUsage.ts
 lib/model/     math.ts, features.ts, logistic.ts, calibration.ts, train.ts,
                predict.ts, artifact.ts, model.json, types.ts
 scripts/       db-init.ts, export-training.ts, synthetic.ts, train-model.ts

@@ -1106,16 +1106,71 @@ thresholds and Sun Life stability window remain VERIFY.
   same tab with no target attribute.
 - Gate: typecheck, 640 tests, lint, and production build pass; deployed and service active.
 
+## Production consumer reset (2026-11-25)
+
+- **Direction.** Reset the product from a patient/caregiver clinical planner to health-aware
+  trip planning for consumers. Remove medication, Sun Life insurance, pharmacy, coverage, the
+  three-worker verification model, and the recording archive. Keep the safety envelope, care
+  card, saved trips, venue evidence, and the consented calibration loop.
+- **Worktrees and agents.** The reset landed on `main` through 4d4a844. Separate worktrees
+  carried the core reset, backend, privacy, workspace, and destination-check work; this
+  documentation pass runs on `polish/docs` in `/tmp/opencode/pmt-docs`, based on that main.
+  No application code or tests were changed in the docs branch.
+- **Core reset (`10b22db`).** Removed medication, insurance, pharmacy, and coverage from the
+  engine input, planner prompts, dossier, cache signature, workers, copy, and tests. Replaced
+  the three-worker TinyFish swarm with one destination advisory worker. Deleted
+  `lib/sunLifeRules.ts`, the pharmacy and coverage goals, and the multi-worker mission control.
+- **Positioning and landing (`e896b02`, `01a5254`, `396a1b2`).** Repositioned the product as
+  health-aware trip planning. The landing leads with the trip, the route, checked places, and
+  the safety envelope rather than a clinical claim. Pricing, trust, support, error boundaries,
+  tap targets, and feedback focus were polished; the footer links privacy and terms.
+- **Onboarding (`31f1045`).** Rebalanced into 01 The trip and 02 Your pace. The health profile
+  is explicit and starts empty; duration is capped by the plan; start date, travellers, budget,
+  transport, preferences, and the plan allowance are on the form. The review sentence names
+  the included live plans without inventing a remaining count.
+- **Workspace (`fcfc6bb`, `5c20406`).** Added the "Checked places" section, kept "Pacing and
+  safety" open at ready, defaulted the map to all days, simplified the command bar and dock,
+  moved the outcome form into a disclosure, and made saved-trip venue refresh explicit. Saved
+  trips now paginate with Older/Newer, ask for a second delete confirmation, and handle the
+  free saved-trip limit.
+- **Destination check (`6f95564`, `5c20406`).** One calm surface for the Government of Canada
+  advisory: pre-run row, status card, optional live view, source-backed findings, checked date,
+  stale-input caution, and retry. No raw JSON, step count, tempo strip, provider internals, or
+  invented partial findings.
+- **Backend hardening (`c86dd22`, `4d4a844`).** Added atomic billing reservations that fail
+  closed, date/party-safe plan cache identity, cached plans that never write dossiers, the
+  live kill switch, per-account and global concurrency guards, cooldowns, the venue daily cap,
+  the geocoder minute budget, public venue URL validation, database statement/query timeouts,
+  and bounded two-second waits for best-effort writes.
+- **Privacy and recordings (`e269b5c`).** Removed the recording archive, `/api/recordings`,
+  the recording environment variables, and the install-scoped `GET /api/trips` log. Added
+  `/privacy`, `/terms`, and account deletion. The deletion route removes `saved_trips` and
+  `billing_usage`, then the Clerk user; anonymous captures are not linked and stay separate.
+- **Auth and site.** Return paths are validated through `signInHref`; signed-out `/` renders
+  the landing page instead of redirecting. Clerk Billing copy was updated in
+  `scripts/clerk-billing.json` ("Live destination check", "Live menus and room rates") and the
+  applied catalog is recorded in `docs/BILLING.md`.
+- **Docs.** AGENTS.md, AUTH.md, BILLING.md, ML.md, VENUE.md, and `.env.example` now describe
+  the consumer product, the live limits, the destination check, account deletion, privacy,
+  and the removed recording surface. This section is the reset's build record.
+- **Gate.** `npm run typecheck`, `npm test`, and `npm run lint` pass on the docs branch. The
+  suite reports 683 tests: 644 passed and 39 skipped without `DATABASE_URL`. The docs branch
+  does not change runtime behavior.
+- **Build and deploy.** The safe deploy script is the release step. This docs branch has not
+  been deployed; production deploy remains pending until the branch is merged and the safe
+  deploy is run and verified. Do not record a successful deploy before that check.
+
 ## Next action
 
-Run a real production checkout for Care Circle with a card and verify the session plan
-switches to `care_circle`, a 20-day plan is accepted, live verification and venue research
-run, and unlimited saved trips are allowed. Confirm the monthly toggle is acceptable or
-enable Clerk's Annual-only plans update and set `amount` to `0` in
-`scripts/clerk-billing.json`. Decide whether to add the $29 one-time Trip Pass through Stripe
-Checkout. A real paid pilot should measure conversion, compute cost per paid trip, cancellation
-reasons, and renewal intent. Review the landing page in a normal browser at desktop and phone
-widths, then tighten any copy that overstates the product. Re-check the real captures after
-the next venue run. Keep the pin-and-pulse favicon and the public/private root split. The
-current instruction is to keep deploying without committing or pushing, so the landing, logo,
-captures, billing, and docs remain uncommitted until that changes.
+Merge this docs branch, run the safe deploy script, and confirm the release. Smoke the new
+public `/privacy` and `/terms` pages and account deletion in production. Run one
+live 7-agent planner pass plus the single destination check and record the completed and failed
+agents, the advisory findings, and the wall clock. Run a real Care Circle checkout with a card
+and verify the session plan, a 20-day plan, the live destination check, venue research, and
+unlimited saved trips. Get legal review of privacy and terms before a paid pilot. Run the
+database-backed billing reservation and account-deletion tests against staging PostgreSQL.
+Clean up any old recording files and remove `TINYFISH_RECORDING` and
+`PLANMYTRIP_RECORDINGS_DIR` from production environments. Confirm the monthly toggle is
+acceptable or enable Clerk's Annual-only plans update and set `amount` to `0`. Decide whether
+the $29 one-time Trip Pass needs Stripe Checkout. Measure conversion, compute cost per paid
+trip, cancellation reasons, and renewal intent.
