@@ -29,8 +29,8 @@ judge asks about the model or the data asset.
 ### 0:00 — cover
 
 > Basil loved to travel. He also had cancer. He died in February 2024, at 33. The trips were
-> never the problem. Planning them was. Which day is too long. Is his medication legal at the
-> border. Will insurance pay. He did that alone, at two in the morning.
+> never the problem. Planning them was. Which day is too long. Where the quiet food is. Will
+> the pace hold. He did that alone, at two in the morning.
 
 Pause after “33.” Do not perform the grief; state it.
 
@@ -44,7 +44,8 @@ Pause after “33.” Do not perform the grief; state it.
 
 > So we built the planner that starts with the body. Plan it: six specialists research, a
 > concierge puts the route in order. Pace it: the engine sets daily step and walking caps.
-> Prove it: three live browsers check advisories, drug rules, insurance. Every finding cited.
+> Prove it: live page checks read the destination advisory, the menus, and the room rates.
+> Every finding cited.
 
 ### 0:56 — demo
 
@@ -55,9 +56,9 @@ twenty-five minutes earlier. The workspace is one page; scroll it.
 > seven agents have finished. Stays, tables, trails, culture, transit, care, and a lead
 > concierge.
 
-*(press End in the live window to reach live verification)*
+*(press End in the live window to reach the destination check)*
 
-> Three real browsers, live. Canada’s advisory. Drugs.com. Sun Life. Not cached.
+> The destination advisory and the venue pages, live. Not cached.
 
 *(switch to the finished window, route stage)*
 
@@ -72,16 +73,16 @@ twenty-five minutes earlier. The workspace is one page; scroll it.
 
 > One click: the days, the caps, the checkpoints.
 
-*(scroll to the verification findings)*
+*(scroll to the destination-check findings)*
 
 > Every finding carries the page and the time we read it.
 
 ### 2:04 — architecture
 
-> Two loops. The live loop: seven OpenCode agents plan, the engine sets the caps, three TinyFish
-> browsers verify. The data loop: every consented trip becomes a dossier and an outcome. The
-> model learns the residual and may only tighten a cap. Generation is probabilistic; the
-> ceiling is not.
+> Two loops. The live loop: seven OpenCode agents plan, the engine sets the caps, the
+> destination check and venue pages run live. The data loop: every consented trip becomes a
+> dossier and an outcome. The model learns the residual and may only tighten a cap. Generation
+> is probabilistic; the ceiling is not.
 
 ### 2:20 — comparison
 
@@ -112,8 +113,8 @@ Stop. Hold the slide. No “thank you.”
    at the top.
 5. Keep a recorded clean run and the PDF on the desktop.
 
-During the demo: live window top → End (live verification) → finished window route → scroll to
-safety → copy the care card → scroll to verification findings.
+During the demo: live window top → End (destination check) → finished window route → scroll to
+safety → copy the care card → scroll to destination-check findings.
 
 Never refresh either window and never press Plan again during the pitch. Both remount the
 workspace and abort the running streams.
@@ -141,7 +142,7 @@ number and the source line.
   in 2026. aarp.org/travel/travel-tips/travel-trends-survey-2026.
 - **0 of 5**: PlanMyTrip.health review of Google Travel, Tripadvisor, Expedia, Booking.com, and
   Kayak, November 2026.
-- **466 tests**: the repository gate at this commit.
+- **644 tests**: the repository gate at this commit.
 - **Calibration tiers and gates**: `docs/ML.md`; no real trip has contributed a label yet.
 
 ## Rubric check
@@ -180,19 +181,20 @@ When a page does not state something, the field says “Not found.”
 POTS, pregnancy, food allergy, and cardiac. Cancer is next, and its thresholds will not ship
 without clinical review. The model is the same: condition, limits, pacing.
 
-**Why TinyFish instead of scrapers?** Real travel and insurance sites are JavaScript-heavy and
+**Why TinyFish instead of scrapers?** Real travel and venue sites are JavaScript-heavy and
 change often. TinyFish runs real browsers, streams the live session so the user can watch, and
-returns strict JSON. Each worker is capped at 100 seconds and 60 steps inside a 120-second
-route; a blocked site retries once with a stealth profile.
+returns strict JSON. Each check is capped at 100 seconds inside the route budget; a blocked site
+retries once with a stealth profile.
 
 **What if an agent fails?** The itinerary is engine-only and never depends on the agents. A
-failed worker is isolated and retried; mission control keeps the failed tile and the retry
-visible. Missing fields print “Not found.” The safety envelope is already on screen before
-either team finishes.
+failed check is isolated and retried; the destination-check surface keeps the retry visible.
+Missing fields print “Not found.” The safety envelope is already on screen before either team
+finishes.
 
-**Privacy?** No account, cookie, email, or free text. Capture is opt-in, identified only by a
+**Privacy?** Accounts are handled by Clerk. Anonymous research is opt-in, identified only by a
 random local install id, and an unanswered follow-up is excluded from training, never read as a
-non-flare. A retention policy and privacy review are still required before charging.
+non-setback. Privacy and terms pages and account deletion ship; a legal review is still required
+before charging.
 
 **How does the model work?** The engine’s modeled risk is the prior log-odds. The model learns
 the residual with penalized logistic regression; standardization, coefficients, and the
@@ -200,7 +202,7 @@ isotonic map are fitted inside nested grouped folds. With zero labels the coeffi
 so the model is exactly the engine. It may tighten a cap, never widen one.
 
 **What is the data asset?** A consented, condition-labelled dose and outcome pair. The dose is
-computed from plan blocks, never the agent’s self-report; the outcome is an explicit flare
+computed from plan blocks, never the agent’s self-report; the outcome is an explicit setback
 answer. Only this product knows what dose it prescribed, so the corpus cannot be scraped.
 
 **What is the moat?** That dose and outcome pair at scale. The model is a calibration layer on
