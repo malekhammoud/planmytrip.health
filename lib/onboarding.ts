@@ -1,26 +1,37 @@
 /**
  * Trip draft helpers for the onboarding flow.
  *
- * Inputs: a partially edited trip configuration.
- * Outputs: the default draft, a step gate, and a normalized configuration.
+ * Inputs: a partially edited trip draft.
+ * Outputs: the empty draft, step gates, a normalized configuration, and the plan
+ * allowance sentence.
  * Invariants: the draft is a label-only planning input; it is never medical advice. The
- * destination is the only hard gate before the health step. Lengths match the API bounds.
+ * destination gates the second step, and an explicit health profile gates the build.
+ * Lengths match the API bounds, and an untouched draft never yields a condition.
  */
 
 import { TRIP_DAYS_MAX, TRIP_DAYS_MIN } from "@/lib/healthTripTypes";
 import type { TripConfig } from "@/lib/agent/agentTypes";
+import type { BillingEntitlements } from "@/lib/billing/plans";
+import { planLabel } from "@/lib/billing/plans";
 import { isIsoDate } from "@/lib/dates";
+import { isCondition, type Condition } from "@/lib/types";
 
 const DESTINATION_MAX = 120;
 const ORIGIN_MAX = 120;
 const INTERESTS_MAX = 240;
 
-/** The empty draft shown to a first-time visitor. */
-export const DEFAULT_TRIP: TripConfig = {
+/** The trip fields before the traveler has picked a health profile. */
+export type TripDraft = Omit<TripConfig, "condition"> & {
+  /** Empty until the traveler picks a profile; the form never defaults one. */
+  condition: Condition | "";
+};
+
+/** The empty draft shown to a first-time visitor. No health profile is preselected. */
+export const DEFAULT_TRIP: TripDraft = {
   destination: "",
   origin: "",
   days: 4,
-  condition: "asthma_respiratory",
+  condition: "",
   interests: "",
   budget: "balanced",
   transport: "mixed",
@@ -34,18 +45,27 @@ function clampText(value: string, max: number): string {
 }
 
 /** True when the trip step has the one field the next step needs. */
-export function canContinueTripStep(config: TripConfig): boolean {
+export function canContinueTripStep(
+  config: Pick<TripDraft, "destination">,
+): boolean {
   return config.destination.trim().length > 0;
+}
+
+/** True when the draft has both a destination and an explicit health profile. */
+export function canBuildTrip(config: TripDraft): boolean {
+  return canContinueTripStep(config) && isCondition(config.condition);
 }
 
 /**
  * Trims labels and clamps the duration to the engine's supported range and the account's
- * plan ceiling. The default preserves the engine maximum for callers without a plan.
+ * plan ceiling. Returns null until the destination and health profile are both present,
+ * so an untouched form can never submit a condition or a plan.
  */
 export function normalizeTripConfig(
-  config: TripConfig,
+  config: TripDraft,
   maxDays = TRIP_DAYS_MAX,
-): TripConfig {
+): TripConfig | null {
+  if (!isCondition(config.condition) || !canContinueTripStep(config)) return null;
   // Saved rows written before the date and party fields existed still normalize safely.
   const checkIn = typeof config.checkIn === "string" ? config.checkIn.trim() : "";
   const travelers = Number.isFinite(config.travelers) ? Math.round(config.travelers) : 1;
@@ -65,4 +85,23 @@ export function normalizeTripConfig(
     travelers: Math.max(1, Math.min(8, travelers)),
     captureConsent: config.captureConsent,
   };
+}
+
+/** The limits needed to describe an account's live-plan allowance. */
+export type PlanAllowance = Pick<
+  BillingEntitlements,
+  "plan" | "tripsPerPeriod" | "tripPeriod" | "maxTripDays"
+>;
+
+/**
+ * One plain sentence naming the current plan's allowance. It states the plan's limits,
+ * never a remaining count, because usage is enforced and counted in the server routes.
+ */
+export function describePlanAllowance(limits: PlanAllowance): string {
+  const plans =
+    limits.tripsPerPeriod === 1
+      ? "1 live plan"
+      : `${limits.tripsPerPeriod} live plans`;
+  const period = limits.tripPeriod === "year" ? "a year" : "a month";
+  return `${planLabel(limits.plan)} includes ${plans} ${period} and trips up to ${limits.maxTripDays} days.`;
 }

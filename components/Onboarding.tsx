@@ -18,9 +18,13 @@ import {
   BUDGET_LEVELS,
   type TripConfig,
 } from "@/lib/agent/agentTypes";
+import type { BillingEntitlements } from "@/lib/billing/plans";
 import {
+  canBuildTrip,
   canContinueTripStep,
+  describePlanAllowance,
   normalizeTripConfig,
+  type TripDraft,
 } from "@/lib/onboarding";
 import {
   CONDITION_LABELS,
@@ -32,12 +36,18 @@ import {
   TRANSPORT_MODES,
 } from "@/lib/types";
 
+const VALUE_LINES = [
+  "Daily step and walking ceilings set by your health profile.",
+  "Rest and recovery built into each day, not added at the end.",
+  "A safety envelope and care card you can share.",
+] as const;
+
 /** Props for {@link Onboarding}. */
 export interface OnboardingProps {
   /** Draft to start from, including the current trip when editing. */
-  initial: TripConfig;
-  /** Plan ceiling for the duration field. Defaults to the engine maximum. */
-  maxDays?: number;
+  initial: TripDraft;
+  /** Current plan limits, used for the duration ceiling and allowance sentence. */
+  entitlements: BillingEntitlements;
   /** Receives the normalized trip configuration when the user builds the plan. */
   onComplete: (config: TripConfig) => void;
   /** Returns to the existing workspace without rebuilding, when editing. */
@@ -64,30 +74,50 @@ function StepMark({
 }
 
 /**
- * Two-step trip onboarding. Step one collects the place and shape of the trip; step
- * two collects the health profile and research consent. The finished plan opens in the
+ * Two-step trip onboarding. Step one collects the shape of the trip; step two collects
+ * the health profile, pace, and optional research consent. The finished plan opens in the
  * workspace, so this screen never carries results or live agent logs.
  */
 export function Onboarding({
   initial,
-  maxDays = TRIP_DAYS_MAX,
+  entitlements,
   onComplete,
   onCancel,
 }: OnboardingProps) {
   const daysMax = Math.max(
     TRIP_DAYS_MIN,
-    Math.min(TRIP_DAYS_MAX, Math.round(maxDays)),
+    Math.min(TRIP_DAYS_MAX, Math.round(entitlements.maxTripDays)),
   );
-  const [config, setConfig] = useState<TripConfig>(() => ({
+  const [config, setConfig] = useState<TripDraft>(() => ({
     ...initial,
     days: Math.min(initial.days, daysMax),
   }));
   const [step, setStep] = useState<1 | 2>(1);
+  const [conditionPicked, setConditionPicked] = useState(() =>
+    isCondition(initial.condition),
+  );
   const canContinue = canContinueTripStep(config);
+  const canBuild = conditionPicked && canBuildTrip(config);
   const budgetIndex = Math.max(0, BUDGET_LEVELS.indexOf(config.budget));
+  const allowance = describePlanAllowance(entitlements);
+  const reviewCondition =
+    conditionPicked && isCondition(config.condition) ? config.condition : null;
+  const reviewDetails = [
+    config.checkIn.length > 0 ? `Starts ${config.checkIn}` : "No start date",
+    `${config.travelers} ${config.travelers === 1 ? "traveller" : "travellers"}`,
+    TRANSPORT_LABELS[config.transport],
+    `${BUDGET_LABELS[config.budget]} budget`,
+    config.interests || "No extra preferences",
+  ].join(" · ");
 
-  function update<K extends keyof TripConfig>(key: K, value: TripConfig[K]): void {
+  function update<K extends keyof TripDraft>(key: K, value: TripDraft[K]): void {
     setConfig((current) => ({ ...current, [key]: value }));
+  }
+
+  function handleConditionChange(next: string): void {
+    if (!isCondition(next)) return;
+    update("condition", next);
+    setConditionPicked(true);
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
@@ -96,11 +126,14 @@ export function Onboarding({
       if (canContinue) setStep(2);
       return;
     }
-    onComplete(normalizeTripConfig(config, daysMax));
+    if (!canBuild) return;
+    const normalized = normalizeTripConfig(config, daysMax);
+    if (normalized !== null) onComplete(normalized);
   }
 
   function handleCancel(): void {
     setConfig({ ...initial, days: Math.min(initial.days, daysMax) });
+    setConditionPicked(isCondition(initial.condition));
     setStep(1);
     onCancel?.();
   }
@@ -111,8 +144,22 @@ export function Onboarding({
         <section aria-labelledby="onboarding-heading">
           <p className="t-label text-muted">New trip</p>
           <h1 id="onboarding-heading" className="t-display measure mt-3">
-            Plan a trip that fits your body.
+            A trip that fits the health you have.
           </h1>
+          <p className="t-body measure mt-5 text-muted">
+            Tell us the trip and the health you are bringing, and the plan keeps every
+            day inside that pace.
+          </p>
+          <ul className="mt-8 flex max-w-[38ch] list-none flex-col border-t border-hairline p-0">
+            {VALUE_LINES.map((line) => (
+              <li
+                key={line}
+                className="t-small border-b border-hairline py-3 text-muted"
+              >
+                {line}
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section aria-labelledby="onboarding-form-heading">
@@ -124,9 +171,9 @@ export function Onboarding({
             </div>
           ) : null}
           <div className="flex items-center gap-4 border-t border-ink pt-4">
-            <StepMark index="01" label="Trip" active={step === 1} />
+            <StepMark index="01" label="The trip" active={step === 1} />
             <span aria-hidden="true" className="h-px flex-1 bg-hairline" />
-            <StepMark index="02" label="Health" active={step === 2} />
+            <StepMark index="02" label="Your pace" active={step === 2} />
           </div>
 
           <form onSubmit={handleSubmit} className="mt-8">
@@ -155,20 +202,19 @@ export function Onboarding({
                   </Field>
 
                   <Field
-                    id="onboarding-origin"
-                    label="Starting from"
-                    hint="Optional. Type a home city or airport, use your current location, or pick a point on the map."
+                    id="onboarding-checkin"
+                    label="Start date"
+                    hint="Optional. Needed for live hotel prices."
                   >
                     {(control) => (
-                      <LocationField
-                        id={control.id}
-                        label="starting point"
-                        currentLocationMode="place"
-                        value={config.origin}
-                        onChange={(value) => update("origin", value)}
-                        aria-describedby={control["aria-describedby"]}
-                        aria-invalid={control["aria-invalid"]}
-                        placeholder="City, airport, or address"
+                      <TextInput
+                        {...control}
+                        type="date"
+                        value={config.checkIn}
+                        onChange={(event) =>
+                          update("checkIn", event.currentTarget.value)
+                        }
+                        autoComplete="off"
                       />
                     )}
                   </Field>
@@ -195,33 +241,6 @@ export function Onboarding({
                       </div>
                     )}
                   </Field>
-                  {daysMax < TRIP_DAYS_MAX ? (
-                    <p className="t-small -mt-4 text-muted">
-                      The Free Preview includes trips up to {daysMax} days.{" "}
-                      <a href="/pricing" className="text-accent hover:underline">
-                        See plans
-                      </a>
-                      .
-                    </p>
-                  ) : null}
-
-                  <Field
-                    id="onboarding-checkin"
-                    label="Start date"
-                    hint="Optional. Needed for live hotel prices."
-                  >
-                    {(control) => (
-                      <TextInput
-                        {...control}
-                        type="date"
-                        value={config.checkIn}
-                        onChange={(event) =>
-                          update("checkIn", event.currentTarget.value)
-                        }
-                        autoComplete="off"
-                      />
-                    )}
-                  </Field>
 
                   <Field
                     id="onboarding-travelers"
@@ -243,6 +262,73 @@ export function Onboarding({
                         </div>
                         <span className="t-small text-muted">people</span>
                       </div>
+                    )}
+                  </Field>
+
+                  <Field
+                    id="onboarding-origin"
+                    label="Starting from"
+                    hint="Optional. Type a home city or airport, use your current location, or pick a point on the map."
+                  >
+                    {(control) => (
+                      <LocationField
+                        id={control.id}
+                        label="starting point"
+                        currentLocationMode="place"
+                        value={config.origin}
+                        onChange={(value) => update("origin", value)}
+                        aria-describedby={control["aria-describedby"]}
+                        aria-invalid={control["aria-invalid"]}
+                        placeholder="City, airport, or address"
+                      />
+                    )}
+                  </Field>
+                </div>
+
+                <div className="mt-8">
+                  <Button
+                    type="submit"
+                    variant="accent"
+                    size="lg"
+                    fullWidth
+                    disabled={!canContinue}
+                  >
+                    Continue
+                  </Button>
+                  <p className="t-small mt-2 text-muted">
+                    {canContinue
+                      ? "Next, set your pace."
+                      : "Add a destination to continue."}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 id="onboarding-form-heading" className="t-title">
+                  Your pace
+                </h2>
+                <div className="mt-6 flex flex-col gap-7">
+                  <Field
+                    id="onboarding-condition"
+                    label="Health profile"
+                    hint="Select a profile to continue. It sets daily step and walking ceilings, not a diagnosis."
+                  >
+                    {(control) => (
+                      <Select
+                        {...control}
+                        value={conditionPicked ? config.condition : ""}
+                        placeholder="Select a health profile"
+                        aria-required="true"
+                        onChange={(event) =>
+                          handleConditionChange(event.currentTarget.value)
+                        }
+                      >
+                        {CONDITIONS.map((value) => (
+                          <option key={value} value={value}>
+                            {CONDITION_LABELS[value]}
+                          </option>
+                        ))}
+                      </Select>
                     )}
                   </Field>
 
@@ -307,80 +393,41 @@ export function Onboarding({
                       />
                     )}
                   </Field>
-                </div>
 
-                <div className="mt-8">
-                  <Button
-                    type="submit"
-                    variant="accent"
-                    size="lg"
-                    fullWidth
-                    disabled={!canContinue}
-                  >
-                    Continue
-                  </Button>
-                  <p className="t-small mt-2 text-muted">
-                    {canContinue
-                      ? "Next, add the health profile."
-                      : "Add a destination to continue."}
-                  </p>
-                </div>
-              </>
-            ) : (
-              <>
-                <h2 id="onboarding-form-heading" className="t-title">
-                  The health profile
-                </h2>
-                <div className="mt-6 flex flex-col gap-7">
-                  <Field id="onboarding-condition" label="Condition">
-                    {(control) => (
-                      <Select
-                        {...control}
-                        value={config.condition}
-                        onChange={(event) => {
-                          const next = event.currentTarget.value;
-                          if (isCondition(next)) update("condition", next);
-                        }}
-                      >
-                        {CONDITIONS.map((value) => (
-                          <option key={value} value={value}>
-                            {CONDITION_LABELS[value]}
-                          </option>
-                        ))}
-                      </Select>
-                    )}
-                  </Field>
-
-                  <div className="flex flex-col gap-2">
-                    <Checkbox
-                      id="onboarding-capture"
-                      label="Save this trip anonymously to improve pacing estimates"
-                      checked={config.captureConsent}
-                      onChange={(checked) => update("captureConsent", checked)}
-                    />
-                    <p className="t-small text-muted">
-                      This research copy is not linked to your account. You can record the
-                      outcome after your trip, and that is what calibrates future
-                      estimates.
-                    </p>
+                  <div className="border-t border-hairline pt-4">
+                    <p className="t-label text-muted">Help improve pacing</p>
+                    <div className="mt-3 flex flex-col gap-2">
+                      <Checkbox
+                        id="onboarding-capture"
+                        label="Save this trip anonymously to improve pacing"
+                        checked={config.captureConsent}
+                        onChange={(checked) => update("captureConsent", checked)}
+                        describedBy="onboarding-capture-hint"
+                      />
+                      <p id="onboarding-capture-hint" className="t-small text-muted">
+                        Optional and anonymous. Not linked to your account. After the
+                        trip you can record one explicit outcome, which calibrates future
+                        pacing. Read the{" "}
+                        <a href="/privacy" className="text-accent hover:underline">
+                          privacy note
+                        </a>
+                        .
+                      </p>
+                    </div>
                   </div>
 
                   <div className="border-t border-hairline pt-4">
                     <p className="t-label text-muted">Review</p>
                     <p className="t-body mt-2 text-ink">
-                      {describeTrip({
-                        destination: config.destination,
-                        days: config.days,
-                        condition: config.condition,
-                      })}
+                      {reviewCondition === null
+                        ? "Select a health profile to set the pace."
+                        : describeTrip({
+                            destination: config.destination,
+                            days: config.days,
+                            condition: reviewCondition,
+                          })}
                     </p>
-                    <p className="t-data mt-2 text-muted">
-                      {config.checkIn ? `${config.checkIn} · ` : ""}
-                      {config.travelers} {config.travelers === 1 ? "traveller" : "travellers"} ·{" "}
-                      {TRANSPORT_LABELS[config.transport]} ·{" "}
-                      {BUDGET_LABELS[config.budget]} ·{" "}
-                      {config.interests || "No extra preferences"}
-                    </p>
+                    <p className="t-data mt-2 text-muted">{reviewDetails}</p>
                   </div>
                 </div>
 
@@ -392,12 +439,29 @@ export function Onboarding({
                   >
                     Back
                   </Button>
-                  <Button type="submit" variant="accent" size="lg">
+                  <Button
+                    type="submit"
+                    variant="accent"
+                    size="lg"
+                    disabled={!canBuild}
+                  >
                     Build my plan
                   </Button>
                 </div>
+                <p className="t-small mt-3 text-muted">
+                  A new live plan takes a few minutes; repeat destinations open from
+                  cache.
+                </p>
               </>
             )}
+
+            <p className="t-small mt-6 border-t border-hairline pt-4 text-muted">
+              {allowance}{" "}
+              <a href="/pricing" className="text-accent hover:underline">
+                See plans
+              </a>
+              .
+            </p>
           </form>
         </section>
       </div>

@@ -22,11 +22,11 @@ export type Condition = (typeof CONDITIONS)[number];
 
 /** Short, human-readable labels used by the select, the headline, and exports. */
 export const CONDITION_LABELS = {
-  asthma_respiratory: "asthma or respiratory conditions",
-  chronic_fatigue_pots: "chronic fatigue or POTS",
+  asthma_respiratory: "asthma or breathing conditions",
+  chronic_fatigue_pots: "fatigue or POTS",
   pregnancy_second_trimester: "second-trimester pregnancy",
   severe_food_allergy: "severe food allergy",
-  cardiac_hypertension: "cardiac conditions or hypertension",
+  cardiac_hypertension: "heart health or high blood pressure",
 } as const satisfies Record<Condition, string>;
 
 /**

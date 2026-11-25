@@ -2,7 +2,7 @@
  * Headline sentence tests for the pure describeTrip helper.
  *
  * Covers the exact reference sentence, destination trimming, the empty fallback,
- * and a second condition label.
+ * and every plain condition label.
  */
 
 import { describe, expect, it } from "vitest";
@@ -10,14 +10,14 @@ import { describeTrip } from "@/lib/describeTrip";
 import { CONDITION_LABELS } from "@/lib/types";
 
 describe("describeTrip", () => {
-  it("builds the exact headline sentence for a 4-day Tokyo asthma trip", () => {
+  it("builds the exact headline sentence for a 4-day Tokyo breathing trip", () => {
     expect(
       describeTrip({
         destination: "Tokyo, Japan",
         days: 4,
         condition: "asthma_respiratory",
       }),
-    ).toBe("4 days in Tokyo, Japan, paced for asthma or respiratory conditions.");
+    ).toBe("4 days in Tokyo, Japan, paced for asthma or breathing conditions.");
   });
 
   it("trims surrounding destination whitespace", () => {
@@ -27,7 +27,7 @@ describe("describeTrip", () => {
         days: 4,
         condition: "asthma_respiratory",
       }),
-    ).toBe("4 days in Tokyo, Japan, paced for asthma or respiratory conditions.");
+    ).toBe("4 days in Tokyo, Japan, paced for asthma or breathing conditions.");
   });
 
   it("falls back to your destination when the destination is empty", () => {
@@ -37,14 +37,14 @@ describe("describeTrip", () => {
         days: 4,
         condition: "asthma_respiratory",
       }),
-    ).toBe("4 days in your destination, paced for asthma or respiratory conditions.");
+    ).toBe("4 days in your destination, paced for asthma or breathing conditions.");
     expect(
       describeTrip({
         destination: "   ",
         days: 6,
         condition: "asthma_respiratory",
       }),
-    ).toBe("6 days in your destination, paced for asthma or respiratory conditions.");
+    ).toBe("6 days in your destination, paced for asthma or breathing conditions.");
   });
 
   it("uses the label for another condition", () => {
@@ -54,9 +54,17 @@ describe("describeTrip", () => {
         days: 5,
         condition: "chronic_fatigue_pots",
       }),
-    ).toBe(
-      `5 days in Lisbon, Portugal, paced for ${CONDITION_LABELS.chronic_fatigue_pots}.`,
-    );
-    expect(CONDITION_LABELS.chronic_fatigue_pots).toBe("chronic fatigue or POTS");
+    ).toBe(`5 days in Lisbon, Portugal, paced for ${CONDITION_LABELS.chronic_fatigue_pots}.`);
+    expect(CONDITION_LABELS.chronic_fatigue_pots).toBe("fatigue or POTS");
+  });
+
+  it("uses plain consumer labels for every health profile", () => {
+    expect(CONDITION_LABELS).toEqual({
+      asthma_respiratory: "asthma or breathing conditions",
+      chronic_fatigue_pots: "fatigue or POTS",
+      pregnancy_second_trimester: "second-trimester pregnancy",
+      severe_food_allergy: "severe food allergy",
+      cardiac_hypertension: "heart health or high blood pressure",
+    });
   });
 });

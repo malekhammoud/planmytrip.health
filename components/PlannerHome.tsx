@@ -76,7 +76,7 @@ export function PlannerHome({
         <div id="onboarding-screen" hidden={view !== "onboarding"}>
           <Onboarding
             initial={trip ?? DEFAULT_TRIP}
-            maxDays={entitlements.maxTripDays}
+            entitlements={entitlements}
             onComplete={handleBuild}
             onCancel={trip === null ? undefined : () => setView("workspace")}
           />

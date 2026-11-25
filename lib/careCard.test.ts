@@ -42,7 +42,7 @@ describe("buildCareCard", () => {
       [
         "PlanMyTrip.health care card",
         "Destination: Tokyo, Japan",
-        "Condition: asthma or respiratory conditions",
+        "Condition: asthma or breathing conditions",
         "Trip length: 2 days",
         "Daily step ceiling: 7,000 steps",
         "",
@@ -72,7 +72,7 @@ describe("buildCareCard", () => {
   it("normalizes whitespace in the destination", () => {
     const card = buildCareCard("  Tokyo,   Japan  ", "asthma_respiratory", PLAN);
     expect(card).toContain("Destination: Tokyo, Japan");
-    expect(card).toContain("Condition: asthma or respiratory conditions");
+    expect(card).toContain("Condition: asthma or breathing conditions");
   });
 
   it("uses the engine output without adding doses", () => {

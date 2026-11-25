@@ -74,7 +74,7 @@ describe("worker output schemas", () => {
       expect(goal).toContain("[]");
       expect(goal).toContain("sourceUrl");
       expect(goal).toContain("Lisbon, Portugal");
-      expect(goal).toContain("asthma or respiratory conditions");
+      expect(goal).toContain("asthma or breathing conditions");
     }
   });
 
